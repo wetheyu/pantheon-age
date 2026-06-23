@@ -1,4 +1,4 @@
-"""Fixed story text for 神座纪元 v1.1.
+"""Fixed story text for 神座纪元 v1.2.
 
 Later, an LLM can replace or enrich this module, but it should still receive
 rule results from rule_engine instead of deciding core state changes itself.
@@ -6,9 +6,11 @@ rule results from rule_engine instead of deciding core state changes itself.
 
 from data import (
     CLUE_DESCRIPTIONS,
+    CORE_TRUTH_CLUES,
     HELP_TEXT,
     LOCATION_DESCRIPTIONS,
     LOCATIONS,
+    MAIN_OBJECTIVE,
     PROJECT_ENGLISH_NAME,
     PROJECT_INTERNAL_MILESTONE,
     PROJECT_NAME,
@@ -92,3 +94,28 @@ def render_ending(state):
 
 def render_help():
     return HELP_TEXT
+
+
+def render_goal(state):
+    core_count = len(CORE_TRUTH_CLUES.intersection(state.player.clues))
+    return f"""当前目标：
+{MAIN_OBJECTIVE}
+
+核心线索进度：{core_count}/{len(CORE_TRUTH_CLUES)}
+揭露真相需要至少 4 个核心线索。
+危险阈值：SAN <= 0 或 Corruption >= 5 会触发深渊污染结局。"""
+
+
+def render_clues(state):
+    if not state.player.clues:
+        return "当前线索：暂无。建议从门口脚印、前厅圣徽或旧档案室开始调查。"
+
+    lines = ["当前线索："]
+    for clue in state.player.clues:
+        marker = "核心" if clue in CORE_TRUTH_CLUES else "普通"
+        description = CLUE_DESCRIPTIONS.get(clue, "")
+        lines.append(f"- [{marker}] {clue}：{description}")
+
+    core_count = len(CORE_TRUTH_CLUES.intersection(state.player.clues))
+    lines.append(f"核心线索进度：{core_count}/{len(CORE_TRUTH_CLUES)}")
+    return "\n".join(lines)

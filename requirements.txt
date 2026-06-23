@@ -1,2 +1,2 @@
-# 神座纪元 / Pantheon Age v1.1 uses only the Python standard library.
+# 神座纪元 / Pantheon Age v1.2 uses only the Python standard library.
 # Keep this file so later phases can add FastAPI, SQLAlchemy, pytest, etc.

@@ -1,4 +1,4 @@
-"""Static game data for 神座纪元 v1.1.
+"""Static game data for 神座纪元 v1.2.
 
 This file is intentionally plain dictionaries and lists. Later phases can move
 the same data into JSON files, PostgreSQL rows, or a RAG knowledge base.
@@ -6,9 +6,9 @@ the same data into JSON files, PostgreSQL rows, or a RAG knowledge base.
 
 PROJECT_NAME = "神座纪元"
 PROJECT_ENGLISH_NAME = "Pantheon Age"
-PROJECT_VERSION = "1.1.0"
+PROJECT_VERSION = "1.2.0"
 PROJECT_INTERNAL_MILESTONE = "Phase 1"
-PROJECT_STAGE = "CLI Save/Load"
+PROJECT_STAGE = "CLI Demo Polish"
 
 BASE_STATS = {
     "strength": 5,
@@ -237,6 +237,8 @@ CORE_TRUTH_CLUES = {
     "深渊污染痕迹",
 }
 
+MAIN_OBJECTIVE = "探索雾中修道院，收集至少 4 个核心线索，避免 SAN 归零或污染过高。"
+
 ITEMS = {
     "旧长剑": {
         "description": "有缺口的长剑，仍适合近身战斗。",
@@ -349,5 +351,6 @@ HELP_TEXT = """支持的行动示例：
 - 潜行：悄悄撬开档案柜 / 偷听
 - 道具：使用止血药剂 / 喝下镇静药剂 / 使用圣水
 - 休息：休息一下
-- 系统：帮助 / 状态 / 存档 / 读档 / 退出
+- 查看：目标 / 线索 / 状态
+- 系统：帮助 / 存档 / 读档 / 退出
 """

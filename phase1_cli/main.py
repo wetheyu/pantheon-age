@@ -1,11 +1,20 @@
-"""Command-line entry point for 神座纪元 v1.1."""
+"""Command-line entry point for 神座纪元 v1.2."""
 
 from character import create_character_interactive
 from game_state import GameState
 from intent_parser import parse_intent
 from rule_engine import apply_rule
 from save_manager import DEFAULT_SAVE_PATH, load_game, save_exists, save_game
-from story import render_ending, render_help, render_opening, render_result, render_status, render_title
+from story import (
+    render_clues,
+    render_ending,
+    render_goal,
+    render_help,
+    render_opening,
+    render_result,
+    render_status,
+    render_title,
+)
 from utils import CYAN, YELLOW, color_text, print_divider, safe_input
 
 
@@ -14,6 +23,8 @@ HELP_COMMANDS = {"帮助", "help", "h", "?"}
 STATUS_COMMANDS = {"状态", "status", "s"}
 SAVE_COMMANDS = {"存档", "save"}
 LOAD_COMMANDS = {"读档", "load"}
+GOAL_COMMANDS = {"目标", "goal", "objective"}
+CLUE_COMMANDS = {"线索", "clues", "clue"}
 
 
 def create_new_state():
@@ -26,7 +37,7 @@ def create_new_state():
 def create_initial_state():
     if save_exists():
         answer = safe_input("检测到本地存档。输入“读档”继续，直接回车新游戏：").strip().lower()
-        if answer in LOAD_COMMANDS or answer in {"读档"}:
+        if answer in LOAD_COMMANDS:
             state = load_game()
             print(f"已读取存档：{DEFAULT_SAVE_PATH}")
             return state
@@ -57,6 +68,14 @@ def main():
 
         if command in STATUS_COMMANDS or user_text in STATUS_COMMANDS:
             print(render_status(state))
+            continue
+
+        if command in GOAL_COMMANDS or user_text in GOAL_COMMANDS:
+            print(render_goal(state))
+            continue
+
+        if command in CLUE_COMMANDS or user_text in CLUE_COMMANDS:
+            print(render_clues(state))
             continue
 
         if command in SAVE_COMMANDS or user_text in SAVE_COMMANDS:
