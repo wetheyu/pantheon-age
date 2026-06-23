@@ -4,11 +4,11 @@ import unittest
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(PROJECT_ROOT / "phase1_cli"))
+sys.path.insert(0, str(PROJECT_ROOT))
 
-from character import build_character
-from game_state import GameState
-from story import render_clues, render_goal, render_log, render_map
+from phase1_cli.character import build_character
+from phase1_cli.game_state import GameState
+from phase1_cli.story import render_clues, render_goal, render_log, render_map
 
 
 class StoryViewTests(unittest.TestCase):

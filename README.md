@@ -1,6 +1,6 @@
 # 神座纪元 / Pantheon Age
 
-**神座纪元（Pantheon Age）** 是一个以固定神明体系、异常副本、调查冒险和规则裁定为核心的文字冒险系统。当前版本是 `v1.3.0 Phase 1 CLI`，只使用 Python 标准库，不接 LLM、不接数据库、不做前端、不做 Docker，目标是先把「角色状态 + 意图识别 + 规则引擎 + 线索 + 结局 + 本地存档 + Demo 展示体验 + 导航辅助」跑通。
+**神座纪元（Pantheon Age）** 是一个以固定神明体系、异常副本、调查冒险和规则裁定为核心的文字冒险系统。当前版本是 `v1.4.0 Phase 1 CLI`，只使用 Python 标准库，不接 LLM、不接数据库、不做前端、不做 Docker，目标是先把「角色状态 + 意图识别 + 规则引擎 + 线索 + 结局 + 本地存档 + Demo 展示体验 + 导航辅助 + API 预备结构」跑通。
 
 核心原则：
 
@@ -13,12 +13,12 @@ LLM 负责叙事，代码负责规则，数据库负责记忆，RAG 负责世界
 ## 版本状态
 
 ```text
-内部里程碑：Phase 1 CLI Navigation Polish
+内部里程碑：Phase 1 CLI API Readiness
 对外起点版本：v1.0.0
-当前公开版本：v1.3.0
+当前公开版本：v1.4.0
 ```
 
-`v1.3.0` 已完成：
+`v1.4.0` 已完成：
 
 - 命令行连续游玩；
 - 角色创建、职业、神明选择；
@@ -36,6 +36,10 @@ LLM 负责叙事，代码负责规则，数据库负责记忆，RAG 负责世界
 - `线索` 命令：查看已发现线索及核心/普通标记；
 - `地图` 命令：查看当前位置、已到达地点、未探索地点和可前往出口；
 - `日志` 命令：查看最近行动事件；
+- `game_service.py` 服务层：把玩家输入处理从 CLI 中抽离；
+- `GameResponse.to_dict()`：为未来 API 响应准备结构化返回；
+- `Character.to_public_dict()` / `GameState.to_public_dict()`：为未来状态查询接口准备公开数据结构；
+- Phase 2 API 计划文档；
 - README Demo 路线；
 - README 和 CHANGELOG 项目记录。
 
@@ -45,8 +49,10 @@ LLM 负责叙事，代码负责规则，数据库负责记忆，RAG 负责世界
 project-root/
   phase1_cli/
     main.py
+    __init__.py
     character.py
     game_state.py
+    game_service.py
     intent_parser.py
     rule_engine.py
     save_manager.py
@@ -54,9 +60,12 @@ project-root/
     data.py
     utils.py
   tests/
+    test_game_service.py
     test_intent_parser.py
     test_save_manager.py
     test_story_views.py
+  docs/
+    phase2_api_plan.md
   CHANGELOG.md
   README.md
   requirements.txt
@@ -80,7 +89,7 @@ python --version
 Python 3.12.13
 ```
 
-`v1.3.0` 暂时只使用 Python 标准库，所以不需要安装第三方依赖。后续如果添加依赖，可以执行：
+`v1.4.0` 暂时只使用 Python 标准库，所以不需要安装第三方依赖。后续如果添加依赖，可以执行：
 
 ```bash
 pip install -r requirements.txt
@@ -89,8 +98,8 @@ pip install -r requirements.txt
 启动游戏：
 
 ```bash
-cd <project-root>/phase1_cli
-python main.py
+cd <project-root>
+python -m phase1_cli.main
 ```
 
 启动后按提示创建角色、选择职业和信仰神明，然后输入自然语言行动。
@@ -205,9 +214,10 @@ python -m unittest discover -s tests
 
 ## 文件职责
 
-- `main.py`：程序入口，负责创建角色、启动循环、读取玩家输入、调用解析器和规则引擎。
+- `main.py`：CLI 程序入口，负责创建角色、启动循环、读取玩家输入、打印结果、处理本地存档。
 - `character.py`：角色数据结构、职业选择、初始属性/HP/SAN/道具计算。
 - `game_state.py`：保存当前回合、当前位置、是否结束、访问地点和事件日志。
+- `game_service.py`：可复用服务层，负责把玩家输入转换成结构化 `GameResponse`。未来 FastAPI 会优先复用这里。
 - `intent_parser.py`：使用关键词把自然语言行动解析成标准 intent dict。
 - `rule_engine.py`：当前版本的工程核心，负责 d20、属性检定、职业加成、战斗、状态变化、道具、线索和结局。
 - `save_manager.py`：负责本地 JSON 存档与读档。
@@ -259,6 +269,7 @@ d20 + 属性值 + 职业修正 >= DC
 - 意图识别是关键词规则，不是真正的自然语言理解。
 - 剧情文本是固定模板，不接 LLM。
 - 当前只有单一默认本地存档，还没有多存档位、账号系统或数据库。
+- 现在只有 API 预备结构，还没有真正启动 FastAPI 服务。
 - 地图只有「雾中修道院」一个小副本。
 - 行动日志只保存在本地存档里，还没有搜索、分类或完整时间线界面。
 - 战斗和道具系统是最小可玩版本，还没有复杂怪物、装备或任务系统。
@@ -276,14 +287,19 @@ d20 + 属性值 + 职业修正 >= DC
 
 当前的模块拆分已经为 Phase 2 做准备：
 
+- `phase1_cli/` 已经是可导入 Python package；
+- `game_service.py` 可以直接服务 API action 请求；
 - `intent_parser.py` 可以直接服务 API 请求；
 - `rule_engine.py` 可以直接返回 JSON-like dict；
 - `Character.to_dict()` 和 `GameState.to_dict()` 可以作为 Pydantic schema 的起点；
+- `Character.to_public_dict()`、`GameState.to_public_dict()` 和 `GameResponse.to_dict()` 可以作为 API response 的起点；
 - `story.py` 未来可以替换成 LLM 调用层。
+
+更详细的 Phase 2 拆分计划见 [docs/phase2_api_plan.md](docs/phase2_api_plan.md)。
 
 ## 这个阶段学到什么
 
-通过 `v1.3.0`，你会接触到：
+通过 `v1.4.0`，你会接触到：
 
 - Python 文件拆分；
 - dict/list/dataclass；
@@ -293,6 +309,8 @@ d20 + 属性值 + 职业修正 >= DC
 - JSON 文件读写和本地存档；
 - `unittest` 最小自动化测试；
 - 地图访问记录和行动日志展示；
+- CLI 层和服务层解耦；
+- 面向 API 的结构化响应；
 - 关键词意图识别；
 - d20 随机检定；
 - 配置化职业系统；

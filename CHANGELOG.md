@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.4.0 - Phase 1 CLI API Readiness
+
+在 `v1.3.0` 导航辅助版本上做 Phase 2 前置整理，让当前 CLI 逻辑更容易迁移到 FastAPI。
+
+已完成：
+
+- 新增 `game_service.py`；
+- 新增 `phase1_cli/__init__.py`，让 Phase 1 代码成为可导入 Python package；
+- 把系统命令和玩家行动处理从 `main.py` 抽到 `handle_player_input()`；
+- 新增 `GameResponse`，统一表达行动结果、系统命令、存档/读档信号和退出信号；
+- 新增 `GameResponse.to_dict()`，为未来 API response 准备结构；
+- 新增 `Character.to_public_dict()`；
+- 新增 `GameState.to_public_dict()`；
+- 新增 `docs/phase2_api_plan.md`；
+- 新增 `tests/test_game_service.py`；
+- 测试改为通过 `phase1_cli.xxx` 包路径导入模块；
+- 更新 README 的项目结构、文件职责和 Phase 2 说明。
+
 ## v1.3.0 - Phase 1 CLI Navigation Polish
 
 在 `v1.2.0` Demo 展示版本上继续打磨导航和回顾体验，让玩家更清楚自己在哪里、去过哪里、最近发生过什么。

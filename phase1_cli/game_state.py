@@ -3,7 +3,8 @@
 from dataclasses import dataclass, field
 from typing import Optional, Set
 
-from character import Character
+from .character import Character
+from .data import CORE_TRUTH_CLUES, LOCATIONS
 
 
 @dataclass
@@ -44,6 +45,22 @@ class GameState:
             "player": self.player.to_dict(),
             "visited_locations": sorted(self.visited_locations),
             "event_log": self.event_log,
+        }
+
+    def to_public_dict(self):
+        core_clues = CORE_TRUTH_CLUES.intersection(self.player.clues)
+        return {
+            "turn": self.turn,
+            "current_location": self.current_location,
+            "available_exits": list(LOCATIONS[self.current_location]),
+            "is_game_over": self.is_game_over,
+            "ending_id": self.ending_id,
+            "ending_text": self.ending_text,
+            "visited_locations": sorted(self.visited_locations),
+            "event_log": list(self.event_log),
+            "core_clue_count": len(core_clues),
+            "core_clue_total": len(CORE_TRUTH_CLUES),
+            "player": self.player.to_public_dict(),
         }
 
     @classmethod

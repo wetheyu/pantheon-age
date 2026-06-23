@@ -1,34 +1,24 @@
-"""Command-line entry point for 神座纪元 v1.3."""
+"""Command-line entry point for 神座纪元 v1.4."""
 
-from character import create_character_interactive
-from game_state import GameState
-from intent_parser import parse_intent
-from rule_engine import apply_rule
-from save_manager import DEFAULT_SAVE_PATH, load_game, save_exists, save_game
-from story import (
-    render_clues,
-    render_ending,
-    render_goal,
-    render_help,
-    render_log,
-    render_map,
-    render_opening,
-    render_result,
-    render_status,
-    render_title,
-)
-from utils import CYAN, YELLOW, color_text, print_divider, safe_input
+if __package__ in {None, ""}:
+    import sys
+    from pathlib import Path
 
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-QUIT_COMMANDS = {"退出", "quit", "exit", "q"}
-HELP_COMMANDS = {"帮助", "help", "h", "?"}
-STATUS_COMMANDS = {"状态", "status", "s"}
-SAVE_COMMANDS = {"存档", "save"}
-LOAD_COMMANDS = {"读档", "load"}
-GOAL_COMMANDS = {"目标", "goal", "objective"}
-CLUE_COMMANDS = {"线索", "clues", "clue"}
-MAP_COMMANDS = {"地图", "map"}
-LOG_COMMANDS = {"日志", "log", "history"}
+    from phase1_cli.character import create_character_interactive
+    from phase1_cli.game_service import handle_player_input
+    from phase1_cli.game_state import GameState
+    from phase1_cli.save_manager import DEFAULT_SAVE_PATH, load_game, save_exists, save_game
+    from phase1_cli.story import render_opening, render_status, render_title
+    from phase1_cli.utils import CYAN, YELLOW, color_text, print_divider, safe_input
+else:
+    from .character import create_character_interactive
+    from .game_service import handle_player_input
+    from .game_state import GameState
+    from .save_manager import DEFAULT_SAVE_PATH, load_game, save_exists, save_game
+    from .story import render_opening, render_status, render_title
+    from .utils import CYAN, YELLOW, color_text, print_divider, safe_input
 
 
 def create_new_state():
@@ -41,7 +31,7 @@ def create_new_state():
 def create_initial_state():
     if save_exists():
         answer = safe_input("检测到本地存档。输入“读档”继续，直接回车新游戏：").strip().lower()
-        if answer in LOAD_COMMANDS:
+        if answer in {"读档", "load"}:
             state = load_game()
             print(f"已读取存档：{DEFAULT_SAVE_PATH}")
             return state
@@ -56,46 +46,18 @@ def main():
     while not state.is_game_over:
         print(render_status(state))
         user_text = safe_input(color_text("行动> ", CYAN, bold=True)).strip()
+        response = handle_player_input(state, user_text)
 
-        if not user_text:
-            print("你停在原地，雾也停在原地。请输入一个行动，或输入“帮助”。")
-            continue
-
-        command = user_text.lower()
-        if command in QUIT_COMMANDS or user_text in QUIT_COMMANDS:
-            print("你合上冒险日志，暂时离开雾中修道院。")
+        if response.should_exit:
+            print(response.text)
             break
 
-        if command in HELP_COMMANDS or user_text in HELP_COMMANDS:
-            print(render_help())
-            continue
-
-        if command in STATUS_COMMANDS or user_text in STATUS_COMMANDS:
-            print(render_status(state))
-            continue
-
-        if command in GOAL_COMMANDS or user_text in GOAL_COMMANDS:
-            print(render_goal(state))
-            continue
-
-        if command in CLUE_COMMANDS or user_text in CLUE_COMMANDS:
-            print(render_clues(state))
-            continue
-
-        if command in MAP_COMMANDS or user_text in MAP_COMMANDS:
-            print(render_map(state))
-            continue
-
-        if command in LOG_COMMANDS or user_text in LOG_COMMANDS:
-            print(render_log(state))
-            continue
-
-        if command in SAVE_COMMANDS or user_text in SAVE_COMMANDS:
+        if response.should_save:
             save_path = save_game(state)
             print(f"已存档：{save_path}")
             continue
 
-        if command in LOAD_COMMANDS or user_text in LOAD_COMMANDS:
+        if response.should_load:
             if not save_exists():
                 print("当前没有本地存档。")
                 continue
@@ -103,16 +65,16 @@ def main():
             print(f"已读取存档：{DEFAULT_SAVE_PATH}")
             continue
 
-        action = parse_intent(user_text, state.current_location)
-        result = apply_rule(state, action)
-        print()
-        print_divider("=")
-        print(color_text("【行动结果】", YELLOW, bold=True))
-        print(render_result(result))
-        print_divider("=")
-
-        if state.is_game_over:
-            print(render_ending(state))
+        if response.kind == "action":
+            print()
+            print_divider("=")
+            print(color_text("【行动结果】", YELLOW, bold=True))
+            print(response.text)
+            print_divider("=")
+            if response.ending_text:
+                print(response.ending_text)
+        else:
+            print(response.text)
 
 
 if __name__ == "__main__":

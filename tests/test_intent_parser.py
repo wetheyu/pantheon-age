@@ -4,9 +4,9 @@ import unittest
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(PROJECT_ROOT / "phase1_cli"))
+sys.path.insert(0, str(PROJECT_ROOT))
 
-from intent_parser import parse_intent
+from phase1_cli.intent_parser import parse_intent
 
 
 class IntentParserTests(unittest.TestCase):

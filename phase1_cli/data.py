@@ -1,4 +1,4 @@
-"""Static game data for 神座纪元 v1.3.
+"""Static game data for 神座纪元 v1.4.
 
 This file is intentionally plain dictionaries and lists. Later phases can move
 the same data into JSON files, PostgreSQL rows, or a RAG knowledge base.
@@ -6,9 +6,9 @@ the same data into JSON files, PostgreSQL rows, or a RAG knowledge base.
 
 PROJECT_NAME = "神座纪元"
 PROJECT_ENGLISH_NAME = "Pantheon Age"
-PROJECT_VERSION = "1.3.0"
+PROJECT_VERSION = "1.4.0"
 PROJECT_INTERNAL_MILESTONE = "Phase 1"
-PROJECT_STAGE = "CLI Navigation Polish"
+PROJECT_STAGE = "CLI API Readiness"
 
 BASE_STATS = {
     "strength": 5,

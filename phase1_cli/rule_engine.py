@@ -1,4 +1,4 @@
-"""Deterministic rule engine for 神座纪元 v1.3.
+"""Deterministic rule engine for 神座纪元 v1.4.
 
 The key project idea starts here:
 - LLM/future story layer can describe events.
@@ -7,7 +7,7 @@ The key project idea starts here:
 
 import random
 
-from data import (
+from .data import (
     CLUE_DESCRIPTIONS,
     CORE_TRUTH_CLUES,
     ENDINGS,
@@ -15,7 +15,7 @@ from data import (
     LOCATIONS,
     POLLUTION_KEYWORDS,
 )
-from utils import clamp
+from .utils import clamp
 
 
 def apply_rule(state, action):

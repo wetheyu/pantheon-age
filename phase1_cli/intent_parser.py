@@ -4,7 +4,7 @@ The current CLI version does not use an LLM. The parser turns natural Chinese in
 small dict that the rule engine can handle deterministically.
 """
 
-from data import INTENT_KEYWORDS, ITEM_ALIASES, LOCATION_ALIASES
+from .data import INTENT_KEYWORDS, ITEM_ALIASES, LOCATION_ALIASES
 
 
 CHECK_DEFAULTS = {

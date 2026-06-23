@@ -1,9 +1,9 @@
-"""Character creation for 神座纪元 v1.3."""
+"""Character creation for 神座纪元 v1.4."""
 
 from dataclasses import dataclass, field
 
-from data import BASE_HP, BASE_SAN, BASE_STATS, CLASSES, GODS
-from utils import numbered_choice, print_divider, safe_input
+from .data import BASE_HP, BASE_SAN, BASE_STATS, CLASSES, GODS
+from .utils import numbered_choice, print_divider, safe_input
 
 
 @dataclass
@@ -64,6 +64,26 @@ class Character:
             "current_location": self.current_location,
             "clues": self.clues,
             "flags": self.flags,
+        }
+
+    def to_public_dict(self):
+        """A player-facing shape for CLI service responses and future API JSON."""
+        return {
+            "name": self.name,
+            "class_id": self.class_id,
+            "class_name": self.class_name,
+            "god": self.god,
+            "stats": dict(self.stats),
+            "hp": self.hp,
+            "max_hp": self.max_hp,
+            "san": self.san,
+            "max_san": self.max_san,
+            "suspicion": self.suspicion,
+            "corruption": self.corruption,
+            "inventory": list(self.inventory),
+            "skills": list(self.skills),
+            "current_location": self.current_location,
+            "clues": list(self.clues),
         }
 
     @classmethod

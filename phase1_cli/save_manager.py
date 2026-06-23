@@ -1,9 +1,9 @@
-"""Local JSON save/load helpers for Pantheon Age v1.3."""
+"""Local JSON save/load helpers for Pantheon Age v1.4."""
 
 import json
 from pathlib import Path
 
-from game_state import GameState
+from .game_state import GameState
 
 
 SAVE_VERSION = 1
