@@ -1,6 +1,6 @@
 # 神座纪元 / Pantheon Age
 
-**神座纪元（Pantheon Age）** 是一个以固定神明体系、异常副本、调查冒险和规则裁定为核心的文字冒险系统。当前 `Phase 1` 命令行版本作为项目正式起点发布为 `v1.0.0`。这个版本只使用 Python 标准库，不接 LLM、不接数据库、不做前端、不做 Docker，目标是先把「角色状态 + 意图识别 + 规则引擎 + 线索 + 结局」跑通。
+**神座纪元（Pantheon Age）** 是一个以固定神明体系、异常副本、调查冒险和规则裁定为核心的文字冒险系统。当前版本是 `v1.1.0 Phase 1 CLI`，只使用 Python 标准库，不接 LLM、不接数据库、不做前端、不做 Docker，目标是先把「角色状态 + 意图识别 + 规则引擎 + 线索 + 结局 + 本地存档」跑通。
 
 核心原则：
 
@@ -15,10 +15,10 @@ LLM 负责叙事，代码负责规则，数据库负责记忆，RAG 负责世界
 ```text
 内部里程碑：Phase 1 CLI Baseline
 对外起点版本：v1.0.0
-下一公开版本：v1.1.0
+当前公开版本：v1.1.0
 ```
 
-`v1.0.0` 以 `Phase 1` 作为起点，已完成：
+`v1.1.0` 已完成：
 
 - 命令行连续游玩；
 - 角色创建、职业、神明选择；
@@ -30,14 +30,9 @@ LLM 负责叙事，代码负责规则，数据库负责记忆，RAG 负责世界
 - 三类主要结局；
 - 终端颜色和行动结果分隔；
 - 修正“前往祈祷大厅”误判为祈祷的问题；
-- 初步 README 和 CHANGELOG 项目记录。
-
-下一公开版本 `v1.1.0` 计划：
-
 - 本地 JSON 存档 / 读档；
 - 最小自动化测试；
-- Demo 通关路线和 README 展示优化；
-- 配置数据进一步整理，为 FastAPI 版本做准备。
+- README 和 CHANGELOG 项目记录。
 
 ## 项目结构
 
@@ -49,9 +44,13 @@ project-root/
     game_state.py
     intent_parser.py
     rule_engine.py
+    save_manager.py
     story.py
     data.py
     utils.py
+  tests/
+    test_intent_parser.py
+    test_save_manager.py
   CHANGELOG.md
   README.md
   requirements.txt
@@ -75,7 +74,7 @@ python --version
 Python 3.12.13
 ```
 
-`v1.0.0` 暂时只使用 Python 标准库，所以不需要安装第三方依赖。后续如果添加依赖，可以执行：
+`v1.1.0` 暂时只使用 Python 标准库，所以不需要安装第三方依赖。后续如果添加依赖，可以执行：
 
 ```bash
 pip install -r requirements.txt
@@ -113,7 +112,41 @@ python main.py
 ```text
 帮助
 状态
+存档
+读档
 退出
+```
+
+## 存档 / 读档
+
+游戏中输入：
+
+```text
+存档
+```
+
+会把当前游戏状态保存到：
+
+```text
+saves/save.json
+```
+
+游戏中输入：
+
+```text
+读档
+```
+
+会从本地 JSON 存档恢复角色、地点、回合、线索、背包和事件日志。
+
+本地存档属于个人运行数据，已通过 `.gitignore` 忽略，不会提交到 GitHub。
+
+## 运行测试
+
+```bash
+cd <project-root>
+source .venv/bin/activate
+python -m unittest discover -s tests
 ```
 
 ## 文件职责
@@ -123,6 +156,7 @@ python main.py
 - `game_state.py`：保存当前回合、当前位置、是否结束、访问地点和事件日志。
 - `intent_parser.py`：使用关键词把自然语言行动解析成标准 intent dict。
 - `rule_engine.py`：当前版本的工程核心，负责 d20、属性检定、职业加成、战斗、状态变化、道具、线索和结局。
+- `save_manager.py`：负责本地 JSON 存档与读档。
 - `story.py`：根据规则结果输出固定剧情文本。未来可替换为 LLM 叙事层。
 - `data.py`：项目名、版本号、职业、地图、地点描述、神明、道具、线索、关键词等配置。
 - `utils.py`：通用小工具，例如安全输入、数值限制、编号选择、终端颜色。
@@ -170,13 +204,13 @@ d20 + 属性值 + 职业修正 >= DC
 
 - 意图识别是关键词规则，不是真正的自然语言理解。
 - 剧情文本是固定模板，不接 LLM。
-- 存档只在内存中，退出后不会保存。
+- 当前只有单一默认本地存档，还没有多存档位、账号系统或数据库。
 - 地图只有「雾中修道院」一个小副本。
 - 战斗和道具系统是最小可玩版本，还没有复杂怪物、装备或任务系统。
 
 ## 后续 Phase 2：改造成 FastAPI
 
-完成 `v1.1.0` 工程打磨后，Phase 2 可以把当前 CLI 拆成 REST API：
+完成当前 Phase 1 CLI 后，Phase 2 可以把当前 CLI 拆成 REST API：
 
 - `POST /characters`：创建角色；
 - `POST /games`：创建新游戏；
@@ -194,13 +228,15 @@ d20 + 属性值 + 职业修正 >= DC
 
 ## 这个阶段学到什么
 
-通过 `v1.0.0`，你会接触到：
+通过 `v1.1.0`，你会接触到：
 
 - Python 文件拆分；
 - dict/list/dataclass；
 - 命令行输入输出；
 - 游戏循环；
 - 状态管理；
+- JSON 文件读写和本地存档；
+- `unittest` 最小自动化测试；
 - 关键词意图识别；
 - d20 随机检定；
 - 配置化职业系统；

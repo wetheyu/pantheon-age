@@ -1,4 +1,4 @@
-"""Character creation for 神座纪元 v1.0."""
+"""Character creation for 神座纪元 v1.1."""
 
 from dataclasses import dataclass, field
 
@@ -60,10 +60,34 @@ class Character:
             "corruption": self.corruption,
             "inventory": self.inventory,
             "skills": self.skills,
+            "rule_modifiers": self.rule_modifiers,
             "current_location": self.current_location,
             "clues": self.clues,
             "flags": self.flags,
         }
+
+    @classmethod
+    def from_dict(cls, data):
+        """Rebuild a Character from saved JSON-like data."""
+        return cls(
+            name=data["name"],
+            class_id=data["class_id"],
+            class_name=data["class_name"],
+            god=data["god"],
+            stats=dict(data["stats"]),
+            hp=data["hp"],
+            max_hp=data["max_hp"],
+            san=data["san"],
+            max_san=data["max_san"],
+            suspicion=data.get("suspicion", 0),
+            corruption=data.get("corruption", 0),
+            inventory=list(data.get("inventory", [])),
+            skills=list(data.get("skills", [])),
+            rule_modifiers=dict(data.get("rule_modifiers", {})),
+            current_location=data.get("current_location", "修道院门口"),
+            clues=list(data.get("clues", [])),
+            flags=dict(data.get("flags", {})),
+        )
 
 
 def build_character(name, class_id, god):

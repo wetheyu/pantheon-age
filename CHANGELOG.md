@@ -1,5 +1,22 @@
 # Changelog
 
+## v1.1.0 - Phase 1 CLI Save/Load
+
+在 `v1.0.0` CLI baseline 上继续打磨，重点解决“游戏状态只在内存中，退出后丢失”的问题，并补上最小自动化测试。
+
+已完成：
+
+- 新增 `save_manager.py`；
+- 支持本地 JSON 存档：游戏中输入 `存档`；
+- 支持本地 JSON 读档：游戏中输入 `读档`；
+- 启动时检测到本地存档可选择读取；
+- `Character` 和 `GameState` 支持 `from_dict()`；
+- 存档会保存职业规则修正、线索、背包、当前位置、回合数、访问地点和事件日志；
+- 新增 `tests/test_intent_parser.py`；
+- 新增 `tests/test_save_manager.py`；
+- 使用 Python 标准库 `unittest`，不引入第三方测试依赖；
+- 更新 README 的运行、测试、存档说明。
+
 ## v1.0.0 - Phase 1 CLI Baseline
 
 项目正式命名为「神座纪元 / Pantheon Age」。
@@ -20,13 +37,3 @@
 - 修正“前往祈祷大厅”误判为祈祷的问题；
 - 终端行动结果分隔和基础颜色提示；
 - README 与 CHANGELOG 初版。
-
-## v1.1.0 - Planned
-
-下一轮公开版本目标是把 `v1.0.0` 的 CLI baseline 打磨成更适合投递和后续 FastAPI 改造的版本。
-
-- 增加本地 JSON 存档 / 读档；
-- 增加最小自动化测试；
-- 整理 Demo 路线；
-- 优化 README 项目展示；
-- 继续修正 CLI 可读性和关键词误判问题。

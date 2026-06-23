@@ -40,7 +40,20 @@ class GameState:
             "turn": self.turn,
             "is_game_over": self.is_game_over,
             "ending_id": self.ending_id,
+            "ending_text": self.ending_text,
             "player": self.player.to_dict(),
             "visited_locations": sorted(self.visited_locations),
             "event_log": self.event_log,
         }
+
+    @classmethod
+    def from_dict(cls, data):
+        return cls(
+            player=Character.from_dict(data["player"]),
+            turn=data.get("turn", 0),
+            is_game_over=data.get("is_game_over", False),
+            ending_id=data.get("ending_id"),
+            ending_text=data.get("ending_text", ""),
+            event_log=list(data.get("event_log", [])),
+            visited_locations=set(data.get("visited_locations", ["修道院门口"])),
+        )

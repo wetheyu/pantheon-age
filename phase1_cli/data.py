@@ -1,4 +1,4 @@
-"""Static game data for 神座纪元 v1.0 public baseline.
+"""Static game data for 神座纪元 v1.1.
 
 This file is intentionally plain dictionaries and lists. Later phases can move
 the same data into JSON files, PostgreSQL rows, or a RAG knowledge base.
@@ -6,9 +6,9 @@ the same data into JSON files, PostgreSQL rows, or a RAG knowledge base.
 
 PROJECT_NAME = "神座纪元"
 PROJECT_ENGLISH_NAME = "Pantheon Age"
-PROJECT_VERSION = "1.0.0"
+PROJECT_VERSION = "1.1.0"
 PROJECT_INTERNAL_MILESTONE = "Phase 1"
-PROJECT_STAGE = "CLI Baseline"
+PROJECT_STAGE = "CLI Save/Load"
 
 BASE_STATS = {
     "strength": 5,
@@ -349,5 +349,5 @@ HELP_TEXT = """支持的行动示例：
 - 潜行：悄悄撬开档案柜 / 偷听
 - 道具：使用止血药剂 / 喝下镇静药剂 / 使用圣水
 - 休息：休息一下
-- 系统：帮助 / 状态 / 退出
+- 系统：帮助 / 状态 / 存档 / 读档 / 退出
 """
