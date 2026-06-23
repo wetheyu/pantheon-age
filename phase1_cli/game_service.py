@@ -1,4 +1,4 @@
-"""Reusable game service layer for 神座纪元 v1.4.
+"""Reusable game service layer for 神座纪元 v2.0.
 
 This module has no input() or print() calls. The current CLI and the future
 FastAPI layer can both call handle_player_input().

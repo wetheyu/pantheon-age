@@ -1,4 +1,4 @@
-"""Local JSON save/load helpers for Pantheon Age v1.4."""
+"""Local JSON save/load helpers for Pantheon Age v2.0."""
 
 import json
 from pathlib import Path

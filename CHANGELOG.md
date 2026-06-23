@@ -1,5 +1,28 @@
 # Changelog
 
+## v2.0.0 - Phase 2 FastAPI Baseline
+
+在 `v1.4.0` API Readiness 结构上正式进入 Phase 2，把 Phase 1 CLI 核心能力暴露成最小 FastAPI 服务。
+
+已完成：
+
+- 新增 `phase2_api/`；
+- 新增 FastAPI app 入口 `phase2_api/main.py`；
+- 新增 Pydantic schemas；
+- 新增 route modules：
+  - `GET /health`
+  - `GET /classes`
+  - `GET /locations`
+  - `POST /characters`
+  - `POST /games`
+  - `GET /games/{game_id}`
+  - `POST /games/{game_id}/actions`
+- 新增内存会话存储 `phase2_api/services/session_store.py`；
+- API 通过 `phase1_cli.game_service.handle_player_input()` 复用 Phase 1 游戏核心；
+- 新增 `tests/test_phase2_api.py`；
+- 新增 FastAPI / Uvicorn / HTTPX 依赖；
+- 更新 README 的运行方式、API 接口说明和 Phase 2 状态。
+
 ## v1.4.0 - Phase 1 CLI API Readiness
 
 在 `v1.3.0` 导航辅助版本上做 Phase 2 前置整理，让当前 CLI 逻辑更容易迁移到 FastAPI。

@@ -1,24 +1,31 @@
 # 神座纪元 / Pantheon Age
 
-**神座纪元（Pantheon Age）** 是一个以固定神明体系、异常副本、调查冒险和规则裁定为核心的文字冒险系统。当前版本是 `v1.4.0 Phase 1 CLI`，只使用 Python 标准库，不接 LLM、不接数据库、不做前端、不做 Docker，目标是先把「角色状态 + 意图识别 + 规则引擎 + 线索 + 结局 + 本地存档 + Demo 展示体验 + 导航辅助 + API 预备结构」跑通。
+**神座纪元（Pantheon Age）** 是一个以固定神明体系、维多利亚神秘学、调查冒险和规则裁定为核心的文字冒险系统。当前版本是 `v2.0.0 Phase 2 FastAPI Baseline`，已经把 Phase 1 CLI 核心能力暴露成最小 REST API。当前阶段不接 LLM、不接数据库、不做前端、不做 Docker，目标是先把「可复用规则核心 + FastAPI 服务层 + 内存游戏会话 + API 测试」跑通。
+
+## 项目动机
+
+这个项目的灵感来源于《诡秘之主》和《诸神愚戏》两部小说。我很喜欢其中神秘学、神明体系、异常事件、调查冒险和世界观层层展开的感觉，但这类题材在市面上并不算多。
+
+LLM 的出现让我看到了一种新的可能：不只是被动阅读故事，而是构建一个由规则约束、由 AI 生成内容、由玩家自由探索的故事世界。因此我希望用 `Pantheon Age` 打造一个属于自己的 AI Agent 项目，让它既能作为工程实践，也能成为一个可以长期娱乐和扩展的个人世界。
 
 核心原则：
 
 ```text
-LLM 负责叙事，代码负责规则，数据库负责记忆，RAG 负责世界观一致性。
+LLM 负责创造可能性，规则系统确认现实。
+LLM 只能 propose，系统负责 validate，只有 validated content 才能 commit。
 ```
 
-当前版本先由固定模板负责叙事，Rule Engine 负责所有会影响游戏结果的事情。
+当前版本先由固定模板负责叙事，Rule Engine 负责所有会影响游戏结果的事情。FastAPI 只负责暴露接口，不决定规则。长期方向是把它扩展成受规则约束的 LLM Agent 无限流冒险框架。
 
 ## 版本状态
 
 ```text
-内部里程碑：Phase 1 CLI API Readiness
+内部里程碑：Phase 2 FastAPI Baseline
 对外起点版本：v1.0.0
-当前公开版本：v1.4.0
+当前公开版本：v2.0.0
 ```
 
-`v1.4.0` 已完成：
+`v2.0.0` 已完成：
 
 - 命令行连续游玩；
 - 角色创建、职业、神明选择；
@@ -39,7 +46,21 @@ LLM 负责叙事，代码负责规则，数据库负责记忆，RAG 负责世界
 - `game_service.py` 服务层：把玩家输入处理从 CLI 中抽离；
 - `GameResponse.to_dict()`：为未来 API 响应准备结构化返回；
 - `Character.to_public_dict()` / `GameState.to_public_dict()`：为未来状态查询接口准备公开数据结构；
+- `phase2_api/` FastAPI 服务层；
+- `GET /health`；
+- `GET /classes`；
+- `GET /locations`；
+- `POST /characters`；
+- `POST /games`；
+- `GET /games/{game_id}`；
+- `POST /games/{game_id}/actions`；
+- 内存游戏会话：`game_id -> GameState`；
+- API 自动化测试；
 - Phase 2 API 计划文档；
+- 世界观设定集 `docs/world_bible.md`；
+- LLM 运行逻辑设计 `docs/llm_runtime_design.md`；
+- 完整技术路线图 `docs/technical_roadmap.md`；
+- 项目长期开发规则 `AGENTS.md`；
 - README Demo 路线；
 - README 和 CHANGELOG 项目记录。
 
@@ -59,17 +80,41 @@ project-root/
     story.py
     data.py
     utils.py
+  phase2_api/
+    main.py
+    schemas.py
+    routes/
+      health.py
+      classes.py
+      locations.py
+      characters.py
+      games.py
+    services/
+      session_store.py
   tests/
+    test_phase2_api.py
     test_game_service.py
     test_intent_parser.py
     test_save_manager.py
     test_story_views.py
   docs/
     phase2_api_plan.md
+    world_bible.md
+    llm_runtime_design.md
+    technical_roadmap.md
+  AGENTS.md
   CHANGELOG.md
   README.md
   requirements.txt
 ```
+
+## 设计文档
+
+- [AGENTS.md](AGENTS.md)：项目长期开发规则。记录架构边界、测试命令、Git 操作边界和 Phase 2 方向。
+- [docs/world_bible.md](docs/world_bible.md)：世界观设定集。记录维多利亚时代背景、五大列强、八大神明、六大职业、身份系统和世界事实分级。
+- [docs/llm_runtime_design.md](docs/llm_runtime_design.md)：LLM 运行逻辑设计。记录 `propose -> validate -> commit`、RAG、内容分级、场景提案、事件生成和防止上下文污染的规则。
+- [docs/phase2_api_plan.md](docs/phase2_api_plan.md)：Phase 2 FastAPI 拆分计划。
+- [docs/technical_roadmap.md](docs/technical_roadmap.md)：完整愿景所需技术栈与分阶段采用路线。
 
 ## 怎么运行
 
@@ -80,7 +125,7 @@ project-root/
 ```bash
 cd <project-root>
 source .venv/bin/activate
-python --version
+./.venv/bin/python --version
 ```
 
 当前虚拟环境版本：
@@ -89,20 +134,69 @@ python --version
 Python 3.12.13
 ```
 
-`v1.4.0` 暂时只使用 Python 标准库，所以不需要安装第三方依赖。后续如果添加依赖，可以执行：
+安装依赖：
 
 ```bash
-pip install -r requirements.txt
+./.venv/bin/python -m pip install -r requirements.txt
 ```
 
-启动游戏：
+启动 CLI 游戏：
 
 ```bash
 cd <project-root>
-python -m phase1_cli.main
+./.venv/bin/python -m phase1_cli.main
 ```
 
 启动后按提示创建角色、选择职业和信仰神明，然后输入自然语言行动。
+
+启动 FastAPI 服务：
+
+```bash
+cd <project-root>
+./.venv/bin/uvicorn phase2_api.main:app --reload
+```
+
+启动后可以访问：
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+这是 FastAPI 自动生成的 API 文档页面。
+
+## API 接口
+
+当前 Phase 2 baseline 提供：
+
+```text
+GET  /health
+GET  /classes
+GET  /locations
+POST /characters
+POST /games
+GET  /games/{game_id}
+POST /games/{game_id}/actions
+```
+
+创建游戏请求示例：
+
+```json
+{
+  "name": "阿洛",
+  "class_id": "warrior",
+  "god": "死亡之神"
+}
+```
+
+提交行动请求示例：
+
+```json
+{
+  "text": "进入前厅"
+}
+```
+
+API 当前使用内存会话保存游戏状态。服务重启后，内存中的 `game_id -> GameState` 会丢失。数据库持久化会在后续阶段实现。
 
 ## 支持的行动
 
@@ -208,8 +302,9 @@ saves/save.json
 
 ```bash
 cd <project-root>
-source .venv/bin/activate
-python -m unittest discover -s tests
+./.venv/bin/python -m py_compile phase1_cli/*.py tests/*.py
+./.venv/bin/python -m py_compile phase2_api/*.py phase2_api/routes/*.py phase2_api/services/*.py
+./.venv/bin/python -m unittest discover -s tests
 ```
 
 ## 文件职责
@@ -224,6 +319,10 @@ python -m unittest discover -s tests
 - `story.py`：根据规则结果输出固定剧情文本。未来可替换为 LLM 叙事层。
 - `data.py`：项目名、版本号、职业、地图、地点描述、神明、道具、线索、关键词等配置。
 - `utils.py`：通用小工具，例如安全输入、数值限制、编号选择、终端颜色。
+- `phase2_api/main.py`：FastAPI 应用入口。
+- `phase2_api/schemas.py`：API 请求和响应 schema。
+- `phase2_api/routes/`：API 路由。
+- `phase2_api/services/session_store.py`：Phase 2 第一版的内存游戏会话存储。
 
 ## Rule Engine 控制了什么
 
@@ -249,13 +348,21 @@ d20 + 属性值 + 职业修正 >= DC
 
 ## 职业如何影响检定
 
+长期世界观中的六大职业为：
+
+```text
+骑士、法师、密探、猎人、牧师、炼金术士
+```
+
+当前 CLI 代码中仍保留早期命名 `战士 / 盗贼`，后续会与世界观文档统一为 `骑士 / 密探`。
+
 职业通过三类配置影响规则：
 
 - `stat_bonus`：改变初始力量、敏捷、智力、信仰。
 - `hp_bonus` / `san_bonus`：改变初始 HP 和 SAN。
 - `rule_modifiers`：给特定行动加成或惩罚。
 
-例子：
+当前 CLI 例子：
 
 - 战士攻击更强：`attack_bonus +2`。
 - 法师分析神秘知识更强：`analyze_bonus +2`、`lore_bonus +2`，但接触禁忌知识 SAN 风险更高。
@@ -269,14 +376,16 @@ d20 + 属性值 + 职业修正 >= DC
 - 意图识别是关键词规则，不是真正的自然语言理解。
 - 剧情文本是固定模板，不接 LLM。
 - 当前只有单一默认本地存档，还没有多存档位、账号系统或数据库。
-- 现在只有 API 预备结构，还没有真正启动 FastAPI 服务。
+- API 当前只使用内存会话，还没有数据库持久化。
+- API 当前不处理本地 JSON 存档/读档，CLI 仍保留本地存档功能。
+- 代码职业命名还未完全对齐世界观文档，后续会把 `战士 / 盗贼` 统一为 `骑士 / 密探`。
 - 地图只有「雾中修道院」一个小副本。
 - 行动日志只保存在本地存档里，还没有搜索、分类或完整时间线界面。
 - 战斗和道具系统是最小可玩版本，还没有复杂怪物、装备或任务系统。
 
-## 后续 Phase 2：改造成 FastAPI
+## Phase 2：FastAPI Baseline
 
-完成当前 Phase 1 CLI 后，Phase 2 可以把当前 CLI 拆成 REST API：
+当前 Phase 2 已经把 CLI 核心能力暴露成 REST API：
 
 - `POST /characters`：创建角色；
 - `POST /games`：创建新游戏；
@@ -285,7 +394,7 @@ d20 + 属性值 + 职业修正 >= DC
 - `GET /classes`：查看职业配置；
 - `GET /locations`：查看地图配置。
 
-当前的模块拆分已经为 Phase 2 做准备：
+当前的模块拆分：
 
 - `phase1_cli/` 已经是可导入 Python package；
 - `game_service.py` 可以直接服务 API action 请求；
@@ -294,12 +403,13 @@ d20 + 属性值 + 职业修正 >= DC
 - `Character.to_dict()` 和 `GameState.to_dict()` 可以作为 Pydantic schema 的起点；
 - `Character.to_public_dict()`、`GameState.to_public_dict()` 和 `GameResponse.to_dict()` 可以作为 API response 的起点；
 - `story.py` 未来可以替换成 LLM 调用层。
+- `phase2_api/` 只负责 API 路由、schema 和内存会话，不复制规则逻辑。
 
 更详细的 Phase 2 拆分计划见 [docs/phase2_api_plan.md](docs/phase2_api_plan.md)。
 
 ## 这个阶段学到什么
 
-通过 `v1.4.0`，你会接触到：
+通过 `v2.0.0`，你会接触到：
 
 - Python 文件拆分；
 - dict/list/dataclass；
@@ -311,8 +421,43 @@ d20 + 属性值 + 职业修正 >= DC
 - 地图访问记录和行动日志展示；
 - CLI 层和服务层解耦；
 - 面向 API 的结构化响应；
+- FastAPI 应用结构；
+- Pydantic 请求/响应 schema；
+- 内存会话管理；
+- API 自动化测试；
 - 关键词意图识别；
 - d20 随机检定；
 - 配置化职业系统；
 - 规则引擎与剧情文本解耦；
 - 为 FastAPI、数据库和 LLM Agent Workflow 预留接口。
+
+## 长期 LLM Agent 方向
+
+项目未来不是让 LLM 直接扮演全能游戏主持人，而是让 LLM 在规则系统约束下生成内容。
+
+目标流程：
+
+```text
+玩家输入
+  ↓
+意图解析
+  ↓
+规则引擎裁定
+  ↓
+LLM 生成候选场景 / 事件 / 叙事
+  ↓
+validator 校验
+  ↓
+memory_manager 决定是否写入记忆
+  ↓
+最终叙事输出
+```
+
+关键边界：
+
+- 玩家输入不是事实；
+- LLM 输出不是事实；
+- 状态变化必须结构化；
+- 叙事必须服从 `rule_engine.py` 的裁定结果；
+- 世界观核心事实由 `world_bible.md` 维护；
+- LLM 运行规则由 `llm_runtime_design.md` 维护。

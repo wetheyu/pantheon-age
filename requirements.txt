@@ -1,2 +1,5 @@
-# 神座纪元 / Pantheon Age v1.4 uses only the Python standard library.
-# Keep this file so later phases can add FastAPI, SQLAlchemy, pytest, etc.
+# 神座纪元 / Pantheon Age
+
+fastapi>=0.115
+uvicorn[standard]>=0.30
+httpx>=0.27

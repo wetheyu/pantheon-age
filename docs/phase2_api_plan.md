@@ -2,6 +2,8 @@
 
 Phase 2 的目标是把当前 CLI 游戏拆成 FastAPI 服务。Phase 1.4 已经先抽出 `game_service.py`，所以未来 API 不需要调用 `input()`、`print()` 或终端颜色逻辑。
 
+当前状态：`v2.0.0 Phase 2 FastAPI Baseline` 已经实现最小 API 骨架，并使用内存 dict 暂存 `game_id -> GameState`。
+
 当前 `phase1_cli/` 已经是 Python package，Phase 2 可以直接从项目根目录导入：
 
 ```python
@@ -27,6 +29,8 @@ save_manager.py 当前负责本地 JSON，Phase 2 可替换成数据库仓储层
 - `Character.to_dict()` / `GameState.to_dict()`：数据库持久化字段的参考。
 
 ## 建议接口
+
+以下接口已在 Phase 2 baseline 中实现。
 
 ### `GET /health`
 
@@ -112,12 +116,14 @@ handle_player_input(state, text).to_dict()
 
 第一版只需要把当前 CLI 能力稳定地暴露成 REST API。
 
+当前已完成这一目标。后续 Phase 2 小迭代可以继续打磨错误响应、接口 schema、API 测试覆盖和会话管理，但仍不应急着接 LLM、RAG 或数据库。
+
 ## Phase 2 推荐实现顺序
 
-1. 添加 `fastapi` 和 `uvicorn` 依赖。
-2. 新建 `phase2_api/`。
-3. 添加 Pydantic request/response schema。
-4. 用内存 dict 暂存 `game_id -> GameState`。
-5. 接入 `game_service.handle_player_input()`。
-6. 给 API 加最小测试。
-7. 再考虑 JSON 文件或 SQLite 持久化。
+1. 添加 `fastapi` 和 `uvicorn` 依赖。已完成。
+2. 新建 `phase2_api/`。已完成。
+3. 添加 Pydantic request/response schema。已完成。
+4. 用内存 dict 暂存 `game_id -> GameState`。已完成。
+5. 接入 `game_service.handle_player_input()`。已完成。
+6. 给 API 加最小测试。已完成。
+7. 再考虑 JSON 文件或 SQLite 持久化。后续阶段。
