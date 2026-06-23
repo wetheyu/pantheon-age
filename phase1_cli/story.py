@@ -1,4 +1,4 @@
-"""Fixed story text for 神座纪元 v1.2.
+"""Fixed story text for 神座纪元 v1.3.
 
 Later, an LLM can replace or enrich this module, but it should still receive
 rule results from rule_engine instead of deciding core state changes itself.
@@ -118,4 +118,37 @@ def render_clues(state):
 
     core_count = len(CORE_TRUTH_CLUES.intersection(state.player.clues))
     lines.append(f"核心线索进度：{core_count}/{len(CORE_TRUTH_CLUES)}")
+    return "\n".join(lines)
+
+
+def render_map(state):
+    lines = ["地图："]
+    for location, exits in LOCATIONS.items():
+        markers = []
+        if location == state.current_location:
+            markers.append("当前位置")
+        if location in state.visited_locations:
+            markers.append("已到达")
+        else:
+            markers.append("未探索")
+
+        marker_text = "][".join(markers)
+        lines.append(f"- [{marker_text}] {location} -> {', '.join(exits)}")
+
+    current_exits = ", ".join(LOCATIONS[state.current_location])
+    lines.append(f"当前可前往：{current_exits}")
+    return "\n".join(lines)
+
+
+def render_log(state, limit=5):
+    if not state.event_log:
+        return "行动日志：暂无。进行一次行动后，这里会记录最近发生的事件。"
+
+    recent_events = state.event_log[-limit:]
+    start_index = len(state.event_log) - len(recent_events) + 1
+    lines = [f"行动日志（最近 {len(recent_events)} 条 / 共 {len(state.event_log)} 条）："]
+
+    for index, event in enumerate(recent_events, start=start_index):
+        lines.append(f"{index}. {event}")
+
     return "\n".join(lines)

@@ -1,4 +1,4 @@
-"""Command-line entry point for 神座纪元 v1.2."""
+"""Command-line entry point for 神座纪元 v1.3."""
 
 from character import create_character_interactive
 from game_state import GameState
@@ -10,6 +10,8 @@ from story import (
     render_ending,
     render_goal,
     render_help,
+    render_log,
+    render_map,
     render_opening,
     render_result,
     render_status,
@@ -25,6 +27,8 @@ SAVE_COMMANDS = {"存档", "save"}
 LOAD_COMMANDS = {"读档", "load"}
 GOAL_COMMANDS = {"目标", "goal", "objective"}
 CLUE_COMMANDS = {"线索", "clues", "clue"}
+MAP_COMMANDS = {"地图", "map"}
+LOG_COMMANDS = {"日志", "log", "history"}
 
 
 def create_new_state():
@@ -76,6 +80,14 @@ def main():
 
         if command in CLUE_COMMANDS or user_text in CLUE_COMMANDS:
             print(render_clues(state))
+            continue
+
+        if command in MAP_COMMANDS or user_text in MAP_COMMANDS:
+            print(render_map(state))
+            continue
+
+        if command in LOG_COMMANDS or user_text in LOG_COMMANDS:
+            print(render_log(state))
             continue
 
         if command in SAVE_COMMANDS or user_text in SAVE_COMMANDS:

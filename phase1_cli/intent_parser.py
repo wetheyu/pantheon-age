@@ -1,6 +1,6 @@
 """Keyword-based intent parser.
 
-Version 1.0 does not use an LLM. The parser turns natural Chinese input into a
+The current CLI version does not use an LLM. The parser turns natural Chinese input into a
 small dict that the rule engine can handle deterministically.
 """
 
