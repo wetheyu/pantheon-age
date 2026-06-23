@@ -1,5 +1,22 @@
 # Changelog
 
+## v2.1.0 - Phase 2 Complete
+
+在 `v2.0.0` FastAPI baseline 上补齐 Phase 2 进入 Phase 3 前需要的配置查询、基础会话管理、schema 打磨、测试和系统设计文档。
+
+已完成：
+
+- 新增 `GET /games`：列出当前内存中的游戏会话摘要；
+- 新增 `DELETE /games/{game_id}`：删除指定内存游戏会话；
+- 新增 `GET /gods`：返回固定神明列表，方便未来前端创建角色；
+- 为 `health`、`classes`、`gods`、`locations` 等只读接口补充 response model；
+- 新增 `GameSessionSummary`、`GameListResponse`、`GameDeleteResponse`；
+- 扩展 `session_store.py`，支持会话摘要、会话列表和会话删除；
+- 扩展 `tests/test_phase2_api.py`，覆盖神明列表、游戏列表、删除成功、删除不存在游戏、空行动文本、OpenAPI schema；
+- 新增 `docs/system_design.md`，记录 Phase 1、Phase 2、Phase 3 的系统设计、模块职责和数据流；
+- 更新 `README.md`、`AGENTS.md`、`docs/phase2_api_plan.md`、`docs/technical_roadmap.md`；
+- 将当前版本更新为 `v2.1.0 Phase 2 Complete`。
+
 ## v2.0.0 - Phase 2 FastAPI Baseline
 
 在 `v1.4.0` API Readiness 结构上正式进入 Phase 2，把 Phase 1 CLI 核心能力暴露成最小 FastAPI 服务。

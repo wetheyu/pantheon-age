@@ -34,8 +34,8 @@ Only validated structured state becomes game truth.
 Current implementation:
 
 - Phase 1: Python CLI core.
-- Phase 2: FastAPI baseline.
-- Current milestone: Phase 2 FastAPI Baseline.
+- Phase 2: FastAPI service layer.
+- Current milestone: Phase 2 Complete.
 - Existing reusable core lives in `phase1_cli/`.
 - Existing API layer lives in `phase2_api/`.
 
@@ -54,6 +54,7 @@ Current important files:
 - `docs/world_bible.md`: world canon.
 - `docs/llm_runtime_design.md`: LLM runtime and validation rules.
 - `docs/phase2_api_plan.md`: FastAPI migration plan.
+- `docs/system_design.md`: phase-by-phase architecture and data flow.
 - `docs/technical_roadmap.md`: long-term technology stack and adoption order.
 
 Some target modules do not exist yet. Do not create future modules unless the current task explicitly asks for that phase or feature.
@@ -182,6 +183,7 @@ Rules:
 - When world canon changes, update `docs/world_bible.md`.
 - When LLM, RAG, validation, or memory behavior changes, update `docs/llm_runtime_design.md`.
 - When API design changes, update `docs/phase2_api_plan.md` or the relevant API docs.
+- When architecture, module boundaries, or data flow changes, update `docs/system_design.md`.
 - When long-term technology choices, agent engineering capabilities, performance strategy, or adoption order changes, update `docs/technical_roadmap.md`.
 - Do not mix world canon, implementation notes, and runtime rules in the same document.
 
@@ -244,19 +246,22 @@ The preferred API launch command is:
 
 ## Phase 2 Direction
 
-Phase 2 baseline rules:
+Phase 2 service-layer rules:
 
 - Keep the separate `phase2_api/` package.
 - Use FastAPI and Pydantic.
 - Keep `phase1_cli/` reusable instead of copying logic.
 - Start with in-memory game sessions before adding a database.
-- Expose only the minimal endpoints first:
+- Current Phase 2 endpoints:
   - `GET /health`
   - `GET /classes`
+  - `GET /gods`
   - `GET /locations`
   - `POST /characters`
   - `POST /games`
+  - `GET /games`
   - `GET /games/{game_id}`
+  - `DELETE /games/{game_id}`
   - `POST /games/{game_id}/actions`
 
-Phase 2 first version should not add LLM, RAG, database persistence, web UI, Docker, or user accounts unless explicitly requested.
+Phase 2 should stop at API/service/session-management readiness. It should not add LLM, RAG, database persistence, web UI, Docker, or user accounts unless explicitly requested.

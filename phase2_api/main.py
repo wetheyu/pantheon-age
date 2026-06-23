@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 
 from phase1_cli.data import PROJECT_ENGLISH_NAME, PROJECT_NAME, PROJECT_VERSION
-from phase2_api.routes import characters, classes, games, health, locations
+from phase2_api.routes import characters, classes, games, gods, health, locations
 
 
 app = FastAPI(
@@ -14,6 +14,7 @@ app = FastAPI(
 
 app.include_router(health.router)
 app.include_router(classes.router)
+app.include_router(gods.router)
 app.include_router(locations.router)
 app.include_router(characters.router)
 app.include_router(games.router)

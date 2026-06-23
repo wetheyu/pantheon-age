@@ -1,4 +1,4 @@
-"""Fixed story text for 神座纪元 v2.0.
+"""Fixed story text for 神座纪元 v2.1.
 
 Later, an LLM can replace or enrich this module, but it should still receive
 rule results from rule_engine instead of deciding core state changes itself.

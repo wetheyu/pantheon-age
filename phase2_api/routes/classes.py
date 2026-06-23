@@ -3,13 +3,12 @@
 from fastapi import APIRouter
 
 from phase1_cli.data import CLASSES
+from phase2_api.schemas import ClassListResponse
 
 
 router = APIRouter(tags=["classes"])
 
 
-@router.get("/classes")
+@router.get("/classes", response_model=ClassListResponse)
 def list_classes():
-    return {
-        "classes": list(CLASSES.values()),
-    }
+    return ClassListResponse(classes=list(CLASSES.values()))

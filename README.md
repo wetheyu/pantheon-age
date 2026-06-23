@@ -1,6 +1,6 @@
 # 神座纪元 / Pantheon Age
 
-**神座纪元（Pantheon Age）** 是一个以固定神明体系、维多利亚神秘学、调查冒险和规则裁定为核心的文字冒险系统。当前版本是 `v2.0.0 Phase 2 FastAPI Baseline`，已经把 Phase 1 CLI 核心能力暴露成最小 REST API。当前阶段不接 LLM、不接数据库、不做前端、不做 Docker，目标是先把「可复用规则核心 + FastAPI 服务层 + 内存游戏会话 + API 测试」跑通。
+**神座纪元（Pantheon Age）** 是一个以固定神明体系、维多利亚神秘学、调查冒险和规则裁定为核心的文字冒险系统。当前版本是 `v2.1.0 Phase 2 Complete`，已经把 Phase 1 CLI 核心能力暴露成 REST API，并补齐基础配置查询、内存会话管理、API schema、测试和系统设计文档。当前阶段不接 LLM、不接数据库、不做前端、不做 Docker，目标是先把「可复用规则核心 + FastAPI 服务层 + 内存游戏会话 + API 测试 + 系统设计文档」完整跑通。
 
 ## 项目动机
 
@@ -20,12 +20,12 @@ LLM 只能 propose，系统负责 validate，只有 validated content 才能 com
 ## 版本状态
 
 ```text
-内部里程碑：Phase 2 FastAPI Baseline
+内部里程碑：Phase 2 Complete
 对外起点版本：v1.0.0
-当前公开版本：v2.0.0
+当前公开版本：v2.1.0
 ```
 
-`v2.0.0` 已完成：
+`v2.1.0` 已完成：
 
 - 命令行连续游玩；
 - 角色创建、职业、神明选择；
@@ -49,14 +49,20 @@ LLM 只能 propose，系统负责 validate，只有 validated content 才能 com
 - `phase2_api/` FastAPI 服务层；
 - `GET /health`；
 - `GET /classes`；
+- `GET /gods`；
 - `GET /locations`；
 - `POST /characters`；
 - `POST /games`；
+- `GET /games`；
 - `GET /games/{game_id}`；
+- `DELETE /games/{game_id}`；
 - `POST /games/{game_id}/actions`；
 - 内存游戏会话：`game_id -> GameState`；
+- 基础会话管理：列出当前游戏局、删除指定游戏局；
+- API response model：为健康检查、职业、神明、地点、游戏会话等接口补充响应结构；
 - API 自动化测试；
 - Phase 2 API 计划文档；
+- 系统设计文档 `docs/system_design.md`；
 - 世界观设定集 `docs/world_bible.md`；
 - LLM 运行逻辑设计 `docs/llm_runtime_design.md`；
 - 完整技术路线图 `docs/technical_roadmap.md`；
@@ -86,6 +92,7 @@ project-root/
     routes/
       health.py
       classes.py
+      gods.py
       locations.py
       characters.py
       games.py
@@ -99,6 +106,7 @@ project-root/
     test_story_views.py
   docs/
     phase2_api_plan.md
+    system_design.md
     world_bible.md
     llm_runtime_design.md
     technical_roadmap.md
@@ -114,6 +122,7 @@ project-root/
 - [docs/world_bible.md](docs/world_bible.md)：世界观设定集。记录维多利亚时代背景、五大列强、八大神明、六大职业、身份系统和世界事实分级。
 - [docs/llm_runtime_design.md](docs/llm_runtime_design.md)：LLM 运行逻辑设计。记录 `propose -> validate -> commit`、RAG、内容分级、场景提案、事件生成和防止上下文污染的规则。
 - [docs/phase2_api_plan.md](docs/phase2_api_plan.md)：Phase 2 FastAPI 拆分计划。
+- [docs/system_design.md](docs/system_design.md)：系统设计文档。记录 Phase 1、Phase 2、Phase 3 的模块职责、数据流和演进边界。
 - [docs/technical_roadmap.md](docs/technical_roadmap.md)：完整愿景所需技术栈与分阶段采用路线。
 
 ## 怎么运行
@@ -166,16 +175,19 @@ http://127.0.0.1:8000/docs
 
 ## API 接口
 
-当前 Phase 2 baseline 提供：
+当前 Phase 2 提供：
 
 ```text
-GET  /health
-GET  /classes
-GET  /locations
-POST /characters
-POST /games
-GET  /games/{game_id}
-POST /games/{game_id}/actions
+GET    /health
+GET    /classes
+GET    /gods
+GET    /locations
+POST   /characters
+POST   /games
+GET    /games
+GET    /games/{game_id}
+DELETE /games/{game_id}
+POST   /games/{game_id}/actions
 ```
 
 创建游戏请求示例：
@@ -194,6 +206,18 @@ POST /games/{game_id}/actions
 {
   "text": "进入前厅"
 }
+```
+
+查看当前内存游戏局：
+
+```text
+GET /games
+```
+
+删除当前内存游戏局：
+
+```text
+DELETE /games/{game_id}
 ```
 
 API 当前使用内存会话保存游戏状态。服务重启后，内存中的 `game_id -> GameState` 会丢失。数据库持久化会在后续阶段实现。
@@ -322,7 +346,7 @@ cd <project-root>
 - `phase2_api/main.py`：FastAPI 应用入口。
 - `phase2_api/schemas.py`：API 请求和响应 schema。
 - `phase2_api/routes/`：API 路由。
-- `phase2_api/services/session_store.py`：Phase 2 第一版的内存游戏会话存储。
+- `phase2_api/services/session_store.py`：Phase 2 的内存游戏会话存储，负责创建、读取、列出、删除和提交行动。
 
 ## Rule Engine 控制了什么
 
@@ -383,15 +407,18 @@ d20 + 属性值 + 职业修正 >= DC
 - 行动日志只保存在本地存档里，还没有搜索、分类或完整时间线界面。
 - 战斗和道具系统是最小可玩版本，还没有复杂怪物、装备或任务系统。
 
-## Phase 2：FastAPI Baseline
+## Phase 2：FastAPI Complete
 
 当前 Phase 2 已经把 CLI 核心能力暴露成 REST API：
 
 - `POST /characters`：创建角色；
 - `POST /games`：创建新游戏；
+- `GET /games`：列出当前内存中的游戏局；
 - `GET /games/{game_id}`：读取当前状态；
+- `DELETE /games/{game_id}`：删除当前内存中的游戏局；
 - `POST /games/{game_id}/actions`：提交玩家行动；
 - `GET /classes`：查看职业配置；
+- `GET /gods`：查看固定神明列表；
 - `GET /locations`：查看地图配置。
 
 当前的模块拆分：
@@ -404,12 +431,13 @@ d20 + 属性值 + 职业修正 >= DC
 - `Character.to_public_dict()`、`GameState.to_public_dict()` 和 `GameResponse.to_dict()` 可以作为 API response 的起点；
 - `story.py` 未来可以替换成 LLM 调用层。
 - `phase2_api/` 只负责 API 路由、schema 和内存会话，不复制规则逻辑。
+- `docs/system_design.md` 记录当前阶段的数据流和未来 Phase 3 持久化演进方向。
 
 更详细的 Phase 2 拆分计划见 [docs/phase2_api_plan.md](docs/phase2_api_plan.md)。
 
 ## 这个阶段学到什么
 
-通过 `v2.0.0`，你会接触到：
+通过 `v2.1.0`，你会接触到：
 
 - Python 文件拆分；
 - dict/list/dataclass；
@@ -424,6 +452,7 @@ d20 + 属性值 + 职业修正 >= DC
 - FastAPI 应用结构；
 - Pydantic 请求/响应 schema；
 - 内存会话管理；
+- REST 会话生命周期：创建、列表、读取、行动、删除；
 - API 自动化测试；
 - 关键词意图识别；
 - d20 随机检定；

@@ -7,11 +7,15 @@ from phase2_api.schemas import (
     ActionResponse,
     GameCreateRequest,
     GameCreateResponse,
+    GameDeleteResponse,
+    GameListResponse,
     GameStateResponse,
 )
 from phase2_api.services.session_store import (
     create_game_session,
+    delete_game_session,
     get_game_state,
+    list_game_sessions,
     submit_game_action,
 )
 
@@ -29,10 +33,21 @@ def create_game(request: GameCreateRequest):
     )
 
 
+@router.get("/games", response_model=GameListResponse)
+def list_games():
+    return GameListResponse(games=list_game_sessions())
+
+
 @router.get("/games/{game_id}", response_model=GameStateResponse)
 def read_game(game_id: str):
     state = get_game_state(game_id)
     return GameStateResponse(game_id=game_id, state=state.to_public_dict())
+
+
+@router.delete("/games/{game_id}", response_model=GameDeleteResponse)
+def delete_game(game_id: str):
+    delete_game_session(game_id)
+    return GameDeleteResponse(game_id=game_id, deleted=True)
 
 
 @router.post("/games/{game_id}/actions", response_model=ActionResponse)

@@ -65,7 +65,7 @@ Do not add:
 
 ## Phase 2: FastAPI Service Layer
 
-Current status: baseline implemented in `v2.0.0`.
+Current status: Phase 2 service layer completed in `v2.1.0`.
 
 Goal: expose the current CLI game core as a REST API.
 
@@ -94,6 +94,7 @@ phase2_api/
     health.py
     classes.py
     locations.py
+    characters.py
     games.py
   services/
     session_store.py
@@ -103,6 +104,27 @@ Phase 2 starts with in-memory sessions:
 
 ```text
 game_id -> GameState
+```
+
+Current Phase 2 session endpoints:
+
+```text
+GET    /health
+GET    /classes
+GET    /gods
+GET    /locations
+POST   /characters
+POST   /games
+GET    /games
+GET    /games/{game_id}
+DELETE /games/{game_id}
+POST   /games/{game_id}/actions
+```
+
+This completes the pre-persistence API lifecycle:
+
+```text
+create session -> list sessions -> read session -> submit action -> delete session
 ```
 
 Do not add yet:

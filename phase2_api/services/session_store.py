@@ -39,11 +39,37 @@ def create_game_session(name, class_id, god):
     return game_id, state, render_opening(character)
 
 
+def summarize_game_session(game_id, state):
+    player = state.player
+    return {
+        "game_id": game_id,
+        "player_name": player.name,
+        "class_id": player.class_id,
+        "class_name": player.class_name,
+        "god": player.god,
+        "current_location": state.current_location,
+        "turn": state.turn,
+        "is_game_over": state.is_game_over,
+    }
+
+
+def list_game_sessions():
+    return [
+        summarize_game_session(game_id, state)
+        for game_id, state in sorted(_SESSIONS.items())
+    ]
+
+
 def get_game_state(game_id):
     try:
         return _SESSIONS[game_id]
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=f"Game not found: {game_id}") from exc
+
+
+def delete_game_session(game_id):
+    get_game_state(game_id)
+    del _SESSIONS[game_id]
 
 
 def submit_game_action(game_id, text):

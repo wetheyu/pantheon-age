@@ -2,7 +2,7 @@
 
 Phase 2 的目标是把当前 CLI 游戏拆成 FastAPI 服务。Phase 1.4 已经先抽出 `game_service.py`，所以未来 API 不需要调用 `input()`、`print()` 或终端颜色逻辑。
 
-当前状态：`v2.0.0 Phase 2 FastAPI Baseline` 已经实现最小 API 骨架，并使用内存 dict 暂存 `game_id -> GameState`。
+当前状态：`v2.1.0 Phase 2 Complete` 已经实现最小 API 骨架、基础配置查询、基础会话管理、schema 打磨和 API 测试，并使用内存 dict 暂存 `game_id -> GameState`。
 
 当前 `phase1_cli/` 已经是 Python package，Phase 2 可以直接从项目根目录导入：
 
@@ -30,7 +30,7 @@ save_manager.py 当前负责本地 JSON，Phase 2 可替换成数据库仓储层
 
 ## 建议接口
 
-以下接口已在 Phase 2 baseline 中实现。
+以下接口已在 Phase 2 中实现。
 
 ### `GET /health`
 
@@ -48,6 +48,10 @@ save_manager.py 当前负责本地 JSON，Phase 2 可替换成数据库仓储层
 ### `GET /classes`
 
 返回职业配置，用于前端创建角色页。
+
+### `GET /gods`
+
+返回固定神明列表，用于前端创建角色页。
 
 ### `GET /locations`
 
@@ -105,6 +109,26 @@ state.to_public_dict()
 handle_player_input(state, text).to_dict()
 ```
 
+### `GET /games`
+
+列出当前内存中仍然存在的游戏会话摘要。
+
+响应包含：
+
+- `game_id`
+- 玩家名
+- 职业
+- 信仰神明
+- 当前位置
+- 回合数
+- 是否已经结束
+
+### `DELETE /games/{game_id}`
+
+删除当前内存中的某一局游戏。
+
+说明：这不是数据库删除，因为 Phase 2 还没有数据库。它只会从当前运行中的 API 进程内存里移除这一局游戏。
+
 ## Phase 2 第一版不做什么
 
 - 不接 LLM；
@@ -116,7 +140,7 @@ handle_player_input(state, text).to_dict()
 
 第一版只需要把当前 CLI 能力稳定地暴露成 REST API。
 
-当前已完成这一目标。后续 Phase 2 小迭代可以继续打磨错误响应、接口 schema、API 测试覆盖和会话管理，但仍不应急着接 LLM、RAG 或数据库。
+当前已完成这一目标。`v2.1.0` 又补齐了神明配置查询、基础会话管理、schema response model、API 测试和系统设计文档。Phase 2 到这里已经可以作为进入 Phase 3 持久化之前的完整收尾版本。
 
 ## Phase 2 推荐实现顺序
 
@@ -126,4 +150,8 @@ handle_player_input(state, text).to_dict()
 4. 用内存 dict 暂存 `game_id -> GameState`。已完成。
 5. 接入 `game_service.handle_player_input()`。已完成。
 6. 给 API 加最小测试。已完成。
-7. 再考虑 JSON 文件或 SQLite 持久化。后续阶段。
+7. 补充 `GET /gods`，让角色创建所需配置查询完整。已完成。
+8. 增加基础会话管理：`GET /games` 和 `DELETE /games/{game_id}`。已完成。
+9. 补充 response model 和 API 测试。已完成。
+10. 补充系统设计文档，记录 Phase 1、Phase 2、Phase 3 的数据流。已完成。
+11. 再考虑 JSON 文件、SQLite 或 PostgreSQL 持久化。后续 Phase 3。
