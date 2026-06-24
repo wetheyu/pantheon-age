@@ -1,4 +1,4 @@
-"""Static game data for 神座纪元 v2.1.
+"""Static game data for 神座纪元 v3.1.
 
 This file is intentionally plain dictionaries and lists. Later phases can move
 the same data into JSON files, PostgreSQL rows, or a RAG knowledge base.
@@ -6,9 +6,9 @@ the same data into JSON files, PostgreSQL rows, or a RAG knowledge base.
 
 PROJECT_NAME = "神座纪元"
 PROJECT_ENGLISH_NAME = "Pantheon Age"
-PROJECT_VERSION = "2.1.0"
-PROJECT_INTERNAL_MILESTONE = "Phase 2"
-PROJECT_STAGE = "Complete"
+PROJECT_VERSION = "3.1.0"
+PROJECT_INTERNAL_MILESTONE = "Phase 3"
+PROJECT_STAGE = "Persistence Complete"
 
 BASE_STATS = {
     "strength": 5,
@@ -38,7 +38,7 @@ GODS = [
     "海洋之神",
     "真理之神",
     "战争之神",
-    "圣律之神",
+    "审判之神",
     "丰饶之神",
     "死亡之神",
     "隐秘之神",
@@ -115,9 +115,9 @@ CLASSES = {
     },
     "hunter": {
         "class_id": "hunter",
-        "name": "猎人",
-        "english_name": "Hunter",
-        "description": "擅长追踪、侦察、生存和陷阱识别的职业。",
+        "name": "游侠",
+        "english_name": "Ranger",
+        "description": "擅长追踪、侦察、生存、远程武器和陷阱识别的职业。",
         "stat_bonus": {
             "strength": 1,
             "agility": 2,

@@ -1,5 +1,41 @@
 # Changelog
 
+## v3.1.0 - Phase 3 Persistence Complete
+
+在 `v3.0.0` SQLite baseline 基础上完成 Phase 3 持久化收尾，让 API 存储层更接近真实后端服务。
+
+已完成：
+
+- 新增 `phase3_persistence/config.py`，支持通过 `PANTHEON_DB_PATH` 配置 SQLite 数据库路径；
+- 新增 `phase3_persistence/errors.py`，统一持久化层异常；
+- `game_sessions.state_json` 改为版本化 snapshot envelope：`snapshot_version + state`；
+- repository 兼容读取旧版未包裹的 `GameState` JSON；
+- 新增 `game_events` 表，用 `game_id + event_index` 保存有序事件日志；
+- 新增 `GET /games/{game_id}/events`，读取某局游戏的事件日志；
+- `session_store.py` 将持久化异常统一转换为 API 500 错误；
+- 补充 SQLite repository 测试：环境变量路径、版本化 snapshot、事件日志、坏 JSON；
+- 补充 API 测试：事件日志读取、空事件、缺失游戏事件查询；
+- 更新 README、AGENTS、系统设计、Phase 2 API 计划和技术路线文档；
+- 将当前版本更新为 `v3.1.0 Phase 3 Persistence Complete`。
+
+## v3.0.0 - Phase 3 Persistence Baseline
+
+在 `v2.1.0` FastAPI Complete 基础上进入 Phase 3，把 API 游戏会话从进程内存升级为 SQLite 持久化。
+
+已完成：
+
+- 新增 `phase3_persistence/`；
+- 新增 `phase3_persistence/sqlite_repository.py`；
+- 使用 Python 标准库 `sqlite3` 保存 `game_id -> GameState JSON snapshot`；
+- `POST /games` 创建游戏后写入 SQLite；
+- `POST /games/{game_id}/actions` 执行动作后保存最新游戏状态；
+- `GET /games`、`GET /games/{game_id}` 和 `DELETE /games/{game_id}` 改为通过 repository 访问持久化会话；
+- 保持 Phase 2 API 路由形状不变；
+- 新增 `tests/test_sqlite_repository.py`；
+- API 测试改为使用临时 SQLite 数据库；
+- `.gitignore` 忽略本地数据库文件 `data/*.sqlite3` 和 `data/*.db`；
+- 更新 README、AGENTS、系统设计和技术路线文档。
+
 ## v2.1.0 - Phase 2 Complete
 
 在 `v2.0.0` FastAPI baseline 上补齐 Phase 2 进入 Phase 3 前需要的配置查询、基础会话管理、schema 打磨、测试和系统设计文档。
@@ -16,6 +52,12 @@
 - 新增 `docs/system_design.md`，记录 Phase 1、Phase 2、Phase 3 的系统设计、模块职责和数据流；
 - 更新 `README.md`、`AGENTS.md`、`docs/phase2_api_plan.md`、`docs/technical_roadmap.md`；
 - 将当前版本更新为 `v2.1.0 Phase 2 Complete`。
+- 将职业显示名从 `猎人 / Hunter` 调整为 `游侠 / Ranger`，内部 `class_id` 暂时保持 `hunter` 以兼容旧数据。
+- 将 `圣律之神` 调整为 `审判之神`，并补充八大神明的典籍神名。
+- 将伊斯特亚政体设定为海商寡头共和制。
+- 扩展五大列强设定，并新增关键海峡国 `塞勒米亚苏丹国`。
+- 扩展八大神明和六大职业的详细设定，包括教会、禁忌、祝福、诅咒、职业定位、优势场景和玩法机制倾向。
+- 新增五大列强前三核心城市设定，并补充塞勒米亚、罗斯维亚等其他重要国家首都。
 
 ## v2.0.0 - Phase 2 FastAPI Baseline
 

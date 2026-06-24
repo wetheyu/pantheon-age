@@ -70,6 +70,16 @@ class GameStateResponse(BaseModel):
     state: dict[str, Any]
 
 
+class GameEvent(BaseModel):
+    event_index: int
+    text: str
+
+
+class GameEventsResponse(BaseModel):
+    game_id: str
+    events: list[GameEvent]
+
+
 class GameDeleteResponse(BaseModel):
     game_id: str
     deleted: bool

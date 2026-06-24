@@ -1,4 +1,4 @@
-"""Character creation for 神座纪元 v2.1."""
+"""Character creation for 神座纪元 v3.1."""
 
 from dataclasses import dataclass, field
 

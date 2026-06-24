@@ -63,7 +63,7 @@ rule_engine.py decides state changes.
 
 Phase 2 exposes the Phase 1 core as a REST API.
 
-Current status: `v2.1.0 Phase 2 Complete`.
+Status: completed in `v2.1.0`.
 
 ### Data Flow
 
@@ -83,7 +83,7 @@ HTTP JSON request
 - `phase2_api/main.py`: creates the FastAPI app and includes route modules.
 - `phase2_api/routes/`: defines HTTP endpoints.
 - `phase2_api/schemas.py`: defines request and response shapes with Pydantic.
-- `phase2_api/services/session_store.py`: stores temporary in-memory game sessions.
+- `phase2_api/services/session_store.py`: stores temporary sessions in Phase 2 and delegates to persistence in Phase 3.
 
 ### Current Endpoints
 
@@ -110,7 +110,7 @@ POST /games
   -> build Character
   -> create GameState
   -> generate game_id
-  -> store game_id -> GameState in memory
+  -> store game_id -> GameState
   -> return opening_text and public state
 ```
 
@@ -128,13 +128,13 @@ Listing and deleting sessions:
 
 ```text
 GET /games
-  -> return summaries of active in-memory sessions
+  -> return summaries of active sessions
 
 DELETE /games/{game_id}
-  -> remove one in-memory session
+  -> remove one session
 ```
 
-### Current Limitations
+### Phase 2 Limitations
 
 - Sessions are stored in memory only.
 - Service restart deletes all API sessions.
@@ -147,40 +147,89 @@ before Phase 3 persistence.
 
 ## Phase 3: Persistence And Memory
 
-Phase 3 should replace in-memory-only API sessions with durable persistence.
+Current status: `v3.1.0 Phase 3 Persistence Complete`.
 
-### Target Data Flow
+Phase 3 replaces in-memory-only API sessions with durable SQLite persistence.
 
-```text
-HTTP request
-  -> route
-  -> schema
-  -> service
-  -> repository
-  -> database
-  -> service
-  -> response
-```
-
-### New Layer
+### Current Data Flow
 
 ```text
-repositories/
-  game_repository.py
-  character_repository.py
-  event_log_repository.py
+HTTP JSON request
+  -> phase2_api/routes/*.py
+  -> phase2_api/schemas.py
+  -> phase2_api/services/session_store.py
+  -> phase3_persistence/sqlite_repository.py
+  -> SQLite database
+  -> phase1_cli/game_service.py
+  -> phase1_cli/rule_engine.py
+  -> versioned GameState JSON snapshot
+  -> ordered event rows
+  -> HTTP JSON response
 ```
 
-Or a similar structure under the future persistence package.
+### Persistence Layer
 
-### What Phase 3 Should Add
+```text
+phase3_persistence/
+  config.py
+  errors.py
+  sqlite_repository.py
+```
 
-- database-backed game sessions;
-- durable character state;
-- durable event log;
-- save/load through API instead of local CLI JSON only;
-- migration scripts;
-- tests for persistence round trips.
+Default database path:
+
+```text
+data/pantheon_age.sqlite3
+```
+
+This can be overridden with:
+
+```text
+PANTHEON_DB_PATH
+```
+
+### Current SQLite Tables
+
+```text
+game_sessions
+  game_id TEXT PRIMARY KEY
+  state_json TEXT NOT NULL
+  created_at TEXT NOT NULL
+  updated_at TEXT NOT NULL
+
+game_events
+  game_id TEXT NOT NULL
+  event_index INTEGER NOT NULL
+  text TEXT NOT NULL
+  created_at TEXT NOT NULL
+```
+
+### What Phase 3 Adds
+
+- SQLite-backed API game sessions;
+- versioned JSON snapshots using `GameState.to_dict()`;
+- compatibility with old plain `GameState` JSON snapshots;
+- rebuild through `GameState.from_dict()`;
+- save on game creation;
+- save after player actions;
+- ordered event log rows;
+- `GET /games/{game_id}/events`;
+- configurable database path through `PANTHEON_DB_PATH`;
+- persistence-layer errors translated into API errors;
+- list, read, and delete sessions through the repository;
+- repository-level tests with temporary SQLite databases.
+
+### Storage Boundary
+
+```text
+Routes do not talk to SQLite directly.
+session_store.py talks to the repository.
+repository saves validated GameState snapshots.
+repository also mirrors committed event logs into game_events.
+```
+
+The core API route shape remains stable. Phase 3 adds one read-only event
+endpoint for inspecting persisted game history.
 
 ### What Phase 3 Should Still Avoid
 
@@ -188,7 +237,8 @@ Or a similar structure under the future persistence package.
 - RAG;
 - multi-agent orchestration;
 - frontend UI;
-- user accounts unless explicitly chosen as the persistence scope.
+- user accounts;
+- PostgreSQL, SQLAlchemy, and Alembic until this local persistence layer is understood.
 
 ## Future LLM Architecture
 

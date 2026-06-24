@@ -1,4 +1,4 @@
-"""Command-line entry point for 神座纪元 v2.1."""
+"""Command-line entry point for 神座纪元 v3.1."""
 
 if __package__ in {None, ""}:
     import sys

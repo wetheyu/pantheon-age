@@ -100,11 +100,14 @@ phase2_api/
     session_store.py
 ```
 
-Phase 2 starts with in-memory sessions:
+Phase 2 started with in-memory sessions:
 
 ```text
 game_id -> GameState
 ```
+
+Phase 3 has replaced this storage detail with a SQLite repository while keeping
+the API route shape stable.
 
 Current Phase 2 session endpoints:
 
@@ -140,12 +143,41 @@ Do not add yet:
 
 Goal: stop relying only on local JSON saves and in-memory API sessions.
 
-Technologies:
+Current status: `v3.1.0 Phase 3 Persistence Complete`.
+
+Current baseline technologies:
+
+- Python standard library `sqlite3`;
+- versioned JSON snapshots from `GameState.to_dict()`;
+- ordered event rows for committed event logs;
+- repository pattern through `phase3_persistence/sqlite_repository.py`;
+- environment variable configuration through `PANTHEON_DB_PATH`;
+- persistence-layer error boundary through `phase3_persistence/errors.py`;
+- temporary SQLite databases in tests.
+
+Current baseline modules:
+
+```text
+phase3_persistence/
+  __init__.py
+  config.py
+  errors.py
+  sqlite_repository.py
+```
+
+Current baseline flow:
+
+```text
+phase2_api/services/session_store.py
+  -> phase3_persistence/sqlite_repository.py
+  -> data/pantheon_age.sqlite3
+```
+
+Later upgrade technologies:
 
 - PostgreSQL;
 - SQLAlchemy;
-- Alembic;
-- possibly SQLite for lightweight local experiments.
+- Alembic.
 
 Core persistence targets:
 
@@ -163,9 +195,12 @@ Core persistence targets:
 
 Why:
 
-- PostgreSQL becomes the durable source of truth.
-- SQLAlchemy provides Python database access and ORM support.
-- Alembic manages database migrations.
+- SQLite is enough for a simple local persistence baseline.
+- Versioned snapshots make future save migrations safer.
+- Separate event rows prepare the project for history queries and future memory summarization.
+- PostgreSQL can become the durable multi-user source of truth later.
+- SQLAlchemy can provide Python database access and ORM support later.
+- Alembic can manage database migrations once schemas become more complex.
 
 Important boundary:
 
@@ -637,23 +672,25 @@ Long-term:
 1. Keep Phase 1 stable.
 2. Build Phase 2 FastAPI with in-memory sessions.
 3. Add API tests.
-4. Add persistence with PostgreSQL + SQLAlchemy + Alembic.
-5. Add validator layer.
-6. Add controlled LLM narration.
-7. Add LLM proposal generators.
-8. Add RAG over Markdown world canon.
-9. Add tracing, prompt management, and tool registry.
-10. Add evals and prompt-injection tests.
-11. Add performance metrics and targeted optimization.
-12. Add web UI.
-13. Add Docker/deployment.
+4. Add SQLite persistence baseline.
+5. Add configurable database path, versioned snapshots, and event log persistence.
+6. Upgrade persistence only when needed, possibly PostgreSQL + SQLAlchemy + Alembic.
+7. Add validator layer.
+8. Add controlled LLM narration.
+9. Add LLM proposal generators.
+10. Add RAG over Markdown world canon.
+11. Add tracing, prompt management, and tool registry.
+12. Add evals and prompt-injection tests.
+13. Add performance metrics and targeted optimization.
+14. Add web UI.
+15. Add Docker/deployment.
 ```
 
 ## What Not To Do
 
 - Do not add LLM before API and state boundaries are stable.
 - Do not add RAG before world canon documents are useful.
-- Do not add database before API state shape is clear.
+- Do not add heavier database tooling before the API state shape and SQLite persistence layer are clear.
 - Do not add frontend before API endpoints are stable.
 - Do not add complex orchestration before the simple LLM workflow is hard to manage.
 - Do not optimize performance before measuring where time is actually spent.

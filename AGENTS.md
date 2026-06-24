@@ -35,9 +35,11 @@ Current implementation:
 
 - Phase 1: Python CLI core.
 - Phase 2: FastAPI service layer.
-- Current milestone: Phase 2 Complete.
+- Phase 3: SQLite persistence complete.
+- Current milestone: Phase 3 Persistence Complete.
 - Existing reusable core lives in `phase1_cli/`.
 - Existing API layer lives in `phase2_api/`.
+- Existing persistence layer lives in `phase3_persistence/`.
 
 Current important files:
 
@@ -50,7 +52,10 @@ Current important files:
 - `phase1_cli/save_manager.py`: local JSON save/load.
 - `phase2_api/main.py`: FastAPI app entry point.
 - `phase2_api/routes/`: API route modules.
-- `phase2_api/services/session_store.py`: in-memory game sessions.
+- `phase2_api/services/session_store.py`: API session service.
+- `phase3_persistence/config.py`: persistence configuration.
+- `phase3_persistence/errors.py`: persistence-layer errors.
+- `phase3_persistence/sqlite_repository.py`: SQLite game session and event repository.
 - `docs/world_bible.md`: world canon.
 - `docs/llm_runtime_design.md`: LLM runtime and validation rules.
 - `docs/phase2_api_plan.md`: FastAPI migration plan.
@@ -69,6 +74,9 @@ phase1_cli/
 
 phase2_api/
   FastAPI routes, request/response schemas, and API session handling.
+
+phase3_persistence/
+  SQLite repository, database path configuration, persistence errors, and future persistence abstractions.
 
 llm_runtime/
   Specialized LLM agents for intent parsing, narration, scene generation, event generation, NPC dialogue, and memory summarization.
@@ -208,6 +216,7 @@ Use these commands from the project root:
 ```bash
 ./.venv/bin/python -m py_compile phase1_cli/*.py tests/*.py
 ./.venv/bin/python -m py_compile phase2_api/*.py phase2_api/routes/*.py phase2_api/services/*.py
+./.venv/bin/python -m py_compile phase3_persistence/*.py
 ./.venv/bin/python -m unittest discover -s tests
 ```
 
@@ -244,15 +253,14 @@ The preferred API launch command is:
 - Do not rewrite unrelated files.
 - Preserve the project as a resume-friendly AI Agent engineering project.
 
-## Phase 2 Direction
+## Phase 2 / Phase 3 Direction
 
-Phase 2 service-layer rules:
+Phase 2 service layer is complete.
 
 - Keep the separate `phase2_api/` package.
 - Use FastAPI and Pydantic.
 - Keep `phase1_cli/` reusable instead of copying logic.
-- Start with in-memory game sessions before adding a database.
-- Current Phase 2 endpoints:
+- Current API endpoints:
   - `GET /health`
   - `GET /classes`
   - `GET /gods`
@@ -261,7 +269,17 @@ Phase 2 service-layer rules:
   - `POST /games`
   - `GET /games`
   - `GET /games/{game_id}`
+  - `GET /games/{game_id}/events`
   - `DELETE /games/{game_id}`
   - `POST /games/{game_id}/actions`
 
-Phase 2 should stop at API/service/session-management readiness. It should not add LLM, RAG, database persistence, web UI, Docker, or user accounts unless explicitly requested.
+Phase 3 persistence rules:
+
+- Keep `phase3_persistence/` separate from route modules.
+- Use SQLite through the standard library for the local persistence layer.
+- Support `PANTHEON_DB_PATH` for local database path configuration.
+- Keep route shapes stable while replacing storage internals.
+- Persist validated, versioned `GameState.to_dict()` snapshots only.
+- Persist committed event logs as ordered event rows.
+- Do not store raw LLM output as truth.
+- Do not add PostgreSQL, SQLAlchemy, Alembic, LLM, RAG, web UI, Docker, or user accounts unless explicitly requested.

@@ -213,7 +213,7 @@ countries/istea.md
 gods/ocean.md
 gods/truth.md
 gods/war.md
-gods/holy_law.md
+gods/judgment.md
 gods/abundance.md
 gods/death.md
 gods/secrecy.md
@@ -221,7 +221,7 @@ gods/abyss.md
 classes/knight.md
 classes/mage.md
 classes/agent.md
-classes/hunter.md
+classes/ranger.md
 classes/priest.md
 classes/alchemist.md
 technology_level.md
@@ -264,6 +264,9 @@ RAG 的作用不是让 LLM 完全可靠，而是减少它乱编的范围。
 
 - 世界时代背景；
 - 五大列强；
+- 关键海峡国塞勒米亚苏丹国；
+- 罗斯维亚大公国；
+- 已设定核心城市；
 - 八大神明；
 - 六大职业；
 - 核心科技水平；

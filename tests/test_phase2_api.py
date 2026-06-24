@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+import tempfile
 import warnings
 import unittest
 
@@ -12,13 +13,19 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from phase2_api.main import app
-from phase2_api.services.session_store import clear_sessions
+from phase2_api.services.session_store import clear_sessions, configure_storage
 
 
 class Phase2ApiTests(unittest.TestCase):
     def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.db_path = Path(self.temp_dir.name) / "test.sqlite3"
+        configure_storage(self.db_path)
         clear_sessions()
         self.client = TestClient(app)
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
     def test_health_endpoint(self):
         response = self.client.get("/health")
@@ -86,6 +93,38 @@ class Phase2ApiTests(unittest.TestCase):
         self.assertTrue(action_payload["consumes_turn"])
         self.assertEqual(action_payload["state"]["current_location"], "前厅")
         self.assertEqual(action_payload["state"]["turn"], 1)
+
+        read_response = self.client.get(f"/games/{game_id}")
+        self.assertEqual(read_response.status_code, 200)
+        self.assertEqual(read_response.json()["state"]["current_location"], "前厅")
+        self.assertEqual(read_response.json()["state"]["turn"], 1)
+
+        events_response = self.client.get(f"/games/{game_id}/events")
+        self.assertEqual(events_response.status_code, 200)
+        events = events_response.json()["events"]
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["event_index"], 0)
+        self.assertIn("你从修道院门口来到前厅", events[0]["text"])
+
+    def test_game_events_is_empty_for_new_session(self):
+        create_response = self.client.post(
+            "/games",
+            json={"name": "阿洛", "class_id": "warrior", "god": "死亡之神"},
+        )
+
+        self.assertEqual(create_response.status_code, 200)
+        game_id = create_response.json()["game_id"]
+
+        events_response = self.client.get(f"/games/{game_id}/events")
+
+        self.assertEqual(events_response.status_code, 200)
+        self.assertEqual(events_response.json()["events"], [])
+
+    def test_game_events_not_found(self):
+        response = self.client.get("/games/missing/events")
+
+        self.assertEqual(response.status_code, 404)
+        self.assertIn("Game not found", response.json()["detail"])
 
     def test_list_games_is_empty_without_sessions(self):
         response = self.client.get("/games")
@@ -186,6 +225,7 @@ class Phase2ApiTests(unittest.TestCase):
         self.assertIn("/health", paths)
         self.assertIn("/gods", paths)
         self.assertIn("/games", paths)
+        self.assertIn("/games/{game_id}/events", paths)
 
 
 if __name__ == "__main__":

@@ -8,6 +8,7 @@ from phase2_api.schemas import (
     GameCreateRequest,
     GameCreateResponse,
     GameDeleteResponse,
+    GameEventsResponse,
     GameListResponse,
     GameStateResponse,
 )
@@ -15,6 +16,7 @@ from phase2_api.services.session_store import (
     create_game_session,
     delete_game_session,
     get_game_state,
+    list_game_events,
     list_game_sessions,
     submit_game_action,
 )
@@ -42,6 +44,11 @@ def list_games():
 def read_game(game_id: str):
     state = get_game_state(game_id)
     return GameStateResponse(game_id=game_id, state=state.to_public_dict())
+
+
+@router.get("/games/{game_id}/events", response_model=GameEventsResponse)
+def read_game_events(game_id: str):
+    return GameEventsResponse(game_id=game_id, events=list_game_events(game_id))
 
 
 @router.delete("/games/{game_id}", response_model=GameDeleteResponse)

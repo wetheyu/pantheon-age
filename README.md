@@ -1,6 +1,6 @@
 # 神座纪元 / Pantheon Age
 
-**神座纪元（Pantheon Age）** 是一个以固定神明体系、维多利亚神秘学、调查冒险和规则裁定为核心的文字冒险系统。当前版本是 `v2.1.0 Phase 2 Complete`，已经把 Phase 1 CLI 核心能力暴露成 REST API，并补齐基础配置查询、内存会话管理、API schema、测试和系统设计文档。当前阶段不接 LLM、不接数据库、不做前端、不做 Docker，目标是先把「可复用规则核心 + FastAPI 服务层 + 内存游戏会话 + API 测试 + 系统设计文档」完整跑通。
+**神座纪元（Pantheon Age）** 是一个以固定神明体系、维多利亚神秘学、调查冒险和规则裁定为核心的文字冒险系统。当前版本是 `v3.1.0 Phase 3 Persistence Complete`，已经把 Phase 1 CLI 核心能力暴露成 REST API，并把 API 游戏会话从内存升级为 SQLite 持久化。当前阶段不接 LLM、不做前端、不做 Docker，目标是先把「可复用规则核心 + FastAPI 服务层 + SQLite 游戏会话 + 事件日志持久化 + API 测试 + 系统设计文档」完整跑通。
 
 ## 项目动机
 
@@ -20,12 +20,12 @@ LLM 只能 propose，系统负责 validate，只有 validated content 才能 com
 ## 版本状态
 
 ```text
-内部里程碑：Phase 2 Complete
+内部里程碑：Phase 3 Persistence Complete
 对外起点版本：v1.0.0
-当前公开版本：v2.1.0
+当前公开版本：v3.1.0
 ```
 
-`v2.1.0` 已完成：
+`v3.1.0` 已完成：
 
 - 命令行连续游玩；
 - 角色创建、职业、神明选择；
@@ -55,12 +55,17 @@ LLM 只能 propose，系统负责 validate，只有 validated content 才能 com
 - `POST /games`；
 - `GET /games`；
 - `GET /games/{game_id}`；
+- `GET /games/{game_id}/events`；
 - `DELETE /games/{game_id}`；
 - `POST /games/{game_id}/actions`；
-- 内存游戏会话：`game_id -> GameState`；
-- 基础会话管理：列出当前游戏局、删除指定游戏局；
+- SQLite 游戏会话持久化：`game_id -> versioned GameState JSON snapshot`；
+- SQLite 事件日志持久化：`game_id -> ordered game events`；
+- 可通过 `PANTHEON_DB_PATH` 配置 API 数据库路径；
+- 持久化层错误统一转换为 API 错误；
+- 基础会话管理：创建、读取、列出、提交行动后保存、删除指定游戏局；
 - API response model：为健康检查、职业、神明、地点、游戏会话等接口补充响应结构；
 - API 自动化测试；
+- SQLite repository 自动化测试；
 - Phase 2 API 计划文档；
 - 系统设计文档 `docs/system_design.md`；
 - 世界观设定集 `docs/world_bible.md`；
@@ -98,8 +103,14 @@ project-root/
       games.py
     services/
       session_store.py
+  phase3_persistence/
+    __init__.py
+    config.py
+    errors.py
+    sqlite_repository.py
   tests/
     test_phase2_api.py
+    test_sqlite_repository.py
     test_game_service.py
     test_intent_parser.py
     test_save_manager.py
@@ -119,7 +130,7 @@ project-root/
 ## 设计文档
 
 - [AGENTS.md](AGENTS.md)：项目长期开发规则。记录架构边界、测试命令、Git 操作边界和 Phase 2 方向。
-- [docs/world_bible.md](docs/world_bible.md)：世界观设定集。记录维多利亚时代背景、五大列强、八大神明、六大职业、身份系统和世界事实分级。
+- [docs/world_bible.md](docs/world_bible.md)：世界观设定集。记录维多利亚时代背景、五大列强、其他重要国家、核心城市、八大神明、六大职业、身份系统和世界事实分级。
 - [docs/llm_runtime_design.md](docs/llm_runtime_design.md)：LLM 运行逻辑设计。记录 `propose -> validate -> commit`、RAG、内容分级、场景提案、事件生成和防止上下文污染的规则。
 - [docs/phase2_api_plan.md](docs/phase2_api_plan.md)：Phase 2 FastAPI 拆分计划。
 - [docs/system_design.md](docs/system_design.md)：系统设计文档。记录 Phase 1、Phase 2、Phase 3 的模块职责、数据流和演进边界。
@@ -175,7 +186,7 @@ http://127.0.0.1:8000/docs
 
 ## API 接口
 
-当前 Phase 2 提供：
+当前 API 提供：
 
 ```text
 GET    /health
@@ -186,6 +197,7 @@ POST   /characters
 POST   /games
 GET    /games
 GET    /games/{game_id}
+GET    /games/{game_id}/events
 DELETE /games/{game_id}
 POST   /games/{game_id}/actions
 ```
@@ -208,19 +220,37 @@ POST   /games/{game_id}/actions
 }
 ```
 
-查看当前内存游戏局：
+查看当前数据库中的游戏局：
 
 ```text
 GET /games
 ```
 
-删除当前内存游戏局：
+查看某局游戏的事件日志：
+
+```text
+GET /games/{game_id}/events
+```
+
+删除当前数据库中的游戏局：
 
 ```text
 DELETE /games/{game_id}
 ```
 
-API 当前使用内存会话保存游戏状态。服务重启后，内存中的 `game_id -> GameState` 会丢失。数据库持久化会在后续阶段实现。
+API 当前使用 SQLite 保存游戏状态，默认数据库文件位于：
+
+```text
+data/pantheon_age.sqlite3
+```
+
+也可以通过环境变量指定数据库路径：
+
+```bash
+PANTHEON_DB_PATH=data/dev.sqlite3 ./.venv/bin/uvicorn phase2_api.main:app
+```
+
+这个文件属于本地运行数据，已通过 `.gitignore` 忽略，不会提交到 GitHub。
 
 ## 支持的行动
 
@@ -328,6 +358,7 @@ saves/save.json
 cd <project-root>
 ./.venv/bin/python -m py_compile phase1_cli/*.py tests/*.py
 ./.venv/bin/python -m py_compile phase2_api/*.py phase2_api/routes/*.py phase2_api/services/*.py
+./.venv/bin/python -m py_compile phase3_persistence/*.py
 ./.venv/bin/python -m unittest discover -s tests
 ```
 
@@ -346,7 +377,8 @@ cd <project-root>
 - `phase2_api/main.py`：FastAPI 应用入口。
 - `phase2_api/schemas.py`：API 请求和响应 schema。
 - `phase2_api/routes/`：API 路由。
-- `phase2_api/services/session_store.py`：Phase 2 的内存游戏会话存储，负责创建、读取、列出、删除和提交行动。
+- `phase2_api/services/session_store.py`：API 会话服务，负责创建、读取、列出、删除和提交行动；Phase 3 起底层调用 SQLite repository。
+- `phase3_persistence/sqlite_repository.py`：SQLite 持久化层，负责保存和恢复 API 游戏会话。
 
 ## Rule Engine 控制了什么
 
@@ -375,7 +407,7 @@ d20 + 属性值 + 职业修正 >= DC
 长期世界观中的六大职业为：
 
 ```text
-骑士、法师、密探、猎人、牧师、炼金术士
+骑士、法师、密探、游侠、牧师、炼金术士
 ```
 
 当前 CLI 代码中仍保留早期命名 `战士 / 盗贼`，后续会与世界观文档统一为 `骑士 / 密探`。
@@ -391,7 +423,7 @@ d20 + 属性值 + 职业修正 >= DC
 - 战士攻击更强：`attack_bonus +2`。
 - 法师分析神秘知识更强：`analyze_bonus +2`、`lore_bonus +2`，但接触禁忌知识 SAN 风险更高。
 - 盗贼潜行和开锁更强，但隐秘路线会增加 Suspicion。
-- 猎人追踪和侦察更强。
+- 游侠追踪和侦察更强。
 - 牧师祈祷、净化、抵抗污染更强。
 - 炼金术士使用药剂、鉴定异常物质更强。
 
@@ -399,23 +431,23 @@ d20 + 属性值 + 职业修正 >= DC
 
 - 意图识别是关键词规则，不是真正的自然语言理解。
 - 剧情文本是固定模板，不接 LLM。
-- 当前只有单一默认本地存档，还没有多存档位、账号系统或数据库。
-- API 当前只使用内存会话，还没有数据库持久化。
+- CLI 当前只有单一默认本地存档，还没有多存档位或账号系统。
+- API 当前使用 SQLite 保存游戏会话，还没有 PostgreSQL、账号系统或多用户隔离。
 - API 当前不处理本地 JSON 存档/读档，CLI 仍保留本地存档功能。
 - 代码职业命名还未完全对齐世界观文档，后续会把 `战士 / 盗贼` 统一为 `骑士 / 密探`。
 - 地图只有「雾中修道院」一个小副本。
-- 行动日志只保存在本地存档里，还没有搜索、分类或完整时间线界面。
+- API 已经持久化行动日志，但还没有搜索、分类或完整时间线界面。
 - 战斗和道具系统是最小可玩版本，还没有复杂怪物、装备或任务系统。
 
 ## Phase 2：FastAPI Complete
 
-当前 Phase 2 已经把 CLI 核心能力暴露成 REST API：
+Phase 2 已经把 CLI 核心能力暴露成 REST API：
 
 - `POST /characters`：创建角色；
 - `POST /games`：创建新游戏；
-- `GET /games`：列出当前内存中的游戏局；
+- `GET /games`：列出当前游戏局；
 - `GET /games/{game_id}`：读取当前状态；
-- `DELETE /games/{game_id}`：删除当前内存中的游戏局；
+- `DELETE /games/{game_id}`：删除当前游戏局；
 - `POST /games/{game_id}/actions`：提交玩家行动；
 - `GET /classes`：查看职业配置；
 - `GET /gods`：查看固定神明列表；
@@ -430,14 +462,44 @@ d20 + 属性值 + 职业修正 >= DC
 - `Character.to_dict()` 和 `GameState.to_dict()` 可以作为 Pydantic schema 的起点；
 - `Character.to_public_dict()`、`GameState.to_public_dict()` 和 `GameResponse.to_dict()` 可以作为 API response 的起点；
 - `story.py` 未来可以替换成 LLM 调用层。
-- `phase2_api/` 只负责 API 路由、schema 和内存会话，不复制规则逻辑。
-- `docs/system_design.md` 记录当前阶段的数据流和未来 Phase 3 持久化演进方向。
+- `phase2_api/` 只负责 API 路由、schema 和会话服务，不复制规则逻辑。
 
 更详细的 Phase 2 拆分计划见 [docs/phase2_api_plan.md](docs/phase2_api_plan.md)。
 
+## Phase 3：Persistence Complete
+
+当前 Phase 3 已经把 API 游戏会话持久化到 SQLite：
+
+- `phase3_persistence/config.py`：负责读取 `PANTHEON_DB_PATH`；
+- `phase3_persistence/errors.py`：定义持久化层错误；
+- `phase3_persistence/sqlite_repository.py`：负责 SQLite 表结构、保存、读取、列表、删除和事件查询；
+- `phase2_api/services/session_store.py`：继续作为 API 服务层，但底层改为调用 repository；
+- `POST /games` 创建游戏后会写入数据库；
+- `POST /games/{game_id}/actions` 执行行动后会保存最新 `GameState`；
+- `GET /games`、`GET /games/{game_id}` 和 `DELETE /games/{game_id}` 都通过 SQLite 查询或删除。
+- `GET /games/{game_id}/events` 可以读取某局游戏的有序事件日志。
+
+保存结构：
+
+```text
+game_sessions:
+  game_id -> snapshot_version + GameState JSON snapshot
+
+game_events:
+  game_id + event_index -> event text
+```
+
+默认数据库路径：
+
+```text
+data/pantheon_age.sqlite3
+```
+
+这一步的意义是：API route 形状基本稳定，内部存储从“进程内存”升级成“可重启后保留的本地数据库”，并为后续长期记忆、事件回放和 LLM 记忆总结打基础。
+
 ## 这个阶段学到什么
 
-通过 `v2.1.0`，你会接触到：
+通过 `v3.1.0`，你会接触到：
 
 - Python 文件拆分；
 - dict/list/dataclass；
@@ -453,6 +515,12 @@ d20 + 属性值 + 职业修正 >= DC
 - Pydantic 请求/响应 schema；
 - 内存会话管理；
 - REST 会话生命周期：创建、列表、读取、行动、删除；
+- SQLite 持久化；
+- Repository 层；
+- 版本化 JSON snapshot 存储；
+- 事件日志独立表；
+- 环境变量配置；
+- 后端异常边界；
 - API 自动化测试；
 - 关键词意图识别；
 - d20 随机检定；
