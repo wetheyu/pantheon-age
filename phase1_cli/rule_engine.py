@@ -1,4 +1,4 @@
-"""Deterministic rule engine for 神座纪元 v3.1.
+"""Deterministic rule engine for 神座纪元 v4.2.
 
 The key project idea starts here:
 - LLM/future story layer can describe events.

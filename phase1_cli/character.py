@@ -1,9 +1,8 @@
-"""Character creation for 神座纪元 v3.1."""
+"""Character creation for 神座纪元 v4.2."""
 
 from dataclasses import dataclass, field
 
-from .data import BASE_HP, BASE_SAN, BASE_STATS, CLASSES, GODS
-from .utils import numbered_choice, print_divider, safe_input
+from .data import BASE_HP, BASE_SAN, BASE_STATS, CLASSES
 
 
 @dataclass
@@ -134,51 +133,3 @@ def build_character(name, class_id, god):
         skills=list(class_config["skill_tags"]),
         rule_modifiers=dict(class_config["rule_modifiers"]),
     )
-
-
-def choose_class():
-    print("\n请选择职业：")
-    class_ids = list(CLASSES.keys())
-    for index, class_id in enumerate(class_ids, start=1):
-        class_config = CLASSES[class_id]
-        print(f"{index}. {class_config['name']} / {class_config['english_name']} - {class_config['description']}")
-
-    while True:
-        answer = safe_input("输入职业编号或 class_id：").strip().lower()
-        if answer.isdigit():
-            index = int(answer) - 1
-            if 0 <= index < len(class_ids):
-                return class_ids[index]
-
-        for class_id, class_config in CLASSES.items():
-            names = {class_id, class_config["name"], class_config["english_name"].lower()}
-            if answer in names:
-                return class_id
-
-        print("没有找到这个职业，请重新输入。")
-
-
-def choose_god():
-    print("\n请选择信仰神明：")
-    for index, god in enumerate(GODS, start=1):
-        print(f"{index}. {god}")
-    return numbered_choice(GODS, "输入神明编号或完整名称：")
-
-
-def create_character_interactive():
-    print_divider("=")
-    print("创建角色")
-    print_divider("=")
-    name = safe_input("请输入角色名：").strip() or "无名冒险者"
-    class_id = choose_class()
-    god = choose_god()
-    character = build_character(name, class_id, god)
-
-    print("\n角色创建完成：")
-    print(f"- 名字：{character.name}")
-    print(f"- 职业：{character.class_name}")
-    print(f"- 信仰：{character.god}")
-    print(f"- 属性：{character.stats}")
-    print(f"- HP/SAN：{character.hp}/{character.san}")
-    print(f"- 初始道具：{', '.join(character.inventory)}")
-    return character

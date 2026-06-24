@@ -25,9 +25,14 @@ Core principle:
 
 ```text
 LLM creates possibilities.
+Rules constrain authority, not imagination.
 The rule system confirms reality.
 Only validated structured state becomes game truth.
 ```
+
+The rule system exists to compensate for LLM weaknesses such as context drift,
+inconsistent adjudication, weak long-term planning, and unreliable memory. It
+must not become a ceiling on LLM creativity.
 
 ## Current State
 
@@ -36,10 +41,13 @@ Current implementation:
 - Phase 1: Python CLI core.
 - Phase 2: FastAPI service layer.
 - Phase 3: SQLite persistence complete.
-- Current milestone: Phase 3 Persistence Complete.
+- Phase 4: structured LLM proposal runtime with optional OpenAI provider.
+- Current milestone: Phase 4 complete / Agentic Runtime handoff.
+- Next milestone: Phase 5 Agentic Runtime Baseline.
 - Existing reusable core lives in `phase1_cli/`.
 - Existing API layer lives in `phase2_api/`.
 - Existing persistence layer lives in `phase3_persistence/`.
+- Existing LLM runtime contracts live in `llm_runtime/`.
 
 Current important files:
 
@@ -56,13 +64,55 @@ Current important files:
 - `phase3_persistence/config.py`: persistence configuration.
 - `phase3_persistence/errors.py`: persistence-layer errors.
 - `phase3_persistence/sqlite_repository.py`: SQLite game session and event repository.
+- `llm_runtime/contracts.py`: structured LLM proposal/result contracts.
+- `llm_runtime/actions.py`: structured action candidate validation and fallback.
+- `llm_runtime/adjudication.py`: generic adjudication requests from semantic action candidates.
+- `llm_runtime/proposals.py`: scene/event proposal validation and authority checks.
+- `llm_runtime/narrator.py`: safe narration proposal validation and fallback.
+- `llm_runtime/providers.py`: action/narration provider interfaces, local fallback providers, and optional OpenAI providers.
+- `llm_runtime/prompts.py`: prompt loading helpers.
+- `prompts/action_candidate.md`: Action Candidate prompt and policy file.
+- `prompts/open_generation.md`: Open Generation prompt and policy file.
+- `prompts/scene_event.md`: Scene/Event proposal prompt and policy file.
+- `prompts/narrator.md`: Narrator prompt and policy file.
 - `docs/world_bible.md`: world canon.
+- `docs/rag_seed_cards.md`: compact RAG cards for gods, classes, and countries.
+- `docs/tone_guide.md`: original tone guide for narration and generation.
+- `docs/forbidden_outputs.md`: LLM forbidden outputs and authority boundaries.
+- `docs/inspiration_notes.md`: high-level inspirations and originality boundaries.
+- `docs/progression_design.md`: progression, attributes, class levels, faith levels, rituals, items, and costs.
 - `docs/llm_runtime_design.md`: LLM runtime and validation rules.
+- `docs/live_llm_testing.md`: safe local `.env` setup for real LLM smoke/live tests.
 - `docs/phase2_api_plan.md`: FastAPI migration plan.
+- `docs/phase4_llm_runtime_plan.md`: Phase 4 LLM runtime implementation plan.
+- `docs/agentic_runtime_architecture.md`: long-term multi-agent runtime architecture.
+- `docs/refactor_plan.md`: corrected direction for creative LLM generation and rule authority.
 - `docs/system_design.md`: phase-by-phase architecture and data flow.
 - `docs/technical_roadmap.md`: long-term technology stack and adoption order.
 
 Some target modules do not exist yet. Do not create future modules unless the current task explicitly asks for that phase or feature.
+
+## Open Generation Principle
+
+Do not hard-code every concrete location, item, NPC, relationship, team,
+organization, route, rumor, or event.
+
+LLM layers should be allowed to freely propose concrete content within world
+constraints. The program exists to compensate for LLM weaknesses:
+
+- context drift;
+- inconsistent logic;
+- unreliable long-term memory;
+- weak planning;
+- tendency to turn player speculation into fact;
+- tendency to grant unearned rewards or reveal hidden truth.
+
+Therefore code should focus on authority levels, validators, rule adjudication,
+memory commit boundaries, persistence rules, forbidden outputs, and deterministic
+mechanical results.
+
+The program should not become a list of every possible room, item, NPC, team,
+relationship, organization, or event.
 
 ## Target Architecture
 
@@ -79,7 +129,10 @@ phase3_persistence/
   SQLite repository, database path configuration, persistence errors, and future persistence abstractions.
 
 llm_runtime/
-  Specialized LLM agents for intent parsing, narration, scene generation, event generation, NPC dialogue, and memory summarization.
+  Current Phase 4 LLM provider and proposal runtime.
+
+agentic_runtime/
+  Future multi-agent orchestration for intent, scene, NPC, event, rule arbitration, memory curation, state commit, and narration.
 
 validation/
   Validators for LLM proposals, world canon, rewards, hidden information, and state mutation permissions.
@@ -118,6 +171,8 @@ Do not scaffold all of this at once. Build one small, verifiable layer at a time
 - If shared behavior is needed by both CLI and API, put it in the service or rule layer first.
 - Future FastAPI code should call `phase1_cli.game_service.handle_player_input()`.
 - Keep `main.py` thin. It should only handle CLI input/output, printing, and local save/load.
+- Long-term Agentic Runtime design belongs in `docs/agentic_runtime_architecture.md`.
+- Do not keep expanding `ActionCandidate` with one-off keyword or intent patches when the real issue belongs to Phase 5 open action understanding.
 
 ## Runtime Truth Rules
 
@@ -155,13 +210,23 @@ Do not scaffold all of this at once. Build one small, verifiable layer at a time
 ## LLM / RAG Runtime Boundaries
 
 - LLM layers may propose narration, scene details, NPC dialogue, or structured action candidates.
+- Long-term agents may also propose rule adjudication, memory curation, generated NPCs, generated locations, generated events, generated items, and final narration.
 - LLM layers must not directly mutate `GameState`.
 - All LLM-generated proposals must be validated before they become persistent world facts.
 - RAG documents provide canon context, but rule modules still decide state changes.
+- Rules constrain authority, not imagination. Prefer generic adjudication, authority levels, and permission boundaries over hard-coding every possible story action.
+- LLM-generated content should be classified by authority level: flavor, temporary, persistent, mechanical, or secret.
 - Do not let LLM-generated text add HP, SAN, money, clues, items, locations, factions, or endings unless the deterministic rule result already contains them.
 - World canon belongs in `docs/world_bible.md`.
+- Compact RAG seed cards belong in `docs/rag_seed_cards.md`.
+- Tone and atmosphere guidance belongs in `docs/tone_guide.md`.
+- Forbidden LLM behavior belongs in `docs/forbidden_outputs.md`.
+- High-level inspiration notes belong in `docs/inspiration_notes.md`.
+- Progression, attributes, class levels, faith levels, ritual ascension, items, and costs belong in `docs/progression_design.md`.
 - LLM runtime rules belong in `docs/llm_runtime_design.md`.
 - Do not put world canon into AGENTS.md. AGENTS.md is for engineering rules.
+- Do not use copyrighted full novels as RAG corpus. Use original project canon, user-written notes, and high-level inspiration summaries only.
+- Program boundaries should compensate for LLM weaknesses without becoming a ceiling on creative generation.
 
 ## Multi-Agent Direction
 
@@ -170,9 +235,14 @@ The long-term LLM layer may use multiple specialized agents, but only after API,
 Possible specialized agents:
 
 - Intent Parser Agent: converts natural-language input into structured action candidates.
+- Rule Arbiter Agent: proposes rule adjudication, checks, risks, costs, allowed effects, and denied effects.
 - Scene Generator Agent: proposes local scenes and environmental details.
 - Event Generator Agent: proposes side events and travel events.
+- NPC Agent: proposes NPCs, visible knowledge, dialogue, attitude, and short-term goals.
+- Item Agent: proposes temporary items, objects, materials, and usage risks.
 - NPC Dialogue Agent: generates dialogue using only NPC-visible knowledge.
+- Memory Retriever: retrieves relevant current memory before agent calls.
+- Memory Curator Agent: decides what to store, discard, compress, retrieve, or keep hidden.
 - Narrator Agent: turns validated rule results into atmospheric text.
 - Memory Summarizer Agent: summarizes committed events without adding new facts.
 - Validator Agent or deterministic validator: checks proposals against world canon and state rules.
@@ -182,6 +252,7 @@ Rules:
 - Agents may propose, but cannot commit state.
 - Agents must not directly mutate `GameState`.
 - Agents must not grant HP, SAN, money, clues, items, locations, factions, or endings.
+- Agents should expand possible scenes, NPCs, events, and actions within validated authority boundaries.
 - All agent proposals must pass validation before becoming persistent facts.
 - Start with explicit Python functions before introducing a multi-agent framework.
 
@@ -189,6 +260,10 @@ Rules:
 
 - When gameplay behavior changes, update `README.md` and `CHANGELOG.md`.
 - When world canon changes, update `docs/world_bible.md`.
+- When compact RAG cards change, update `docs/rag_seed_cards.md`.
+- When tone direction changes, update `docs/tone_guide.md`.
+- When forbidden outputs or originality boundaries change, update `docs/forbidden_outputs.md` or `docs/inspiration_notes.md`.
+- When progression, attributes, class levels, faith levels, ritual ascension, items, or costs change, update `docs/progression_design.md`.
 - When LLM, RAG, validation, or memory behavior changes, update `docs/llm_runtime_design.md`.
 - When API design changes, update `docs/phase2_api_plan.md` or the relevant API docs.
 - When architecture, module boundaries, or data flow changes, update `docs/system_design.md`.
@@ -217,6 +292,7 @@ Use these commands from the project root:
 ./.venv/bin/python -m py_compile phase1_cli/*.py tests/*.py
 ./.venv/bin/python -m py_compile phase2_api/*.py phase2_api/routes/*.py phase2_api/services/*.py
 ./.venv/bin/python -m py_compile phase3_persistence/*.py
+./.venv/bin/python -m py_compile llm_runtime/*.py
 ./.venv/bin/python -m unittest discover -s tests
 ```
 
@@ -283,3 +359,29 @@ Phase 3 persistence rules:
 - Persist committed event logs as ordered event rows.
 - Do not store raw LLM output as truth.
 - Do not add PostgreSQL, SQLAlchemy, Alembic, LLM, RAG, web UI, Docker, or user accounts unless explicitly requested.
+
+Phase 4 LLM runtime contract rules:
+
+- Keep `llm_runtime/` separate from CLI, API, rule, and persistence modules.
+- Start with structured proposal contracts before real model calls.
+- Use provider interfaces so model calls can be swapped without changing rule logic.
+- `TemplateNarrationProvider` must work without API keys or network access.
+- `OpenAIActionCandidateProvider` and `OpenAINarrationProvider` are optional real model providers.
+- Real LLM calls must be enabled through environment variables and must always keep local fallback behavior.
+- Use `PANTHEON_USE_LLM=1` plus `OPENAI_API_KEY` to enable OpenAI providers.
+- Use `PANTHEON_OPENAI_MODEL` to override the default model.
+- Use `PANTHEON_SHOW_RUNTIME=1` to show Phase 4 runtime summaries in CLI.
+- Prefer local `.env` configuration for live LLM testing. Do not ask the user to paste API keys into chat.
+- Do not read, print, summarize, or commit `.env`.
+- Use `.env.example` as the committed template for local secrets.
+- If a task touches provider behavior or live LLM behavior and `.env` is configured, run `./.venv/bin/python -m llm_runtime.smoke_test`.
+- Run `./.venv/bin/python -m unittest tests.test_live_openai_provider` only when live tests are explicitly enabled by `PANTHEON_RUN_LIVE_LLM_TESTS=1`.
+- Future local model deployment should be added as a provider-compatible backend, not as a separate rule path.
+- Candidate local runtimes include Ollama, LM Studio, and vLLM through an OpenAI-compatible local endpoint.
+- Local model providers must pass the same validators and fallback rules as OpenAI providers.
+- Keep prompts and policy text in `prompts/`, not scattered through provider code.
+- Prompt loaders must not allow path traversal.
+- Narration proposals may claim only facts already approved by `rule_result`.
+- Invalid proposals must fall back to deterministic story text.
+- Do not require API keys or network calls in tests.
+- Do not let `llm_runtime/` mutate `GameState`.

@@ -1,4 +1,4 @@
-"""Reusable game service layer for 神座纪元 v3.1.
+"""Reusable game service layer for 神座纪元 v4.7.
 
 This module has no input() or print() calls. The current CLI and the future
 FastAPI layer can both call handle_player_input().
@@ -7,8 +7,17 @@ FastAPI layer can both call handle_player_input().
 from dataclasses import dataclass
 from typing import Optional
 
+from llm_runtime.actions import build_keyword_action_candidate, resolve_action_candidate
+from llm_runtime.adjudication import adjudicate_candidate
+from llm_runtime.narrator import render_safe_narration
+from llm_runtime.providers import (
+    KeywordActionCandidateProvider,
+    OpenAIProviderError,
+    TemplateNarrationProvider,
+    build_runtime_providers_from_env,
+)
+
 from .game_state import GameState
-from .intent_parser import parse_intent
 from .rule_engine import apply_rule
 from .story import (
     render_clues,
@@ -44,6 +53,7 @@ class GameResponse:
     should_load: bool = False
     action: Optional[dict] = None
     rule_result: Optional[dict] = None
+    llm_runtime: Optional[dict] = None
     ending_text: str = ""
 
     def to_dict(self):
@@ -56,6 +66,7 @@ class GameResponse:
             "should_load": self.should_load,
             "action": self.action,
             "rule_result": self.rule_result,
+            "llm_runtime": self.llm_runtime,
             "ending_text": self.ending_text,
             "state": self.state.to_public_dict(),
         }
@@ -108,11 +119,34 @@ def handle_player_input(state, user_text):
     if command in LOAD_COMMANDS:
         return GameResponse(kind="load", text="请求读取本地存档。", state=state, should_load=True)
 
-    action = parse_intent(raw_text, state.current_location)
+    runtime = build_runtime_providers_from_env()
+    runtime_errors = []
+
+    try:
+        action_candidate_result = resolve_action_candidate(
+            raw_text,
+            state.current_location,
+            provider=runtime.action_provider,
+        )
+    except OpenAIProviderError as exc:
+        runtime_errors.append(str(exc))
+        fallback_provider = KeywordActionCandidateProvider()
+        action_candidate_result = resolve_action_candidate(
+            raw_text,
+            state.current_location,
+            provider=fallback_provider,
+        )
+
+    action = action_candidate_result.action
+    adjudication_candidate = action_candidate_result.candidate
+    if action_candidate_result.used_fallback:
+        adjudication_candidate = build_keyword_action_candidate(raw_text, state.current_location)
+    adjudication_result = adjudicate_candidate(adjudication_candidate)
+
     result = apply_rule(state, action)
     ending_text = render_ending(state) if state.is_game_over else ""
 
-    return GameResponse(
+    response = GameResponse(
         kind="action",
         text=render_result(result),
         state=state,
@@ -121,3 +155,19 @@ def handle_player_input(state, user_text):
         rule_result=result,
         ending_text=ending_text,
     )
+
+    try:
+        narration_result = render_safe_narration(response, provider=runtime.narration_provider)
+    except OpenAIProviderError as exc:
+        runtime_errors.append(str(exc))
+        narration_result = render_safe_narration(response, provider=TemplateNarrationProvider())
+
+    response.text = narration_result.text
+    response.llm_runtime = {
+        "providers": runtime.to_dict(),
+        "action_candidate": action_candidate_result.to_dict(),
+        "adjudication": adjudication_result.to_dict(),
+        "narration": narration_result.to_dict(),
+        "errors": runtime_errors,
+    }
+    return response

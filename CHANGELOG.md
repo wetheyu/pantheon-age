@@ -1,5 +1,218 @@
 # Changelog
 
+## Unreleased
+
+方向校准：
+
+- 明确规则引擎的目标是限制“改变现实的权限”，不是限制 LLM 的想象力；
+- 新增 `docs/refactor_plan.md`，记录 Creative LLM + Stable Rules 的长期重构方向；
+- 新增 `docs/agentic_runtime_architecture.md`，记录长期 Agentic Runtime 架构；
+- 将长期运行流程从“固定规则文本 -> LLM 润色”校准为“LLM 生成可能性 -> validators/rules 裁定权限 -> memory 决定持久化 -> LLM 最终叙事”；
+- 将 Phase 4 正式收口为真实 LLM CLI runtime，不再继续给旧 `ActionCandidate(intent=...)` 工作流追加 one-off 关键词、别名或 intent 补丁；
+- 明确 Phase 5 方向为 Agentic Runtime Baseline：Intent Agent、Scene/NPC/Event/Item Agents、Rule Arbiter Agent、Memory Curator Agent、State Commit Layer、Narrator Agent；
+- 明确 Memory Curator Agent 负责判断哪些信息值得保存、丢弃、压缩、检索或隐藏；
+- 新增 `.env.example` 和 `docs/live_llm_testing.md`，建立安全的本地 API key 配置、smoke test 和 live LLM test 流程；
+- 将 `.env` 加载改为标准库实现，避免依赖未安装的 `python-dotenv`；
+- 增加内容权限等级：`flavor`、`temporary`、`persistent`、`mechanical`、`secret`；
+- 将本地部署模型纳入长期开发计划，后续以 Ollama、LM Studio、vLLM 或 OpenAI-compatible local endpoint 作为 provider-compatible backend；
+- 更新 README、AGENTS、系统设计、技术路线、LLM 运行逻辑和 Phase 4 计划文档。
+
+RAG 与文风整理：
+
+- 新增 `docs/inspiration_notes.md`，记录高层灵感和原创化边界；
+- 新增 `docs/tone_guide.md`，整理维多利亚神秘学、工业烟尘、调查节奏和 NPC 对话风格；
+- 新增 `docs/forbidden_outputs.md`，记录 LLM 不能越权生成的世界事实、机械结果、隐藏信息和奖励；
+- 新增 `docs/rag_seed_cards.md`，把八神、六大职业和国家气质整理为最小 RAG 设定卡；
+- 更新 `prompts/narrator.md`，要求 Narrator 使用原创文风和 RAG notes，但不能复刻其他作品或越权改变游戏事实；
+- 更新 `README.md`、`AGENTS.md`、`docs/world_bible.md` 和 `docs/llm_runtime_design.md`，接入这些 RAG 辅助文档。
+
+成长系统设计：
+
+- 新增 `docs/progression_design.md`；
+- 设计 `职业等级 + 信仰等级 + 仪式晋升 + 道具系统 + 代价系统` 的长期成长模型；
+- 规划未来六属性：体魄、灵巧、洞察、学识、意志、共鸣；
+- 参考 d20 / BG3 式小数值结构，补充属性分数、属性修正、升级加属性、属性上限、熟练加值、专精、伤害和防御规划；
+- 明确 LLM 不能直接授予等级、阶位、技能、天赋、祷告、属性、道具、神眷或见证值；
+- 更新 README、AGENTS、world bible、system design、technical roadmap、LLM runtime design、forbidden outputs、rag seed cards 和 narrator prompt。
+
+世界观整理：
+
+- 调整阿尔比昂核心城市分工；
+- 明确城市本名 `格兰威克` 与常用称号 `万都之都` 分离，并设定其为阿尔比昂首都、世界最大城市、全球资本流动中心、最大港口和海军决策中心；
+- 将阿尔比昂第二核心城市命名为 `黑炉城`，承担工业城市、工人运动和工厂异常功能；
+- 将阿尔比昂第三核心城市命名为 `潮钟城`，参考坎特伯雷，作为海洋之神教会总部和潮汐圣会最高圣座；
+- 重设卢米埃三大核心城市：`卢塞恩`、`圣雷米尔`、`维拉尔`，并将 `白城`、`真理之城` 作为称号单独记录，同时新增维拉尔的 `蔚蓝海岸` 度假区；
+- 重设瓦尔德三大核心城市：`格莱芬`、`科伦海姆`、`霍恩维克`，明确科伦海姆为全世界最大工业区和铁血教团总部，霍恩维克为东南界河城市并承担瓦尔德唯一港口功能；
+- 重设奥斯特三大核心城市：`维伦纳`、`卡洛维茨`、`佩斯塔`，删除奥斯特中的俄罗斯参考，明确俄罗斯气质归属于罗斯维亚大公国；
+- 新增奥斯特三大民族：`奥斯特人`、`佩斯塔人`、`波西恩人`，并明确维伦纳为音乐之都、审判之都和审判庭总部，卡洛维茨为工业区与波西恩人聚集地，佩斯塔为亚特海港口和佩斯塔人聚集地；
+- 将伊斯特亚正式国名定为 `伊斯特亚王冠领`；
+- 重设伊斯特亚为商人寡头君主制，明确 `阿尔卡萨` 为首都和王室权力中心，`贝拉诺` 为界河入海口西岸港口、海军核心、丰饶教会总部和商会寡头聚集地，`米拉诺` 为艺术与经济中心和金融寡头聚集地；
+- 新增海域结构：西部为混沌海，中部为亚特海，东部为黄金海岸，亚特海与黄金海岸只通过 `金门海峡` 连通；
+- 新增世界边界设定：世界边界为 `虚无之壁`，现有文明无法越过，虚无之壁外是无尽虚空和外神所在地；
+- 明确混沌海与亚特海之间开口较大，通常可以自由通行，但阿尔比昂可凭借世界第一海军进行封锁；
+- 修正北大陆国家方位：阿尔比昂位于西部群岛和混沌海，瓦尔德在北边，卢米埃在西边，伊斯特亚在南边，奥斯特在中东部，塞勒米亚在东南，罗斯维亚在东北；
+- 重设塞勒米亚：控制 `金门海峡`，官方信仰为深渊之神，`萨莱姆` 为深渊教会总部，塞勒米亚被其他国家视为异教国家；
+- 重设罗斯维亚：政体为大公专制，官方信仰为死亡之神，首都改为 `维亚洛夫`，并作为安魂教团总部；
+- 新增 `阿斯特拉山脉` 与山中小国 `诺克提亚`，明确诺克提亚城是首都兼唯一城市，也是夜幕修会总部所在地；
+- 将 `诺克提亚` 纳入其他重要国家列表，明确其为中立宗教城国、夜幕修会总部、保密银行和秘密档案中心；
+- 明确诺克提亚位于北大陆中心，与卢米埃、瓦尔德、伊斯特亚和奥斯特四国接壤，阿斯特拉山脉也横贯这一中央边境段；
+- 将诺克提亚参考扩展为教宗国与瑞士，补充山地中立、保密银行、秘密档案和山地守卫队设定；
+- 明确诺克提亚需要特殊手段才能进入，且夜幕修会在诺克提亚城拥有公开大教堂；
+- 明确隐秘之神 `诺克缇拉` 为女性神明；
+- 明确“海洋之神教会 / 海神教会 / 海洋教会”默认对应 `潮汐圣会`；
+- 将城市设定整理为城市本名与常用称号分离的格式，避免把绰号混入正式地名；
+- 新增八神教会速览，明确潮汐圣会、白塔院、铁血教团、审判庭、蔷薇圣庭、安魂教团、夜幕修会和密仪会的正式名、俗称和核心概念；
+- 根据命名偏好简化教会名：死亡之神教会固定为 `安魂教团`，审判之神教会固定为 `审判庭`，深渊系邪教网络概称为 `密仪会`，战争调整为 `铁血教团`，真理和丰饶分别调整为 `白塔院`、`蔷薇圣庭`；
+- 新增外神与伪神设定，当前阶段唯一明确外神为 `欲望母神`，并明确深渊之神属于八神体系但不被列强承认合法，信仰者多以隐秘组织和地下结社存在；
+- 同步更新 RAG 设定卡中的阿尔比昂城市与事件素材。
+
+## v4.7.0 - Phase 4 Real LLM CLI Runtime
+
+在 `v4.6.0` Open Generation Proposal Runtime 基础上完成 Phase 4 的真实 LLM 接入，让 CLI 可以通过可选 OpenAI provider 运行，同时保留本地 fallback。
+
+已完成：
+
+- 实现 `OpenAIActionCandidateProvider`；
+- 实现 `OpenAINarrationProvider`；
+- 新增 `RuntimeProviders`，集中记录当前 action/narration provider、模型和 fallback 原因；
+- 新增 `PANTHEON_USE_LLM`：显式启用真实 LLM；
+- 新增 `PANTHEON_OPENAI_MODEL`：覆盖默认模型；
+- 新增 `PANTHEON_RAG_CHAR_LIMIT`：限制送入 prompt 的最小 RAG notes 长度；
+- 新增 `PANTHEON_SHOW_RUNTIME`：在 CLI 展示 Phase 4 runtime 摘要；
+- 新增 `PANTHEON_OPENAI_TIMEOUT` 和 `PANTHEON_OPENAI_MAX_OUTPUT_TOKENS`，避免模型调用长时间无反馈；
+- 新增 `PANTHEON_PLAIN_PROMPT`，用于规避部分终端中文输入和彩色 prompt 的显示问题；
+- 新增 `python -m llm_runtime.smoke_test`，用于确认真实 LLM provider 是否接入成功；
+- 将 OpenAI action candidate 输出改为 schema-first：真实模型必须从合法 intent、risk tag 和 skill tag 枚举中选择；
+- 移除“把 jump 等词硬编码映射为 move”的 resolver 逻辑，避免用关键词补丁掩盖 LLM schema 问题；
+- 新增可选 live LLM 测试 `tests.test_live_openai_provider`，用于真实验证模型是否能把“跳向前厅”归一为 `move`；
+- `game_service.py` 接入 `ActionCandidateProvider -> validator -> AdjudicationRequest -> rule_engine -> NarrationProvider -> validator` 链路；
+- LLM action candidate 失败时自动回退到 `KeywordActionCandidateProvider`；
+- LLM narration 失败或越权时自动回退到 `TemplateNarrationProvider`；
+- `GameResponse.to_dict()` 输出 `llm_runtime` 运行时信息；
+- CLI 可显示 provider、candidate、adjudication、narration 和 runtime warning；
+- `requirements.txt` 新增 `openai`；
+- `.gitignore` 忽略 `.env`，避免 API key 进入 GitHub；
+- provider 测试使用 fake OpenAI client，不依赖真实网络和真实 API key；
+- 更新 README、AGENTS、LLM runtime design、Phase 4 plan、system design 和 technical roadmap；
+- 将当前版本更新为 `v4.7.0 Phase 4 Real LLM CLI Runtime`。
+
+## v4.6.0 - Phase 4 Open Generation Proposal Runtime
+
+在 `v4.5.0` Semantic Action And Generic Adjudication 基础上继续推进 Phase 4，把运行时原则明确为开放生成：LLM 可以自由提出地点、NPC、道具、关系、团队、组织、路线、传闻和事件，程序负责验证权限、统一逻辑、长期记忆和机械结果边界。
+
+已完成：
+
+- 新增 `GeneratedContentProposal`；
+- 新增 `GENERATED_CONTENT_TYPES`；
+- 新增开放生成 content 类型：`location`、`npc`、`item`、`relationship`、`team`、`organization`、`event`、`rumor`、`route`、`quest_hook`、`object`、`scene_detail`；
+- `validate_generated_content_proposal()` 支持验证开放生成内容；
+- 允许 `flavor` 和 `temporary` 生成内容；
+- 拒绝开放生成内容直接改变 inventory、relationship、faction、state、clue 或 persistent canon；
+- `ActionCandidate.item` 不再要求必须是预设道具，允许作为生成式候选对象存在；
+- 新增 `prompts/open_generation.md`；
+- 更新 README、AGENTS、系统设计、技术路线、LLM 运行逻辑和 Phase 4 计划文档；
+- 将当前版本更新为 `v4.6.0 Phase 4 Open Generation Proposal Runtime`。
+
+## v4.5.0 - Phase 4 Semantic Action And Generic Adjudication
+
+在 `v4.4.0` Scene And Event Proposals 基础上继续推进 Phase 4，让结构化行动候选保留玩家行动的想象力，并开始建立通用规则裁定请求。
+
+已完成：
+
+- 扩展 `ActionCandidate`，新增 `method`、`desired_outcome`、`risk_tags`、`skill_tags` 和 `assumptions`；
+- `candidate_to_action()` 会保留这些语义字段，后续规则层可以读取；
+- 非 `move` 行动的 `target` 可以是临时 NPC、物体或交互对象，不再只允许地点名；
+- 进一步放开 `move` target：LLM 可以提出临时房间、街道、区域或路线作为候选目标，但这些目标不会自动成为 canon；
+- 新增 `llm_runtime/adjudication.py`；
+- 新增 `AdjudicationRequest`、`AdjudicationValidation` 和 `AdjudicationResult`；
+- 新增通用裁定默认值：旅行、调查、神秘学分析、战斗、祈祷、休息、道具、潜行和社交；
+- 新增 risk tag、skill tag 和 possible cost 验证；
+- 更新 `prompts/action_candidate.md`，要求 LLM 保留玩家方法、目标、风险、技能标签和玩家猜测；
+- 新增 `tests/test_llm_runtime_adjudication.py`；
+- 更新 README、AGENTS、系统设计、技术路线、LLM 运行逻辑和 Phase 4 计划文档；
+- 将当前版本更新为 `v4.5.0 Phase 4 Semantic Action And Generic Adjudication`。
+
+## v4.4.0 - Phase 4 Scene And Event Proposals
+
+在 `v4.3.0` Structured Action Candidate 基础上继续推进 Phase 4，让 LLM 运行时可以提出局部场景、普通 NPC、传闻和小事件，但仍不能直接改变世界状态。
+
+已完成：
+
+- 新增 `SceneProposal`、`EventProposal` 和 `ProposalValidation`；
+- 新增 `AUTHORITY_LEVELS`：`flavor`、`temporary`、`persistent`、`mechanical`、`secret`；
+- 新增 `llm_runtime/proposals.py`；
+- 当前只允许展示型 `flavor` 和 `temporary` proposal；
+- validator 会拒绝 persistent world facts、mechanical state changes、new clues、location movement 和 secret-like claims；
+- 新增 `prompts/scene_event.md`；
+- 新增 `tests/test_llm_runtime_proposals.py`；
+- 更新 README、AGENTS、系统设计、技术路线、LLM 运行逻辑和 Phase 4 计划文档；
+- 将当前版本更新为 `v4.4.0 Phase 4 Scene And Event Proposals`。
+
+## v4.3.0 - Phase 4 Structured Action Candidate
+
+在 `v4.2.0` Prompt And Policy Files 基础上继续推进 Phase 4，让 LLM 运行时从“叙事提案”扩展到“行动候选提案”。
+
+已完成：
+
+- 新增 `ActionCandidate`、`ActionCandidateValidation` 和 `ActionCandidateResult`；
+- 新增 `llm_runtime/actions.py`；
+- 新增行动候选验证：supported intent、known location、known item、confidence 范围；
+- 新增 `resolve_action_candidate()`，验证失败时回退到当前关键词 parser；
+- 新增 `ActionCandidateProvider`、`KeywordActionCandidateProvider` 和 `OpenAIActionCandidateProvider`；
+- 新增 `prompts/action_candidate.md`；
+- 新增 `tests/test_llm_runtime_actions.py`；
+- 更新 README、AGENTS、系统设计、技术路线和 LLM 运行逻辑文档；
+- 将当前版本更新为 `v4.3.0 Phase 4 Structured Action Candidate`。
+
+## v4.2.0 - Phase 4 Prompt And Policy Files
+
+在 `v4.1.0` LLM Provider Interface 基础上继续推进 Phase 4，把 Narrator prompt 和禁止行为从代码中分离出来。
+
+已完成：
+
+- 新增 `prompts/`；
+- 新增 `prompts/narrator.md`，记录 Narrator 的输入、输出 schema、允许 claim 和禁止行为；
+- 新增 `llm_runtime/prompts.py`；
+- 新增 `load_prompt()`、`list_prompt_names()` 和 prompt 名称规范化逻辑；
+- 防止 prompt loader 通过路径分隔符读取任意文件；
+- 新增 `tests/test_llm_runtime_prompts.py`；
+- 更新 README、AGENTS、系统设计、技术路线、LLM 运行逻辑和 Phase 4 计划文档；
+- 将当前版本更新为 `v4.2.0 Phase 4 Prompt And Policy Files`。
+
+## v4.1.0 - Phase 4 LLM Provider Interface
+
+在 `v4.0.0` LLM Runtime Contracts 基础上继续推进 Phase 4，定义叙事 provider 接口，但仍不接真实模型。
+
+已完成：
+
+- 新增 `llm_runtime/providers.py`；
+- 新增 `NarrationProvider` 基类接口；
+- 新增 `TemplateNarrationProvider`，用于本地确定性运行；
+- 新增 `OpenAINarrationProvider` 占位类，明确真实 OpenAI 调用尚未实现；
+- `render_safe_narration()` 支持通过 provider 获取 `NarrationProposal`；
+- 保留旧的函数式 `proposer` 参数，兼容 v4.0 测试和调用方式；
+- 新增 `tests/test_llm_runtime_providers.py`；
+- 更新 README、AGENTS、系统设计、技术路线和 LLM 运行逻辑文档；
+- 将当前版本更新为 `v4.1.0 Phase 4 LLM Provider Interface`。
+
+## v4.0.0 - Phase 4 LLM Runtime Contracts
+
+在 `v3.1.0` Persistence Complete 基础上进入 Phase 4，先建立 LLM 运行时的结构化提案契约，不接真实模型。
+
+已完成：
+
+- 新增 `docs/phase4_llm_runtime_plan.md`，梳理 Phase 4 的完整开发清单；
+- 新增 `llm_runtime/`；
+- 新增 `llm_runtime/contracts.py`；
+- 新增 `NarrationProposal`、`NarrationValidation`、`NarrationResult`；
+- 新增 `llm_runtime/narrator.py`；
+- 实现叙事提案验证：只能 claim `rule_result` 已授权的状态变化、线索和地点；
+- 实现安全回退：非法提案自动回退到确定性规则文本；
+- 新增 `tests/test_llm_runtime_narrator.py`；
+- 小重构：把 CLI 角色创建交互从 `character.py` 移到 `main.py`，让 `character.py` 保持模型/构造职责；
+- 更新 README、AGENTS、系统设计、LLM 运行逻辑设计和技术路线文档；
+- 将当前版本更新为 `v4.0.0 Phase 4 LLM Runtime Contracts`。
+
 ## v3.1.0 - Phase 3 Persistence Complete
 
 在 `v3.0.0` SQLite baseline 基础上完成 Phase 3 持久化收尾，让 API 存储层更接近真实后端服务。
@@ -54,8 +267,8 @@
 - 将当前版本更新为 `v2.1.0 Phase 2 Complete`。
 - 将职业显示名从 `猎人 / Hunter` 调整为 `游侠 / Ranger`，内部 `class_id` 暂时保持 `hunter` 以兼容旧数据。
 - 将 `圣律之神` 调整为 `审判之神`，并补充八大神明的典籍神名。
-- 将伊斯特亚政体设定为海商寡头共和制。
-- 扩展五大列强设定，并新增关键海峡国 `塞勒米亚苏丹国`。
+- 将伊斯特亚政体设定为商人寡头君主制。
+- 扩展五大列强设定，并新增控制 `金门海峡` 的 `塞勒米亚苏丹国`。
 - 扩展八大神明和六大职业的详细设定，包括教会、禁忌、祝福、诅咒、职业定位、优势场景和玩法机制倾向。
 - 新增五大列强前三核心城市设定，并补充塞勒米亚、罗斯维亚等其他重要国家首都。
 

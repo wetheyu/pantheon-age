@@ -8,6 +8,7 @@ at a time.
 
 ```text
 LLM creates possibilities.
+Rules constrain authority, not imagination.
 The rule system confirms reality.
 Only validated structured state becomes game truth.
 ```
@@ -16,9 +17,13 @@ In Chinese:
 
 ```text
 LLM 负责提出可能性。
+规则限制的是改变现实的权限，而不是想象力。
 规则系统负责裁定现实。
 只有通过验证的结构化状态，才算真正发生。
 ```
+
+The rule engine should stabilize LLM creativity. It should not become a list of
+all possible scenes.
 
 ## Phase 1: CLI Rule Engine
 
@@ -96,6 +101,7 @@ POST   /characters
 POST   /games
 GET    /games
 GET    /games/{game_id}
+GET    /games/{game_id}/events
 DELETE /games/{game_id}
 POST   /games/{game_id}/actions
 ```
@@ -240,20 +246,254 @@ endpoint for inspecting persisted game history.
 - user accounts;
 - PostgreSQL, SQLAlchemy, and Alembic until this local persistence layer is understood.
 
-## Future LLM Architecture
+## Progression System Design
 
-The LLM layer should be added only after API and persistence boundaries are
-stable.
+Current status: design-only.
+
+The long-term growth model is documented in:
+
+```text
+docs/progression_design.md
+```
+
+The planned model contains:
+
+- class levels for skill growth;
+- faith levels for talents, prayers, devotion, and favor;
+- ritual ascension for supernatural rank breakthroughs;
+- items, relics, ritual media, and cursed objects;
+- costs, burdens, oaths, corruption, suspicion, and faction attention;
+- a future six-attribute model: Physique, Agility, Insight, Knowledge, Will, Communion.
+
+This should not be implemented as one giant rewrite. It affects:
+
+- `Character`;
+- save/load format;
+- public API state shape;
+- SQLite snapshots;
+- rule adjudication;
+- LLM proposal validation.
+
+When implementation starts, add the smallest playable slice first and keep old saves compatible.
+
+## Phase 4: Open Generation Proposal Runtime
+
+Current status: `v4.7.0 Phase 4 Real LLM CLI Runtime`.
+
+Phase 4 is complete. It proves the transitional LLM runtime:
+
+- structured proposal contracts;
+- OpenAI-backed providers;
+- prompt files;
+- local validators;
+- deterministic fallback;
+- CLI integration;
+- smoke and live-test hooks.
+
+Phase 4 should not keep expanding the old `ActionCandidate(intent=...)` shape
+with one-off keywords, aliases, or intent enum patches. That object is a bridge
+from the old CLI loop to the next runtime, not the final interaction model.
+
+Phase 4 started by defining contracts before real model calls, and now includes
+optional OpenAI-backed providers. Its final scope is structured proposal
+contracts, provider boundaries, prompt files, semantic action candidate
+validation, generic adjudication requests, open generation proposal validation,
+scene/event proposal validation, real-provider integration, and safe fallback
+behavior.
+
+Current RAG-ready documents:
+
+```text
+docs/world_bible.md
+docs/rag_seed_cards.md
+docs/tone_guide.md
+docs/forbidden_outputs.md
+docs/inspiration_notes.md
+```
+
+These documents give future LLM calls canon, compact seed cards, tone direction,
+forbidden behavior, and originality boundaries. They are context sources, not
+state authority.
+
+### Current Modules
+
+```text
+llm_runtime/
+  adjudication.py
+  actions.py
+  contracts.py
+  narrator.py
+  proposals.py
+  providers.py
+  prompts.py
+
+prompts/
+  action_candidate.md
+  narrator.md
+  open_generation.md
+  scene_event.md
+```
+
+### Current Data Flow
+
+```text
+player text
+  -> ActionCandidateProvider
+  -> prompts/action_candidate.md
+  -> semantic ActionCandidate
+  -> llm_runtime/actions.py
+  -> validate supported intent, target rules, item rules, tags, confidence range
+  -> rule_engine action dict or keyword parser fallback
+  -> llm_runtime/adjudication.py
+  -> AdjudicationRequest with check type, stat, difficulty, risks, costs
+
+local context
+  -> Scene/Event proposal provider later
+  -> prompts/scene_event.md
+  -> SceneProposal / EventProposal
+  -> llm_runtime/proposals.py
+  -> validate authority level and forbidden claims
+  -> display-only flavor/temporary content or rejection
+
+open context
+  -> Open Generation proposal provider later
+  -> prompts/open_generation.md
+  -> GeneratedContentProposal
+  -> llm_runtime/proposals.py
+  -> validate content type, authority level, and forbidden claims
+  -> temporary content or rejection
+
+GameResponse
+  -> NarrationProvider
+  -> prompts/narrator.md
+  -> NarrationProposal
+  -> llm_runtime/narrator.py
+  -> validate against rule_result
+  -> NarrationResult
+  -> use proposal text or deterministic fallback text
+```
+
+### Current Rules
+
+Action candidates are only proposals:
+
+- supported intent only;
+- generated targets are allowed as candidate NPCs, objects, rooms, streets,
+  districts, or routes;
+- generated targets are not canon until a later validator and memory layer
+  explicitly commit them;
+- generated item targets are allowed as candidate objects;
+- item rewards, inventory changes, and item consumption still require deterministic rules;
+- confidence must be between 0 and 1;
+- `method`, `desired_outcome`, `risk_tags`, `skill_tags`, and `assumptions`
+  preserve player imagination without becoming world truth;
+- invalid candidates fall back to the deterministic keyword parser.
+
+Generic adjudication requests do not mutate `GameState`. They prepare the next
+rule-engine step by translating rich player intent into:
+
+- check type;
+- primary stat;
+- difficulty;
+- possible risks;
+- possible costs.
+
+Narration proposals may claim only facts already approved by `rule_result`:
+
+- approved state changes;
+- approved new clues;
+- approved location after the action.
+
+If a proposal claims anything else, it is rejected and the system falls back to
+the deterministic text from Phase 1.
+
+Scene and event proposals may currently use only:
+
+- `flavor`;
+- `temporary`.
+
+They cannot commit:
+
+- `persistent` world facts;
+- `mechanical` results;
+- `secret` information.
+
+Open generation proposals follow the same rule for locations, NPCs, items,
+relationships, teams, organizations, rumors, routes, and events. Generated
+content can be displayed as `flavor` or `temporary`, but it cannot become canon,
+inventory, relationship state, faction state, clue state, or world memory until
+a later validator and memory layer explicitly commit it.
+
+### Current Providers
+
+```text
+TemplateNarrationProvider
+  -> wraps deterministic story text as a safe proposal
+
+KeywordActionCandidateProvider
+  -> wraps current keyword parser output as a safe action candidate
+
+OpenAINarrationProvider
+  -> optional OpenAI-backed narration proposal provider
+
+OpenAIActionCandidateProvider
+  -> optional OpenAI-backed action candidate provider
+```
+
+Providers do not mutate `GameState`. They only return structured proposals such
+as `ActionCandidate` or `NarrationProposal` for validation.
+
+Real LLM providers are enabled only when both conditions are true:
+
+```text
+PANTHEON_USE_LLM=1
+OPENAI_API_KEY is present
+```
+
+Otherwise the service layer uses keyword/template fallback providers.
+
+### Prompt Boundary
+
+Prompts and policy text live in `prompts/`.
+
+```text
+provider code loads prompt text
+prompt text defines output shape and forbidden behavior
+validator still enforces the rules in Python
+```
+
+Prompt text can guide a model, but it is not a security boundary. The Python
+validator remains the authority.
+
+### Future LLM Architecture
+
+The real LLM layer should be added only after proposal contracts and validation
+boundaries are stable.
+
+The target is not:
+
+```text
+fixed rule output -> LLM polish
+```
+
+The target is:
+
+```text
+LLM proposes possibilities -> validators/rules decide authority
+```
 
 ### Future Data Flow
 
 ```text
 player text
-  -> Intent Parser Agent
-  -> structured action candidate
-  -> validator
-  -> rule_engine
-  -> Narrator Agent
+  -> RAG retrieves local/canon context
+  -> LLM proposes ActionCandidate / SceneProposal / EventProposal
+  -> validators check world canon, hidden info, and state permissions
+  -> rule_engine adjudicates mechanical authority and consequences
+  -> memory layer decides what can persist
+  -> RAG retrieves narration context
+  -> Narrator Agent generates NarrationProposal
+  -> validators check final claims
   -> validated response
 ```
 
@@ -264,6 +504,81 @@ Agents may propose.
 Validators and rule_engine decide.
 Only validated state is persisted.
 ```
+
+## Phase 5: Agentic Runtime Baseline
+
+Planned status: next phase.
+
+Phase 5 should replace the old "LLM fills a narrow action schema" loop with a
+small agentic game loop.
+
+The long-term architecture is documented in:
+
+```text
+docs/agentic_runtime_architecture.md
+```
+
+### Target Phase 5 Flow
+
+```text
+player input
+  -> Memory Retriever
+  -> Intent Agent
+  -> Scene / NPC / Event / Item Agents
+  -> Rule Arbiter Agent
+  -> Validator Layer
+  -> State Commit Layer
+  -> Memory Curator Agent
+  -> Narrator Agent
+  -> CLI / API / Web UI
+```
+
+### Phase 5 Responsibilities
+
+- Intent Agent preserves open player intent instead of forcing it into a fixed
+  button-like intent too early.
+- Scene, NPC, Event, and Item Agents generate temporary possibilities.
+- Rule Arbiter Agent proposes checks, risks, costs, allowed effects, and denied
+  effects.
+- Validators approve or reject proposals.
+- State Commit Layer is the only layer that writes game reality.
+- Memory Curator Agent decides what to store, discard, compress, retrieve, or
+  keep hidden.
+- Narrator Agent writes final text from confirmed results only.
+
+### Phase 5 Boundary
+
+```text
+LLM creates possibilities.
+Agents organize and reason over them.
+Programs validate, commit, remember, and audit.
+```
+
+Phase 5 should still start small. The first slice only needs to run in CLI and
+prove one world-mode scene with fake providers, optional live LLM providers, and
+tests for every agent boundary.
+
+### Content Authority Levels
+
+```text
+flavor
+  Free atmosphere and sensory detail.
+
+temporary
+  Local scene details, minor rumors, unnamed NPCs.
+
+persistent
+  Named NPCs, relationships, local facts, city events.
+
+mechanical
+  HP, SAN, items, clues, location, factions, endings.
+
+secret
+  Hidden truth and unrevealed core mysteries.
+```
+
+LLM may generate all of these as proposals, but only validators, rules, and
+memory can decide what authority each proposal receives.
 
 ## Design Review Checklist
 

@@ -36,6 +36,9 @@ class GameServiceTests(unittest.TestCase):
         self.assertEqual(state.current_location, "前厅")
         self.assertIn("你从修道院门口来到前厅", response.text)
         self.assertIn("前厅", state.visited_locations)
+        self.assertIsNotNone(response.llm_runtime)
+        self.assertEqual(response.llm_runtime["action_candidate"]["candidate"]["source"], "keyword")
+        self.assertEqual(response.llm_runtime["narration"]["proposal"]["source"], "template")
 
     def test_service_response_exports_api_ready_dict(self):
         state = self.make_state()
@@ -48,6 +51,18 @@ class GameServiceTests(unittest.TestCase):
         self.assertEqual(payload["state"]["current_location"], "修道院门口")
         self.assertEqual(payload["state"]["available_exits"], ["前厅"])
         self.assertEqual(payload["state"]["player"]["name"], "阿洛")
+
+    def test_action_response_exports_llm_runtime_dict(self):
+        state = self.make_state()
+
+        response = handle_player_input(state, "调查脚印")
+        payload = response.to_dict()
+
+        self.assertIn("llm_runtime", payload)
+        self.assertIn("action_candidate", payload["llm_runtime"])
+        self.assertIn("adjudication", payload["llm_runtime"])
+        self.assertIn("narration", payload["llm_runtime"])
+        self.assertEqual(payload["llm_runtime"]["providers"]["action_provider"], "keyword")
 
     def test_save_load_and_quit_are_session_signals(self):
         state = self.make_state()

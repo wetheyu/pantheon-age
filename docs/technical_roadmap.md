@@ -9,6 +9,14 @@ Do not add every technology at once.
 Introduce each layer only when the project phase needs it.
 ```
 
+The corrected product direction is:
+
+```text
+LLM creates possibilities.
+Rules constrain authority, not imagination.
+Validators and rules decide what can become game truth.
+```
+
 ## Target System
 
 The final project is a rule-driven LLM Agent text adventure framework.
@@ -20,6 +28,7 @@ It should support:
 - FastAPI service endpoints;
 - structured API schemas;
 - persistent game state;
+- progression system with class levels, faith levels, ritual ascension, attributes, items, and costs;
 - world memory;
 - RAG-backed world canon;
 - constrained LLM generation;
@@ -209,28 +218,120 @@ Database writes should persist validated state.
 Database writes should not accept raw LLM output as truth.
 ```
 
+## Phase 3.5: Progression Design
+
+Goal: define the long-term growth model before implementing large character migrations.
+
+Current design document:
+
+```text
+docs/progression_design.md
+```
+
+Progression targets:
+
+- class levels;
+- faith levels;
+- ritual ascension ranks;
+- revelation;
+- favor;
+- talents;
+- skills;
+- prayers;
+- item categories;
+- burdens and costs;
+- future six-attribute model.
+
+Implementation rule:
+
+```text
+Design first.
+Then implement the smallest playable slice.
+Do not rewrite Character, save files, API schemas, and rule_engine all at once.
+```
+
+The recommended first implementation should keep the current four attributes and add only a few stable fields, then migrate toward the six-attribute model after save/API compatibility is planned.
+
 ## Phase 4: LLM Runtime
 
 Goal: use LLMs for controlled creativity without giving them authority over game state.
 
-Technologies:
+Current status: `v4.7.0 Phase 4 Real LLM CLI Runtime`.
 
+Current technologies:
+
+- Python standard library;
+- dataclass-based proposal contracts;
+- provider interfaces for action candidates and narration proposals;
+- local template provider;
 - OpenAI API;
 - Responses API;
 - structured outputs;
+- structured action candidate validation;
+- semantic action candidate fields;
+- generic adjudication request generation;
+- scene and event proposal validation;
+- open generation content proposal validation;
+- authority level validation;
+- keyword action candidate provider;
+- Markdown prompt and policy files;
+- prompt loader helpers;
+- deterministic validation against `rule_result`;
+- safe fallback to existing story text;
+- unit tests.
+
+Later technologies:
+
 - tool/function calling;
+- vector RAG;
+- local model deployment through Ollama, LM Studio, vLLM, or another OpenAI-compatible server;
+- tracing/evals;
 - optional Agents SDK later.
+
+Optional local deployment direction:
+
+- Keep OpenAI API as the default high-quality provider while the project is still evolving.
+- Add local deployment only after the provider interface, validation layer, and prompt contracts remain stable.
+- Prefer an OpenAI-compatible local server first, so the project can reuse the same provider boundary with a different base URL.
+- Candidate local runtimes: Ollama for simple local experiments, LM Studio for desktop testing, and vLLM for higher-throughput server deployment.
+- Local models should still return structured `ActionCandidate` or `NarrationProposal` objects and must pass the same Python validators.
+- Local deployment is for offline play, cost control, privacy experiments, and provider portability. It must not bypass rule authority or memory commit rules.
 
 LLM components:
 
 ```text
 llm_runtime/
-  intent_parser.py
+  contracts.py
+  adjudication.py
+  actions.py
+  proposals.py
   narrator.py
+  providers.py
+  prompts.py
+  intent_parser.py
   scene_generator.py
   event_generator.py
   npc_dialogue.py
   memory_summarizer.py
+```
+
+Current implemented modules:
+
+```text
+llm_runtime/
+  contracts.py
+  adjudication.py
+  actions.py
+  proposals.py
+  narrator.py
+  providers.py
+  prompts.py
+
+prompts/
+  action_candidate.md
+  narrator.md
+  open_generation.md
+  scene_event.md
 ```
 
 LLM roles:
@@ -241,6 +342,27 @@ LLM roles:
 - generate NPC dialogue;
 - narrate validated rule results;
 - summarize already-validated history.
+
+Current implemented role:
+
+- validate narration proposals against deterministic `rule_result`;
+- validate action candidates before they become rule-engine actions;
+- preserve player method, desired outcome, risks, skill tags, and assumptions in action candidates;
+- turn semantic action candidates into generic adjudication requests;
+- validate scene/event proposals against authority levels;
+- validate generated locations, NPCs, items, relationships, teams, organizations,
+  events, rumors, routes, and quest hooks without requiring all of them to be
+  prewritten;
+- obtain narration proposals through a provider interface;
+- keep narrator prompt and policy text in `prompts/narrator.md`;
+- fall back to deterministic story text when a proposal overclaims.
+
+Corrected long-term role:
+
+- let LLM generate possible actions, scenes, NPCs, events, and narration;
+- classify generated content by authority level;
+- use validators and rules to decide what can affect reality;
+- avoid turning the rule engine into a fixed list of possible scenes.
 
 LLM must not:
 
@@ -255,39 +377,143 @@ Core flow:
 LLM proposal -> validator -> rule/service layer -> memory commit
 ```
 
-## Phase 5: Validation Layer
+Current v4.0 flow:
 
-Goal: prevent LLM output from breaking world rules.
+```text
+GameResponse -> NarrationProvider -> NarrationProposal -> validation -> NarrationResult
+```
 
-Technologies:
+Target creative flow:
 
-- Pydantic models;
-- custom validators;
-- deterministic rule checks;
-- schema-based proposal validation.
+```text
+player input
+  -> RAG context
+  -> ActionCandidate / SceneProposal / EventProposal
+  -> validators
+  -> generic rule adjudication
+  -> memory commit decision
+  -> narration proposal
+  -> final validation
+```
 
-Suggested modules:
+## Phase 5: Agentic Runtime Baseline
+
+Goal: move from "LLM plugged into the old CLI" to a real agentic game loop.
+
+Core direction:
+
+```text
+LLM provides imagination.
+Agents understand, propose, arbitrate, curate memory, and narrate.
+Programs validate authority, commit state, persist memory, and keep traces.
+```
+
+The full long-term architecture is described in:
+
+```text
+docs/agentic_runtime_architecture.md
+```
+
+Phase 5 should not keep expanding `ActionCandidate(intent=...)` with one-off
+keyword or enum patches. The next runtime should preserve open player intent and
+let specialized agents reason over it.
+
+Target modules:
+
+```text
+agentic_runtime/
+  __init__.py
+  orchestrator.py
+  contracts.py
+  intent_agent.py
+  rule_arbiter_agent.py
+  scene_agent.py
+  npc_agent.py
+  event_agent.py
+  item_agent.py
+  memory_retriever.py
+  memory_curator.py
+  state_commit.py
+  narrator_agent.py
+  validators.py
+```
+
+Core proposal objects:
+
+```text
+OpenActionProposal
+SceneProposal
+NPCProposal
+EventProposal
+ItemProposal
+RuleAdjudicationProposal
+StateCommitProposal
+MemoryCandidate
+MemoryRetrievalResult
+NarrationProposal
+ValidationResult
+TraceRecord
+```
+
+Minimum Phase 5 workflow:
+
+```text
+Player Input
+  -> Memory Retriever
+  -> Intent Agent
+  -> Scene/NPC/Event Agents
+  -> Rule Arbiter Agent
+  -> Validator Layer
+  -> State Commit Layer
+  -> Memory Curator Agent
+  -> Narrator Agent
+  -> CLI output
+```
+
+Phase 5 completion target:
+
+- Intent Agent preserves complex player intent without forcing it into old button-like intents too early.
+- Rule Arbiter Agent proposes checks, risks, costs, allowed effects, and denied effects.
+- Scene/NPC/Event Agents can generate temporary content.
+- Memory Curator Agent decides what to store, discard, compress, retrieve, or keep hidden.
+- State Commit Layer is still the only layer that writes game reality.
+- CLI can run the agentic flow in a small world-mode slice.
+- Fake provider tests cover every agent.
+- Optional live LLM tests can be enabled through environment variables.
+
+Important boundary:
+
+```text
+Agents may propose and reason.
+Validators may approve or reject.
+Commit layer writes reality.
+```
+
+Validation remains essential in Phase 5, but it is part of the agentic loop:
 
 ```text
 validation/
+  rule_adjudication_validator.py
+  state_commit_validator.py
   scene_validator.py
   event_validator.py
   npc_validator.py
   lore_validator.py
   reward_validator.py
   hidden_info_validator.py
+  memory_validator.py
 ```
 
 Validators should check:
 
-- country exists;
-- deity exists;
-- technology level is valid;
+- country, city, deity, church, and technology consistency;
 - hidden information is not leaked;
-- rewards are not granted without rules;
-- generated NPCs are not too powerful;
+- rewards are not granted without authorization;
+- generated NPCs are not too powerful or canon-breaking;
 - scene persistence is allowed;
-- proposal does not mutate protected state directly.
+- proposed commits do not mutate protected state directly;
+- player speculation is not stored as confirmed fact;
+- memory visibility is correct.
 
 ## Phase 6: RAG And World Canon
 
@@ -319,9 +545,18 @@ rag/
 Start simple:
 
 1. Keep canon in Markdown.
-2. Add manual retrieval by file/topic.
-3. Add embeddings only when manual retrieval becomes painful.
-4. Use pgvector if PostgreSQL is already the main database.
+2. Use a tiny first corpus:
+   - `docs/world_bible.md`
+   - `docs/rag_seed_cards.md`
+   - `docs/tone_guide.md`
+   - `docs/forbidden_outputs.md`
+   - `docs/inspiration_notes.md`
+3. Add manual retrieval by file/topic.
+4. Add embeddings only when manual retrieval becomes painful.
+5. Use pgvector if PostgreSQL is already the main database.
+
+Do not use full copyrighted novels as the RAG corpus. Use original project canon,
+user-written inspiration notes, and high-level tone summaries instead.
 
 RAG is context, not authority:
 
