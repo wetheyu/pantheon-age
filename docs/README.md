@@ -1,64 +1,60 @@
-# Pantheon Age Documentation
+# 文档总览
 
-This folder contains the project design, world canon, runtime rules, phase
-summaries, and future development plans.
+这里是 `Pantheon Age` 的文档入口。
 
-Use this file as the documentation entry point.
+README 负责介绍项目；本文件负责告诉你“要看哪份文档”。
 
-## Source Of Truth
+## 首先阅读
 
-Read these first:
+1. [../AGENTS.md](../AGENTS.md)：工程规则、架构边界、测试命令和协作约束。
+2. [phase1_6_architecture_summary.md](phase1_6_architecture_summary.md)：Phase 1-6 当前架构基线。
+3. [agentic_runtime_architecture.md](agentic_runtime_architecture.md)：长期 Agentic Runtime 设计。
+4. [future_phase_plan.md](future_phase_plan.md)：Phase 7-10 开发路线。
+5. [world_bible.md](world_bible.md)：世界观总览。
 
-1. [../AGENTS.md](../AGENTS.md) - engineering rules, architecture boundaries, test commands, and workflow constraints.
-2. [phase1_6_architecture_summary.md](phase1_6_architecture_summary.md) - current baseline after Phase 6.
-3. [agentic_runtime_architecture.md](agentic_runtime_architecture.md) - long-term multi-agent runtime model.
-4. [future_phase_plan.md](future_phase_plan.md) - Phase 7-10 execution plan.
-5. [world_bible.md](world_bible.md) - readable world overview.
+## 架构文档
 
-## Current Architecture
+- [phase1_6_architecture_summary.md](phase1_6_architecture_summary.md)：当前主线、兼容层和历史阶段的边界。
+- [agentic_runtime_architecture.md](agentic_runtime_architecture.md)：Intent、Rule Arbiter、Scene、NPC、Event、Item、Memory、Narrator 等 Agent 的职责。
+- [llm_runtime_design.md](llm_runtime_design.md)：LLM 提案、验证、提交、叙事和防越权规则。
+- [system_design.md](system_design.md)：阶段式系统设计和数据流说明。
+- [technical_roadmap.md](technical_roadmap.md)：长期技术栈、性能、部署和工程能力规划。
 
-- [phase1_6_architecture_summary.md](phase1_6_architecture_summary.md): consolidated architecture baseline.
-- [agentic_runtime_architecture.md](agentic_runtime_architecture.md): target Agentic Runtime responsibilities and boundaries.
-- [llm_runtime_design.md](llm_runtime_design.md): LLM proposal, validation, commit, and narration rules.
-- [system_design.md](system_design.md): broader phase-by-phase architecture notes.
-- [technical_roadmap.md](technical_roadmap.md): long-term technology options and technical areas.
+## 世界观与设定
 
-## World And Canon
+- [world_bible.md](world_bible.md)：世界设定主文档。
+- [canon/](canon/README.md)：供 RAG 检索的拆分设定语料。
+- [progression_design.md](progression_design.md)：属性、职业等级、信仰等级、仪式晋升、道具和代价系统。
+- [tone_guide.md](tone_guide.md)：叙事文风。
+- [forbidden_outputs.md](forbidden_outputs.md)：LLM 禁止越权输出规则。
+- [inspiration_notes.md](inspiration_notes.md)：灵感来源和原创边界。
+- [rag_seed_cards.md](rag_seed_cards.md)：紧凑设定卡片，作为旧版 fallback。
 
-- [world_bible.md](world_bible.md): main world overview.
-- [canon/](canon/README.md): retrievable canon corpus for RAG.
-- [progression_design.md](progression_design.md): attributes, class levels, faith levels, rituals, items, and costs.
-- [tone_guide.md](tone_guide.md): narration tone and style guide.
-- [forbidden_outputs.md](forbidden_outputs.md): LLM authority boundaries and forbidden claims.
-- [inspiration_notes.md](inspiration_notes.md): high-level inspirations and originality boundaries.
-- [rag_seed_cards.md](rag_seed_cards.md): compact fallback RAG cards.
+## 阶段记录
 
-## Phase Records
+历史或完成记录：
 
-Completed or historical phase documents:
+- [phase2_api_plan.md](phase2_api_plan.md)：Phase 2 FastAPI 计划。
+- [phase4_llm_runtime_plan.md](phase4_llm_runtime_plan.md)：Phase 4 结构化 LLM Runtime 计划。
+- [phase5_agentic_runtime_plan.md](phase5_agentic_runtime_plan.md)：Phase 5 Agentic Runtime 分阶段计划。
+- [phase5_completion_summary.md](phase5_completion_summary.md)：Phase 5 完成总结。
+- [phase6_world_memory_plan.md](phase6_world_memory_plan.md)：Phase 6 世界知识与长期记忆计划。
+- [phase6_completion_summary.md](phase6_completion_summary.md)：Phase 6 完成总结。
 
-- [phase2_api_plan.md](phase2_api_plan.md): FastAPI migration plan.
-- [phase4_llm_runtime_plan.md](phase4_llm_runtime_plan.md): structured LLM runtime plan.
-- [phase5_agentic_runtime_plan.md](phase5_agentic_runtime_plan.md): Phase 5 staged build plan.
-- [phase5_completion_summary.md](phase5_completion_summary.md): Phase 5 completion summary.
-- [phase6_world_memory_plan.md](phase6_world_memory_plan.md): Phase 6 staged build plan.
-- [phase6_completion_summary.md](phase6_completion_summary.md): Phase 6 completion summary.
+未来开发：
 
-Future execution:
+- [future_phase_plan.md](future_phase_plan.md)：Phase 7 最小可玩体验、Phase 8 成长系统、Phase 9 Web/API 体验、Phase 10 工程质量与最终优化。
 
-- [future_phase_plan.md](future_phase_plan.md): Phase 7 minimum playable experience, Phase 8 progression, Phase 9 web/API product experience, and Phase 10 engineering quality.
+## 运行与测试
 
-## Runtime And Testing
+- [live_llm_testing.md](live_llm_testing.md)：真实 LLM、`.env`、smoke test 和 live test 的安全配置方式。
 
-- [live_llm_testing.md](live_llm_testing.md): safe `.env` setup and opt-in live LLM tests.
+默认自动化测试必须保持本地、离线、零 API 成本。真实 LLM 和真实 embedding 测试必须通过环境变量显式开启。
 
-Normal automated tests should remain local and network-free. Live LLM and
-embedding calls must stay opt-in through environment variables.
+## 维护原则
 
-## Maintenance Rules
-
-- Keep world facts in `world_bible.md` or `docs/canon/`.
-- Keep engineering rules in `AGENTS.md`.
-- Keep future implementation work in `future_phase_plan.md`.
-- Keep detailed phase history in phase-specific plan or summary files.
-- Avoid duplicating the same architecture rule across many documents.
+- 世界事实放在 `world_bible.md` 或 `docs/canon/`。
+- 工程规则放在 `AGENTS.md`。
+- 后续阶段开发计划放在 `future_phase_plan.md`。
+- 已完成阶段的细节放在对应 phase plan / summary。
+- 不要在多份文档里重复维护同一条架构规则。

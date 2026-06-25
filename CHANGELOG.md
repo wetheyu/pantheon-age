@@ -5,7 +5,7 @@
 - 新增 `docs/phase1_6_architecture_summary.md`，将 Phase 1-6 收束为当前架构基线，明确 Phase 1 tutorial、Phase 2 API、Phase 3 persistence、Phase 4 compatibility bridge、Phase 5 Agentic Runtime 和 Phase 6 RAG/memory 的职责边界；
 - 删除已被合并吸收的 `docs/refactor_plan.md`，避免旧方向文档与当前 Agentic Runtime 主线重复；
 - 重写 `docs/future_phase_plan.md`，将 Phase 7-10 拆成 Codex-friendly 小任务：最小可玩体验校准、成长系统与核心机制、Web UI/API 产品体验、工程质量与最终体验优化；
-- 新增 `docs/README.md` 文档总入口，并精简 README 项目状态与设计文档部分，使项目首页更偏专业概览，详细阶段记录交给 docs 索引和 phase summary；
+- 新增 `docs/README.md` 中文文档总入口，并将 README 从长开发日志精简为 GitHub 首页式项目概览；
 - world-mode 新增 `current_scene_focus` 具体场景锚点：`current_location` 继续表示城市级位置，`current_scene_focus` 表示玩家当前所在的具体街区、建筑或场景；
 - 非移动行动默认保留在当前具体场景中，避免 LLM 叙事把玩家无端写到市场、旅店、码头等新地点；
 - 明确“前往/进入/走向/去”等本城移动时，只更新具体场景锚点，不自动改变城市级位置；
