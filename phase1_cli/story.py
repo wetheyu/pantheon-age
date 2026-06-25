@@ -20,6 +20,7 @@ from .data import (
 from .scenarios import (
     WORLD_GAME_MODE,
     available_exits_for_state,
+    current_scene_focus_for_state,
     describe_origin_city,
     game_mode_for_state,
     location_description_for_state,
@@ -45,6 +46,7 @@ def render_opening(character, game_mode=None):
         city_title = character.flags.get("origin_city_title", "")
         city_title_text = f"，“{city_title}”" if city_title else ""
         city_description = describe_origin_city(character.flags.get("origin_country_id"), origin_city)
+        scene_focus = character.flags.get("current_scene_focus") or f"{origin_city}的开放街区"
         background_name = character.flags.get("background_name", "无名旅人")
         background_description = character.flags.get("background_description", "")
         background_hook = character.flags.get("background_opening_hook", "")
@@ -64,6 +66,8 @@ def render_opening(character, game_mode=None):
 
 此刻，你站在 {origin_city}{city_title_text}。
 {city_description}
+
+你的当前具体场景是：{scene_focus}。除非你明确前往别处，否则主持人会默认把后续行动放在这个场景里。
 
 你还没有被卷入某个确定的案件。主持人会根据你的行动展开场景：你可以去教会、码头、报社、市场、大学、车站或任何你觉得合理的地方；也可以直接找人、调查传闻、追踪异常、祈祷、交易或制造一点麻烦。
 

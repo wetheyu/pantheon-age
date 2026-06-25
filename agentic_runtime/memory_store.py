@@ -12,7 +12,7 @@ MEMORY_TYPE_BUCKETS = {
     "location_memory": "location",
     "quest_memory": "quest",
     "world_event_memory": "quest",
-    "faction_memory": "quest",
+    "faction_memory": "faction",
     "secret_memory": "secret",
 }
 

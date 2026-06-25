@@ -108,6 +108,8 @@ def validate_relation_signal(signal):
         errors.append("delta must be between -5 and 5")
     if not signal.summary.strip():
         errors.append("summary is required")
+    if not signal.evidence:
+        errors.append("evidence is required")
     return tuple(errors)
 
 

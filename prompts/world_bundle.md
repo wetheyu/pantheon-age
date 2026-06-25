@@ -99,6 +99,9 @@ Return one JSON object:
   "commit", "memory retrieval", "rule_result", or "agent".
 - Do not repeat the full current location description every turn.
 - Mention the location only when it naturally matters.
+- Respect location continuity: if the player did not explicitly move, keep the
+  action inside the current concrete scene. Nearby places can be mentioned as
+  options or background, but not as places the player has already entered.
 - If the player asks a question, answer through the scene, NPC speech,
   documents, rumor, hesitation, or observable reaction.
 - If the player attempts violence, murder, theft, coercion, escape, infiltration,

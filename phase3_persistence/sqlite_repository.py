@@ -6,6 +6,7 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
+from agentic_runtime.contracts import MEMORY_BUCKETS, MemoryRecord
 from phase1_cli.game_state import GameState
 
 from .config import get_database_path
@@ -73,6 +74,39 @@ class GameSessionRepository:
                 )
                 """
             )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS game_memories (
+                    game_id TEXT NOT NULL,
+                    record_id TEXT NOT NULL,
+                    bucket TEXT NOT NULL,
+                    memory_type TEXT NOT NULL,
+                    subject TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    authority_level TEXT NOT NULL,
+                    visibility TEXT NOT NULL,
+                    source_event TEXT NOT NULL DEFAULT '',
+                    confidence REAL NOT NULL DEFAULT 1.0,
+                    source TEXT NOT NULL DEFAULT 'memory-store',
+                    created_at TEXT NOT NULL,
+                    PRIMARY KEY (game_id, record_id),
+                    FOREIGN KEY (game_id) REFERENCES game_sessions(game_id)
+                        ON DELETE CASCADE
+                )
+                """
+            )
+            connection.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_game_memories_game_bucket
+                ON game_memories (game_id, bucket)
+                """
+            )
+            connection.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_game_memories_game_visibility
+                ON game_memories (game_id, visibility)
+                """
+            )
             connection.commit()
         except sqlite3.Error as error:
             raise PersistenceError(f"Cannot ensure SQLite schema: {error}") from error
@@ -93,6 +127,7 @@ class GameSessionRepository:
                     (game_id, payload, now, now),
                 )
                 self._replace_events(connection, game_id, state.event_log, now)
+                self._replace_memory_records(connection, game_id, state.agentic_memory, now)
         except sqlite3.Error as error:
             raise PersistenceError(f"Cannot save game session: {error}") from error
 
@@ -103,13 +138,16 @@ class GameSessionRepository:
                     "SELECT state_json FROM game_sessions WHERE game_id = ?",
                     (game_id,),
                 ).fetchone()
+                memory_rows = self._fetch_memory_rows(connection, game_id) if row else []
         except sqlite3.Error as error:
             raise PersistenceError(f"Cannot read game session: {error}") from error
 
         if row is None:
             return None
 
-        return _deserialize_state(row["state_json"])
+        state = _deserialize_state(row["state_json"])
+        _hydrate_state_memory_from_rows(state, memory_rows)
+        return state
 
     def list(self):
         try:
@@ -117,17 +155,27 @@ class GameSessionRepository:
                 rows = connection.execute(
                     "SELECT game_id, state_json FROM game_sessions ORDER BY created_at, game_id"
                 ).fetchall()
+                memory_rows_by_game = {
+                    row["game_id"]: self._fetch_memory_rows(connection, row["game_id"])
+                    for row in rows
+                }
         except sqlite3.Error as error:
             raise PersistenceError(f"Cannot list game sessions: {error}") from error
 
         sessions = []
         for row in rows:
-            sessions.append((row["game_id"], _deserialize_state(row["state_json"])))
+            state = _deserialize_state(row["state_json"])
+            _hydrate_state_memory_from_rows(state, memory_rows_by_game.get(row["game_id"], []))
+            sessions.append((row["game_id"], state))
         return sessions
 
     def delete(self, game_id):
         try:
             with self._connection() as connection:
+                connection.execute(
+                    "DELETE FROM game_memories WHERE game_id = ?",
+                    (game_id,),
+                )
                 connection.execute(
                     "DELETE FROM game_events WHERE game_id = ?",
                     (game_id,),
@@ -143,6 +191,7 @@ class GameSessionRepository:
     def clear(self):
         try:
             with self._connection() as connection:
+                connection.execute("DELETE FROM game_memories")
                 connection.execute("DELETE FROM game_events")
                 connection.execute("DELETE FROM game_sessions")
         except sqlite3.Error as error:
@@ -175,6 +224,37 @@ class GameSessionRepository:
             for row in rows
         ]
 
+    def list_memory_records(self, game_id, bucket=None, include_hidden=False):
+        try:
+            with self._connection() as connection:
+                session_exists = connection.execute(
+                    "SELECT 1 FROM game_sessions WHERE game_id = ?",
+                    (game_id,),
+                ).fetchone()
+                if session_exists is None:
+                    return None
+
+                query = """
+                    SELECT *
+                    FROM game_memories
+                    WHERE game_id = ?
+                """
+                parameters = [game_id]
+
+                if bucket is not None:
+                    query += " AND bucket = ?"
+                    parameters.append(bucket)
+
+                if not include_hidden:
+                    query += " AND bucket != 'secret' AND visibility != 'system_secret'"
+
+                query += " ORDER BY created_at, record_id"
+                rows = connection.execute(query, parameters).fetchall()
+        except sqlite3.Error as error:
+            raise PersistenceError(f"Cannot list game memories: {error}") from error
+
+        return tuple(_memory_record_from_row(row) for row in rows)
+
     def _replace_events(self, connection, game_id, event_log, created_at):
         connection.execute(
             "DELETE FROM game_events WHERE game_id = ?",
@@ -190,6 +270,60 @@ class GameSessionRepository:
                 for event_index, text in enumerate(event_log)
             ],
         )
+
+    def _replace_memory_records(self, connection, game_id, agentic_memory, created_at):
+        connection.execute(
+            "DELETE FROM game_memories WHERE game_id = ?",
+            (game_id,),
+        )
+        records = _memory_records_from_store(agentic_memory)
+        connection.executemany(
+            """
+            INSERT INTO game_memories (
+                game_id,
+                record_id,
+                bucket,
+                memory_type,
+                subject,
+                content,
+                authority_level,
+                visibility,
+                source_event,
+                confidence,
+                source,
+                created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            [
+                (
+                    game_id,
+                    record.record_id,
+                    record.bucket,
+                    record.memory_type,
+                    record.subject,
+                    record.content,
+                    record.authority_level,
+                    record.visibility,
+                    record.source_event,
+                    record.confidence,
+                    record.source,
+                    created_at,
+                )
+                for record in records
+            ],
+        )
+
+    def _fetch_memory_rows(self, connection, game_id):
+        return connection.execute(
+            """
+            SELECT *
+            FROM game_memories
+            WHERE game_id = ?
+            ORDER BY created_at, record_id
+            """,
+            (game_id,),
+        ).fetchall()
 
 
 def _utc_now():
@@ -227,3 +361,48 @@ def _deserialize_state(raw_state_json):
         return GameState.from_dict(state_data)
     except (KeyError, TypeError, ValueError) as error:
         raise PersistenceError(f"Cannot rebuild game state: {error}") from error
+
+
+def _memory_records_from_store(agentic_memory):
+    if not isinstance(agentic_memory, dict):
+        return ()
+
+    records = []
+    for bucket in MEMORY_BUCKETS:
+        bucket_records = agentic_memory.get(bucket, [])
+        if not isinstance(bucket_records, list):
+            continue
+        for raw_record in bucket_records:
+            try:
+                record = MemoryRecord.from_dict(raw_record)
+            except (KeyError, TypeError, ValueError):
+                continue
+            records.append(record)
+    return tuple(records)
+
+
+def _memory_record_from_row(row):
+    return MemoryRecord(
+        record_id=row["record_id"],
+        bucket=row["bucket"],
+        memory_type=row["memory_type"],
+        subject=row["subject"],
+        content=row["content"],
+        authority_level=row["authority_level"],
+        visibility=row["visibility"],
+        source_event=row["source_event"],
+        confidence=row["confidence"],
+        source=row["source"],
+    )
+
+
+def _hydrate_state_memory_from_rows(state, rows):
+    if not rows:
+        return
+
+    state.agentic_memory = {bucket: [] for bucket in MEMORY_BUCKETS}
+    for row in rows:
+        record = _memory_record_from_row(row)
+        if record.bucket not in state.agentic_memory:
+            state.agentic_memory[record.bucket] = []
+        state.agentic_memory[record.bucket].append(record.to_dict())

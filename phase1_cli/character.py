@@ -95,6 +95,7 @@ class Character:
                 "background_name": self.flags.get("background_name"),
                 "background_description": self.flags.get("background_description"),
                 "church_context": self.flags.get("origin_church_context"),
+                "current_scene_focus": self.flags.get("current_scene_focus"),
             },
         }
 

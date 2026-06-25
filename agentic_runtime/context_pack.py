@@ -5,13 +5,19 @@ context instead of dumping every document into every LLM call.
 """
 
 from functools import lru_cache
+import os
 from pathlib import Path
 import re
+
+from phase1_cli.scenarios import current_scene_focus_for_state
+from rag.canon import retrieve_canon_chunks
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RAG_SEED_PATH = PROJECT_ROOT / "docs" / "rag_seed_cards.md"
 MAX_CARD_CHARS = 900
+CANON_RETRIEVAL_ENV_VAR = "PANTHEON_CANON_RETRIEVAL"
+DEFAULT_CANON_RETRIEVAL_STRATEGY = "keyword"
 
 
 def build_context_pack(
@@ -68,6 +74,12 @@ def build_location_context(state, memory_retrieval):
     location_context = list(memory_retrieval.location_context) if memory_retrieval else []
     return {
         "current_location": state.current_location,
+        "current_scene_focus": current_scene_focus_for_state(state),
+        "location_continuity_rule": (
+            "current_location is the city-level location. current_scene_focus is the concrete scene. "
+            "If the player does not explicitly move, keep narration inside current_scene_focus. "
+            "Nearby places may be mentioned as options, but do not narrate that the player went there."
+        ),
         "location_context": location_context[:4],
     }
 
@@ -96,6 +108,7 @@ def build_query_text(state, user_text, open_action, adjudication, commit):
     parts = [
         user_text,
         state.current_location,
+        current_scene_focus_for_state(state),
         state.player.class_name,
         state.player.god,
         state.player.flags.get("origin_country_formal_name", ""),
@@ -126,6 +139,27 @@ def build_query_text(state, user_text, open_action, adjudication, commit):
 
 
 def retrieve_relevant_lore_cards(query, limit=6):
+    strategy = os.environ.get(CANON_RETRIEVAL_ENV_VAR, DEFAULT_CANON_RETRIEVAL_STRATEGY)
+    try:
+        canon_chunks = retrieve_canon_chunks(query, limit=limit, strategy=strategy)
+    except Exception:
+        canon_chunks = retrieve_canon_chunks(
+            query,
+            limit=limit,
+            strategy=DEFAULT_CANON_RETRIEVAL_STRATEGY,
+        )
+    if canon_chunks:
+        return [
+            {
+                "title": chunk["title"],
+                "body": chunk["body"],
+                "source_path": chunk["source_path"],
+                "category": chunk["category"],
+                "visibility": chunk["visibility"],
+            }
+            for chunk in canon_chunks
+        ]
+
     cards = load_rag_seed_cards()
     scored = []
     query_terms = extract_query_terms(query)

@@ -7,6 +7,7 @@ from .character import Character
 from .data import CORE_TRUTH_CLUES
 from .scenarios import (
     available_exits_for_state,
+    current_scene_focus_for_state,
     game_mode_for_state,
     is_world_mode_state,
     scenario_id_for_state,
@@ -63,6 +64,7 @@ class GameState:
         return {
             "turn": self.turn,
             "current_location": self.current_location,
+            "current_scene_focus": current_scene_focus_for_state(self),
             "available_exits": available_exits_for_state(self),
             "game_mode": game_mode_for_state(self),
             "scenario_id": scenario_id_for_state(self),

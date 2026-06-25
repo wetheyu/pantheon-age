@@ -581,6 +581,14 @@ Validators should check:
 
 ## Phase 6: RAG And World Canon
 
+Current status: `v6.0.0` completes the consolidated Phase 6 world knowledge and
+persistent memory foundation. See:
+
+```text
+docs/phase6_world_memory_plan.md
+docs/phase6_completion_summary.md
+```
+
 Note:
 
 The execution-oriented post-Phase-5 roadmap now lives in:
@@ -602,9 +610,8 @@ Phase 10: Engineering Quality And Final Experience Optimization
 The RAG section below remains the technical design direction for the knowledge
 retrieval part of the consolidated Phase 6.
 
-Older headings later in this technical roadmap may keep their original numbers
-as historical technical categories. For execution order, follow
-`docs/future_phase_plan.md`.
+Older sections later in this technical roadmap are technical categories, not the
+execution order. For concrete Phase 7-10 tasks, follow `docs/future_phase_plan.md`.
 
 Goal: retrieve only the relevant world canon for each LLM call.
 
@@ -631,18 +638,15 @@ rag/
     forbidden_outputs.md
 ```
 
-Start simple:
+Current implementation:
 
-1. Keep canon in Markdown.
-2. Use a tiny first corpus:
-   - `docs/world_bible.md`
-   - `docs/rag_seed_cards.md`
-   - `docs/tone_guide.md`
-   - `docs/forbidden_outputs.md`
-   - `docs/inspiration_notes.md`
-3. Add manual retrieval by file/topic.
-4. Add embeddings only when manual retrieval becomes painful.
-5. Use pgvector if PostgreSQL is already the main database.
+1. Keep canon in Markdown under `docs/canon/`.
+2. Use `rag/canon.py` for chunk loading and keyword retrieval.
+3. Use `rag/embeddings.py` for local deterministic embeddings or optional OpenAI embeddings.
+4. Use `rag/vector_store.py` for SQLite vector cache.
+5. Use `keyword` as the stable default retrieval strategy.
+6. Use `vector` or `vector_hybrid` when embedding retrieval is useful.
+7. Use pgvector, Chroma, FAISS, or a reranker only when the corpus and memory volume justify the added complexity.
 
 Do not use full copyrighted novels as the RAG corpus. Use original project canon,
 user-written inspiration notes, and high-level tone summaries instead.
@@ -654,7 +658,7 @@ RAG gives the LLM canon context.
 Rules still decide state changes.
 ```
 
-## Phase 7: Web UI
+## Technical Area: Web UI
 
 Goal: make the game playable outside the terminal.
 
@@ -684,7 +688,7 @@ The frontend displays state and sends actions.
 It does not decide rules.
 ```
 
-## Phase 8: Agent Engineering Capabilities
+## Technical Area: Agent Engineering Capabilities
 
 Goal: make the LLM system debuggable, measurable, and safe enough for a real Agent project.
 
@@ -865,7 +869,7 @@ Defenses:
 - keep RAG documents categorized by trust and visibility;
 - log suspicious prompt-injection attempts.
 
-## Phase 9: Performance And Speed Optimization
+## Technical Area: Performance And Speed Optimization
 
 Goal: keep the game responsive as API, database, LLM, RAG, and web UI layers are added.
 
@@ -941,7 +945,7 @@ Track:
 
 Do not prematurely optimize Phase 1. Start measuring seriously after Phase 2 API and first LLM integration exist.
 
-## Phase 10: Deployment And Operations
+## Technical Area: Deployment And Operations
 
 Goal: make the project reproducible and deployable.
 

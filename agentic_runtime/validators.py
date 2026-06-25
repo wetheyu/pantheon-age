@@ -3,7 +3,13 @@
 from phase1_cli.data import BASE_STATS
 from phase1_cli.intent_parser import INTENT_PRIORITY
 
-from .contracts import AUTHORITY_LEVELS, MEMORY_TYPES, VISIBILITY_LEVELS, ValidationResult
+from .contracts import (
+    AUTHORITY_LEVELS,
+    GENERATED_FACT_TYPES,
+    MEMORY_TYPES,
+    VISIBILITY_LEVELS,
+    ValidationResult,
+)
 
 
 SUPPORTED_BRIDGE_INTENTS = frozenset((*INTENT_PRIORITY, "unknown", "world_action"))
@@ -192,6 +198,37 @@ def validate_memory_candidate(candidate):
             errors.append("Secret memory must use system_secret visibility.")
         if candidate.visibility == "system_secret" and candidate.memory_type != "secret_memory":
             errors.append("system_secret visibility must use secret_memory type.")
+    return ValidationResult(is_valid=not errors, errors=tuple(errors))
+
+
+def validate_generated_fact_proposal(proposal, commit=None):
+    errors = []
+    if proposal.fact_type not in GENERATED_FACT_TYPES:
+        errors.append(f"Unsupported generated fact type: {proposal.fact_type}")
+    if proposal.authority_level not in {"persistent", "secret"}:
+        errors.append("Generated facts must use persistent or secret authority.")
+    if proposal.visibility not in VISIBILITY_LEVELS:
+        errors.append(f"Unsupported generated fact visibility: {proposal.visibility}")
+    if not proposal.subject.strip():
+        errors.append("Generated fact subject is empty.")
+    if not proposal.content.strip():
+        errors.append("Generated fact content is empty.")
+    if not proposal.evidence:
+        errors.append("Generated fact must include evidence.")
+    if not isinstance(proposal.confidence, (int, float)):
+        errors.append("Generated fact confidence must be numeric.")
+    elif proposal.confidence < 0 or proposal.confidence > 1:
+        errors.append("Generated fact confidence must be between 0 and 1.")
+    if proposal.source.startswith(("llm-", "openai-")):
+        errors.append("Generated fact cannot come directly from a raw LLM provider.")
+    if proposal.fact_type == "secret" and proposal.visibility != "system_secret":
+        errors.append("Secret generated facts must use system_secret visibility.")
+    if proposal.visibility == "system_secret" and proposal.fact_type != "secret":
+        errors.append("system_secret visibility must use secret generated fact type.")
+    if contains_uncommitted_death_text(proposal.content):
+        committed = set(commit.committed_effects) if commit else set()
+        if not any(effect in committed for effect in ("target_death", "target_killed")):
+            errors.append("Generated fact cannot confirm death without committed death authority.")
     return ValidationResult(is_valid=not errors, errors=tuple(errors))
 
 

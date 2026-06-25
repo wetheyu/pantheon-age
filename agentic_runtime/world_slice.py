@@ -1,6 +1,10 @@
 """Helpers for the Phase 5 world-mode slice."""
 
-from phase1_cli.scenarios import is_world_mode_state, location_description_for_state
+from phase1_cli.scenarios import (
+    current_scene_focus_for_state,
+    is_world_mode_state,
+    location_description_for_state,
+)
 
 
 def target_text(state, open_action):
@@ -14,10 +18,11 @@ def target_text(state, open_action):
 
 
 def city_label(state):
+    scene_focus = current_scene_focus_for_state(state)
     title = state.player.flags.get("origin_city_title", "")
     if title and state.current_location == state.player.flags.get("origin_city"):
-        return f"{state.current_location}（{title}）"
-    return state.current_location
+        return f"{state.current_location}（{title}） / {scene_focus}"
+    return f"{state.current_location} / {scene_focus}"
 
 
 def origin_line(state):

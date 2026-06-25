@@ -43,8 +43,9 @@ Current implementation:
 - Phase 3: SQLite persistence complete.
 - Phase 4: structured LLM proposal runtime with optional OpenAI provider.
 - Phase 5: Agentic Runtime baseline complete.
-- Current milestone: Phase 5 final integration complete.
-- Next milestone: Phase 6 World Knowledge And Persistent Memory.
+- Phase 6: World Knowledge And Persistent Memory complete.
+- Current milestone: Phase 6 complete.
+- Next milestone: Phase 7 Minimum Playable Experience Calibration.
 - Existing reusable core lives in `phase1_cli/`.
 - Existing API layer lives in `phase2_api/`.
 - Existing persistence layer lives in `phase3_persistence/`.
@@ -80,6 +81,9 @@ Current important files:
 - `agentic_runtime/memory_retriever.py`: local memory retrieval baseline.
 - `agentic_runtime/memory_curator.py`: local Memory Curator baseline.
 - `agentic_runtime/memory_store.py`: local validated memory record store.
+- `agentic_runtime/memory_summarizer.py`: Phase 6 extractive memory summarizer for bounded context.
+- `agentic_runtime/generated_facts.py`: Phase 6 generated fact validation-to-memory commit helpers.
+- `agentic_runtime/relationship_memory.py`: Phase 6 relationship and faction memory commit helpers.
 - `agentic_runtime/world_slice.py`: world-mode city/origin/visible-memory slice helpers.
 - `agentic_runtime/narrator_agent.py`: local Narrator Agent baseline.
 - `agentic_runtime/validators.py`: Phase 5 validators.
@@ -91,12 +95,19 @@ Current important files:
 - `llm_runtime/narrator.py`: safe narration proposal validation and fallback.
 - `llm_runtime/providers.py`: action/narration provider interfaces, local fallback providers, and optional OpenAI providers.
 - `llm_runtime/prompts.py`: prompt loading helpers.
+- `rag/canon.py`: Phase 6 canon chunk loading and retrieval.
+- `rag/embeddings.py`: local and optional OpenAI embedding provider boundary.
+- `rag/vector_store.py`: SQLite canon vector cache.
 - `prompts/action_candidate.md`: Action Candidate prompt and policy file.
 - `prompts/open_generation.md`: Open Generation prompt and policy file.
 - `prompts/scene_event.md`: Scene/Event proposal prompt and policy file.
 - `prompts/narrator.md`: Narrator prompt and policy file.
 - `docs/world_bible.md`: world canon.
+- `docs/README.md`: documentation index and source-of-truth map.
 - `docs/rag_seed_cards.md`: compact RAG cards for gods, classes, and countries.
+- `docs/canon/`: Phase 6 split canon corpus for local retrieval and future RAG.
+- `docs/phase6_world_memory_plan.md`: Phase 6 staged implementation plan.
+- `docs/phase6_completion_summary.md`: Phase 6 completion summary.
 - `docs/tone_guide.md`: original tone guide for narration and generation.
 - `docs/forbidden_outputs.md`: LLM forbidden outputs and authority boundaries.
 - `docs/inspiration_notes.md`: high-level inspirations and originality boundaries.
@@ -107,9 +118,9 @@ Current important files:
 - `docs/phase4_llm_runtime_plan.md`: Phase 4 LLM runtime implementation plan.
 - `docs/phase5_agentic_runtime_plan.md`: Phase 5 Agentic Runtime staged implementation plan.
 - `docs/phase5_completion_summary.md`: Phase 5 final integration summary.
-- `docs/future_phase_plan.md`: execution-oriented Phase 6+ roadmap.
+- `docs/phase1_6_architecture_summary.md`: consolidated current baseline after Phase 6.
+- `docs/future_phase_plan.md`: execution-oriented Phase 7-10 roadmap.
 - `docs/agentic_runtime_architecture.md`: long-term multi-agent runtime architecture.
-- `docs/refactor_plan.md`: corrected direction for creative LLM generation and rule authority.
 - `docs/system_design.md`: phase-by-phase architecture and data flow.
 - `docs/technical_roadmap.md`: long-term technology stack and adoption order.
 
@@ -164,7 +175,7 @@ memory/
   Persistent player history, generated facts, NPC relationships, faction state, and save-backed world changes.
 
 rag/
-  Retrieval over world canon, country docs, deity docs, class docs, tone guides, and forbidden-output rules.
+  Local canon retrieval over `docs/canon/`, embedding provider boundary, SQLite vector cache, and later production vector retrieval/reranking over world canon, country docs, deity docs, class docs, tone guides, and forbidden-output rules.
 
 observability/
   Tracing, token usage, LLM call logs, latency metrics, and debugging records.
@@ -282,6 +293,7 @@ Rules:
 ## Documentation Rules
 
 - When gameplay behavior changes, update `README.md` and `CHANGELOG.md`.
+- When documentation structure changes, update `docs/README.md`.
 - When world canon changes, update `docs/world_bible.md`.
 - When compact RAG cards change, update `docs/rag_seed_cards.md`.
 - When tone direction changes, update `docs/tone_guide.md`.
@@ -290,6 +302,7 @@ Rules:
 - When LLM, RAG, validation, or memory behavior changes, update `docs/llm_runtime_design.md`.
 - When API design changes, update `docs/phase2_api_plan.md` or the relevant API docs.
 - When architecture, module boundaries, or data flow changes, update `docs/system_design.md`.
+- When completed phase boundaries or the current baseline changes, update `docs/phase1_6_architecture_summary.md` or the relevant phase summary.
 - When long-term technology choices, agent engineering capabilities, performance strategy, or adoption order changes, update `docs/technical_roadmap.md`.
 - Do not mix world canon, implementation notes, and runtime rules in the same document.
 
@@ -430,4 +443,5 @@ Phase 5 Agentic Runtime rules:
 - NPC/Event/Item Agents may generate temporary candidates only; they must not grant clues, inventory changes, state changes, or persistent facts.
 - Do not solve Phase 5 natural-language issues by patching Phase 1 keyword lists unless the task is explicitly about the tutorial parser.
 - Phase 5 stage-gated work is complete as of `v5.8.0`.
-- Do not start Phase 6 unless the user explicitly asks for Phase 6 planning or development.
+- Phase 6 stage-gated work is complete as of `v6.0.0`.
+- Do not start Phase 7 unless the user explicitly asks for Phase 7 planning or development.

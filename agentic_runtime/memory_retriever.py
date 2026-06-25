@@ -4,6 +4,7 @@ from phase1_cli.scenarios import is_world_mode_state, location_description_for_s
 
 from .contracts import MemoryRetrievalResult
 from .memory_store import memory_bucket_records
+from .memory_summarizer import summarize_and_format_records
 
 
 def retrieve_memory(state, user_text, recent_event_limit=5, memory_record_limit=5):
@@ -36,15 +37,24 @@ def retrieve_memory(state, user_text, recent_event_limit=5, memory_record_limit=
             )
 
     player_known.extend(
-        format_memory_records(
-            memory_bucket_records(state, "player_known")[-memory_record_limit:],
+        summarize_and_format_records(
+            memory_bucket_records(state, "player_known"),
             "玩家长期记忆",
+            memory_record_limit,
         )
     )
     player_known.extend(
-        format_memory_records(
-            memory_bucket_records(state, "quest")[-memory_record_limit:],
+        summarize_and_format_records(
+            memory_bucket_records(state, "quest"),
             "任务长期记忆",
+            memory_record_limit,
+        )
+    )
+    player_known.extend(
+        summarize_and_format_records(
+            memory_bucket_records(state, "faction"),
+            "关系长期记忆",
+            memory_record_limit,
         )
     )
 
@@ -53,20 +63,23 @@ def retrieve_memory(state, user_text, recent_event_limit=5, memory_record_limit=
         location_description_for_state(state),
     ]
     location_context.extend(
-        format_memory_records(
-            memory_bucket_records(state, "location")[-memory_record_limit:],
+        summarize_and_format_records(
+            memory_bucket_records(state, "location"),
             "地点长期记忆",
+            memory_record_limit,
         )
     )
     recent_events = tuple(state.event_log[-recent_event_limit:])
     hidden_context = tuple(
-        format_memory_records(
-            memory_bucket_records(state, "npc_known")[-memory_record_limit:],
+        summarize_and_format_records(
+            memory_bucket_records(state, "npc_known"),
             "NPC隐藏记忆",
+            memory_record_limit,
         )
-        + format_memory_records(
-            memory_bucket_records(state, "secret")[-memory_record_limit:],
+        + summarize_and_format_records(
+            memory_bucket_records(state, "secret"),
             "系统秘密记忆",
+            memory_record_limit,
         )
     )
 
@@ -83,7 +96,3 @@ def format_context_items(items):
     if not items:
         return "无"
     return "、".join(items)
-
-
-def format_memory_records(records, label):
-    return [f"{label}：{record.subject} -> {record.content}" for record in records]

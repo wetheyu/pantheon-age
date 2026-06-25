@@ -16,7 +16,17 @@ MEMORY_TYPES = (
     "secret_memory",
 )
 VISIBILITY_LEVELS = ("player_known", "npc_known", "system_secret")
-MEMORY_BUCKETS = ("player_known", "npc_known", "location", "quest", "secret")
+MEMORY_BUCKETS = ("player_known", "npc_known", "location", "quest", "faction", "secret")
+GENERATED_FACT_TYPES = (
+    "npc",
+    "location",
+    "rumor",
+    "event",
+    "organization",
+    "relationship",
+    "item",
+    "secret",
+)
 
 
 @dataclass(frozen=True)
@@ -320,6 +330,35 @@ class MemoryCandidate:
             "authority_level": self.authority_level,
             "visibility": self.visibility,
             "should_persist": self.should_persist,
+            "source_event": self.source_event,
+            "confidence": self.confidence,
+            "source": self.source,
+        }
+
+
+@dataclass(frozen=True)
+class GeneratedFactProposal:
+    fact_type: str
+    subject: str
+    content: str
+    authority_level: str = "persistent"
+    visibility: str = "player_known"
+    evidence: tuple[str, ...] = field(default_factory=tuple)
+    source_event: str = ""
+    confidence: float = 1.0
+    source: str = "generated-fact-commit"
+
+    def __post_init__(self):
+        object.__setattr__(self, "evidence", tuple(self.evidence))
+
+    def to_dict(self):
+        return {
+            "fact_type": self.fact_type,
+            "subject": self.subject,
+            "content": self.content,
+            "authority_level": self.authority_level,
+            "visibility": self.visibility,
+            "evidence": list(self.evidence),
             "source_event": self.source_event,
             "confidence": self.confidence,
             "source": self.source,

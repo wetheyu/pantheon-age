@@ -9,6 +9,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from agentic_runtime.intent_agent import propose_open_action
 from agentic_runtime.context_pack import build_context_pack, retrieve_relevant_lore_cards
+from agentic_runtime.generated_facts import commit_generated_fact_proposals
 from agentic_runtime.memory_store import (
     commit_memory_candidates,
     memory_bucket_records,
@@ -16,6 +17,12 @@ from agentic_runtime.memory_store import (
 )
 from agentic_runtime.memory_retriever import retrieve_memory
 from agentic_runtime.orchestrator import run_agentic_turn
+from agentic_runtime.relationship_memory import (
+    RelationshipMemorySignal,
+    commit_nation_relation_signals,
+    commit_relationship_memory_signals,
+    validate_relationship_memory_signal,
+)
 from agentic_runtime.providers import (
     AgenticProviders,
     OpenAIEventAgentProvider,
@@ -32,6 +39,7 @@ from agentic_runtime.providers import (
 from agentic_runtime.rule_arbiter_agent import propose_rule_adjudication
 from agentic_runtime.contracts import (
     EventProposal,
+    GeneratedFactProposal,
     ItemProposal,
     MemoryCandidate,
     NarrationProposal,
@@ -41,6 +49,7 @@ from agentic_runtime.contracts import (
 )
 from agentic_runtime.validators import (
     validate_event_proposal,
+    validate_generated_fact_proposal,
     validate_item_proposal,
     validate_memory_candidate,
     validate_narration_proposal,
@@ -57,7 +66,7 @@ from agentic_runtime.world_relations import (
 )
 from phase1_cli.character import build_character
 from phase1_cli.game_state import GameState
-from phase1_cli.scenarios import configure_character_for_game_mode
+from phase1_cli.scenarios import configure_character_for_game_mode, current_scene_focus_for_state
 
 
 class ParsedPayload:
@@ -175,6 +184,43 @@ class AgenticRuntimeTests(unittest.TestCase):
         self.assertEqual(result.items[0].claimed_inventory_changes, ())
         self.assertNotIn("雾吞掉了你的声音", result.narration.text)
 
+    def test_world_mode_initializes_scene_focus(self):
+        state = self.make_world_state()
+
+        self.assertEqual(state.current_location, "格兰威克")
+        self.assertEqual(current_scene_focus_for_state(state), "格兰威克的开放街区")
+        self.assertEqual(state.to_public_dict()["current_scene_focus"], "格兰威克的开放街区")
+
+    def test_world_mode_non_movement_keeps_scene_focus(self):
+        state = self.make_world_state()
+
+        result = run_agentic_turn(
+            state,
+            "观察周围，寻找一个可以交谈的人",
+            providers=build_local_agentic_providers(),
+        )
+
+        self.assertEqual(state.current_location, "格兰威克")
+        self.assertEqual(current_scene_focus_for_state(state), "格兰威克的开放街区")
+        self.assertEqual(result.commit.rule_result["scene_focus_before"], "格兰威克的开放街区")
+        self.assertEqual(result.commit.rule_result["scene_focus_after"], "格兰威克的开放街区")
+        self.assertNotIn("scene_focus_change", result.commit.committed_effects)
+
+    def test_world_mode_explicit_local_move_updates_scene_focus_not_city(self):
+        state = self.make_world_state()
+
+        result = run_agentic_turn(
+            state,
+            "我前往码头，询问愿意开口的水手",
+            providers=build_local_agentic_providers(),
+        )
+
+        self.assertEqual(state.current_location, "格兰威克")
+        self.assertEqual(current_scene_focus_for_state(state), "码头")
+        self.assertEqual(result.commit.rule_result["scene_focus_before"], "格兰威克的开放街区")
+        self.assertEqual(result.commit.rule_result["scene_focus_after"], "码头")
+        self.assertIn("scene_focus_change", result.commit.committed_effects)
+
     def test_world_slice_uses_visible_memory_without_confirming_rewards(self):
         state = self.make_world_state()
         commit_memory_candidates(
@@ -256,6 +302,20 @@ class AgenticRuntimeTests(unittest.TestCase):
         self.assertTrue(any("深渊之神" in title or "塞勒米亚" in title for title in titles))
         self.assertTrue(all(len(card["body"]) <= 930 for card in cards))
 
+    def test_relevant_lore_cards_can_use_hybrid_canon_retrieval(self):
+        with patch.dict("os.environ", {"PANTHEON_CANON_RETRIEVAL": "hybrid"}, clear=False):
+            cards = retrieve_relevant_lore_cards("黑水梦境与深渊祭司", limit=3)
+
+        self.assertTrue(cards)
+        self.assertTrue(any("深渊" in card["title"] or "密仪会" in card["body"] for card in cards))
+
+    def test_invalid_canon_retrieval_strategy_falls_back_to_keyword(self):
+        with patch.dict("os.environ", {"PANTHEON_CANON_RETRIEVAL": "bad-strategy"}, clear=False):
+            cards = retrieve_relevant_lore_cards("萨莱姆 密仪会 金门海峡", limit=3)
+
+        self.assertTrue(cards)
+        self.assertTrue(any("塞勒米亚" in card["title"] or "密仪会" in card["body"] for card in cards))
+
     def test_nation_relation_signal_can_update_dynamic_snapshot(self):
         snapshot = create_neutral_relation("albion", "selemia")
         signal = NationRelationSignal(
@@ -294,6 +354,78 @@ class AgenticRuntimeTests(unittest.TestCase):
         self.assertIn("unknown dimension: unknown", errors)
         self.assertIn("delta must be between -5 and 5", errors)
         self.assertIn("summary is required", errors)
+        self.assertIn("evidence is required", errors)
+
+    def test_nation_relation_signal_can_be_committed_to_faction_memory(self):
+        state = self.make_world_state()
+        signal = NationRelationSignal(
+            country_a="albion",
+            country_b="selemia",
+            event_type="border_incident",
+            dimension="trade",
+            delta=-2,
+            summary="阿尔比昂商船在金门海峡被塞勒米亚海关临时扣押。",
+            evidence=("扣押通告", "海关目击证词"),
+        )
+
+        records = commit_nation_relation_signals(state, (signal,), source_event="turn_4")
+
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0].bucket, "faction")
+        self.assertEqual(records[0].memory_type, "faction_memory")
+        self.assertIn("albion", records[0].subject)
+        self.assertIn("selemia", records[0].subject)
+        self.assertIn("delta=-2", records[0].content)
+        self.assertEqual(memory_store_summary(state)["faction"], 1)
+
+        memory = retrieve_memory(state, "继续关注金门海峡外交")
+        self.assertTrue(any("关系长期记忆" in item for item in memory.player_known))
+
+    def test_secret_relationship_memory_stays_hidden(self):
+        state = self.make_world_state()
+        signal = RelationshipMemorySignal(
+            relation_type="npc_attitude",
+            subject_a="书记员艾琳",
+            subject_b="玩家",
+            dimension="trust",
+            delta=2,
+            visibility="secret",
+            summary="艾琳暗中决定观察玩家是否值得交换更深层情报。",
+            evidence=("她没有公开拒绝玩家",),
+            source_event="turn_5",
+        )
+
+        records = commit_relationship_memory_signals(state, (signal,))
+
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0].bucket, "secret")
+        memory = retrieve_memory(state, "询问艾琳")
+        self.assertFalse(any("艾琳暗中决定" in item for item in memory.player_known))
+        self.assertTrue(any("艾琳暗中决定" in item for item in memory.hidden_context))
+
+    def test_relationship_memory_rejects_raw_llm_or_unevidenced_signal(self):
+        raw_llm_signal = RelationshipMemorySignal(
+            relation_type="church_legality",
+            subject_a="白塔院",
+            subject_b="阿尔比昂",
+            dimension="legality",
+            delta=-1,
+            summary="白塔院在阿尔比昂的公开讲座受到更多限制。",
+            evidence=("议会质询记录",),
+            source="openai-turn-director-agent",
+        )
+        unevidenced = RelationshipMemorySignal(
+            relation_type="faction_pressure",
+            subject_a="潮汐圣会",
+            subject_b="海军部",
+            dimension="pressure",
+            delta=1,
+            summary="潮汐圣会试图提高对海军部的影响。",
+            evidence=(),
+        )
+
+        self.assertFalse(validate_relationship_memory_signal(raw_llm_signal) == ())
+        self.assertFalse(validate_relationship_memory_signal(unevidenced) == ())
 
     def test_temporary_scene_cannot_claim_state_changes(self):
         state = self.make_state()
@@ -970,6 +1102,58 @@ class AgenticRuntimeTests(unittest.TestCase):
         self.assertTrue(any("异常钟声" in item for item in memory.location_context))
         self.assertEqual(memory.source, "local-memory-store")
 
+    def test_memory_retriever_summarizes_older_visible_memory(self):
+        state = self.make_world_state()
+        commit_memory_candidates(
+            state,
+            tuple(
+                MemoryCandidate(
+                    memory_type="quest_memory",
+                    subject=f"委托{i}",
+                    content=f"玩家已经记录第{i}条码头调查进展。",
+                    authority_level="persistent",
+                    visibility="player_known",
+                    should_persist=True,
+                    source_event=f"turn_{i}",
+                )
+                for i in range(7)
+            ),
+        )
+
+        memory = retrieve_memory(state, "继续调查码头", memory_record_limit=3)
+        quest_items = [item for item in memory.player_known if "任务长期记忆" in item]
+
+        self.assertEqual(len(quest_items), 4)
+        self.assertTrue(any("任务长期记忆摘要（4条早期记录" in item for item in quest_items))
+        self.assertTrue(any("委托0" in item for item in quest_items))
+        self.assertTrue(any("委托6 -> 玩家已经记录第6条" in item for item in quest_items))
+
+    def test_memory_retriever_summarizes_secret_memory_only_in_hidden_context(self):
+        state = self.make_world_state()
+        commit_memory_candidates(
+            state,
+            tuple(
+                MemoryCandidate(
+                    memory_type="secret_memory",
+                    subject=f"秘密{i}",
+                    content=f"第{i}条隐藏污染线索只允许系统知道。",
+                    authority_level="secret",
+                    visibility="system_secret",
+                    should_persist=True,
+                    source_event=f"turn_{i}",
+                )
+                for i in range(6)
+            ),
+        )
+
+        memory = retrieve_memory(state, "调查污染线索", memory_record_limit=2)
+
+        self.assertFalse(any("隐藏污染线索" in item for item in memory.player_known))
+        self.assertTrue(
+            any("系统秘密记忆摘要（4条早期记录" in item for item in memory.hidden_context)
+        )
+        self.assertTrue(any("秘密5 -> 第5条隐藏污染线索" in item for item in memory.hidden_context))
+
     def test_secret_memory_is_internal_not_serialized_or_narrated(self):
         state = self.make_world_state()
         secret_text = "某位书记员暗中效忠欲望母神。"
@@ -1018,6 +1202,87 @@ class AgenticRuntimeTests(unittest.TestCase):
 
         self.assertEqual(memory_store_summary(restored)["quest"], 1)
         self.assertTrue(any("第一次调查" in item for item in memory.player_known))
+
+    def test_generated_fact_commit_persists_valid_visible_npc_fact(self):
+        state = self.make_world_state()
+        commit = run_agentic_turn(state, "在报社寻找愿意提供消息的编辑").commit
+        fact = GeneratedFactProposal(
+            fact_type="npc",
+            subject="报社夜班编辑艾琳",
+            content="艾琳是格兰威克一家小报的夜班编辑，愿意用匿名线索交换港口走私消息。",
+            authority_level="persistent",
+            visibility="player_known",
+            evidence=("玩家与她完成首次交谈", "她提供了可后续追踪的联系方式"),
+            source_event=f"turn_{state.turn}",
+        )
+
+        records = commit_generated_fact_proposals(state, (fact,), commit)
+
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0].bucket, "player_known")
+        self.assertEqual(records[0].memory_type, "player_memory")
+        self.assertIn("艾琳", records[0].content)
+        self.assertIn("依据", records[0].content)
+
+    def test_generated_fact_commit_persists_secret_fact_as_secret_memory(self):
+        state = self.make_world_state()
+        commit = run_agentic_turn(state, "调查贵族沙龙的异常宴会").commit
+        fact = GeneratedFactProposal(
+            fact_type="secret",
+            subject="沙龙幕后污染",
+            content="某个贵族沙龙可能被欲望母神邪教渗透。",
+            authority_level="secret",
+            visibility="system_secret",
+            evidence=("密封档案记录了异常宴会名单",),
+            source_event=f"turn_{state.turn}",
+        )
+
+        records = commit_generated_fact_proposals(state, (fact,), commit)
+
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0].bucket, "secret")
+        self.assertEqual(records[0].memory_type, "secret_memory")
+        self.assertIn("欲望母神", memory_bucket_records(state, "secret")[0].content)
+
+    def test_generated_fact_validator_rejects_raw_llm_or_unevidenced_facts(self):
+        raw_llm_fact = GeneratedFactProposal(
+            fact_type="rumor",
+            subject="码头传闻",
+            content="码头工人说有无灯船在夜里靠岸。",
+            authority_level="persistent",
+            visibility="player_known",
+            evidence=("玩家询问码头工人",),
+            source="openai-turn-director-agent",
+        )
+        unevidenced = GeneratedFactProposal(
+            fact_type="rumor",
+            subject="码头传闻",
+            content="码头工人说有无灯船在夜里靠岸。",
+            authority_level="persistent",
+            visibility="player_known",
+            evidence=(),
+        )
+
+        self.assertFalse(validate_generated_fact_proposal(raw_llm_fact).is_valid)
+        self.assertFalse(validate_generated_fact_proposal(unevidenced).is_valid)
+
+    def test_generated_fact_commit_rejects_uncommitted_death_fact(self):
+        state = self.make_world_state()
+        commit = run_agentic_turn(state, "出手杀了守卫").commit
+        fact = GeneratedFactProposal(
+            fact_type="event",
+            subject="守卫死亡",
+            content="守卫被你杀死，尸体倒在血泊中。",
+            authority_level="persistent",
+            visibility="player_known",
+            evidence=("玩家试图攻击守卫",),
+            source_event=f"turn_{state.turn}",
+        )
+
+        records = commit_generated_fact_proposals(state, (fact,), commit)
+
+        self.assertEqual(records, ())
+        self.assertFalse(validate_generated_fact_proposal(fact, commit).is_valid)
 
     def test_npc_event_and_item_validators_reject_claimed_rewards(self):
         bad_npc = NPCProposal(

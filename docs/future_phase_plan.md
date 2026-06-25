@@ -1,398 +1,486 @@
 # Future Phase Plan
 
-This document is the execution-oriented roadmap after Phase 5.
+This is the execution plan after Phase 6.
 
-Core direction:
+It is written for small Codex-friendly development tasks: each stage should be
+scoped, testable, and easy to review.
+
+## Direction
 
 ```text
 LLM provides imagination.
-The program provides memory, consistency, validation, persistence, and speed.
-Build stable knowledge and memory foundations before polishing final play feel.
+The program provides memory, consistency, validation, persistence, retrieval, and speed control.
+Build foundations first. Polish after the foundations stop moving.
 ```
 
-Do not treat this as a rigid contract. Each phase should be reviewed after real
-playtesting. If a later phase changes the input structure of the LLM runtime,
-avoid spending too much effort polishing the old experience first.
-
-## Consolidated Phase Roadmap
-
-Use this consolidated order:
+Consolidated order:
 
 ```text
-Phase 6: World Knowledge And Persistent Memory
 Phase 7: Minimum Playable Experience Calibration
 Phase 8: Progression And Core Mechanics
 Phase 9: Web UI And API Product Experience
 Phase 10: Engineering Quality And Final Experience Optimization
 ```
 
-Why Phase 6 and Phase 7 are ordered this way:
+Why this order:
+
+- Phase 6 already added world knowledge and long-term memory.
+- Phase 7 makes the current loop playable enough for repeated testing.
+- Phase 8 adds actual game mechanics after the loop is comfortable.
+- Phase 9 moves the playable loop into a browser.
+- Phase 10 makes the whole project easier to debug, evaluate, deploy, and
+  present.
+
+## Task Format
+
+When asking Codex to implement a stage, prefer this shape:
 
 ```text
-RAG and world memory change what the LLM receives.
-They affect Turn Director prompts, context packing, persistence, and narration.
-Therefore implement the knowledge/memory foundation first, then polish the
-player experience on top of the new runtime shape.
+Task:
+[one small stage]
+
+Scope:
+[files or modules likely involved]
+
+Constraints:
+- keep unrelated files unchanged
+- preserve tests
+- keep network tests opt-in
+
+Done when:
+- [observable behavior]
+- [tests or verification]
+- [docs updated if behavior changes]
 ```
-
-Cross-cutting rule:
-
-```text
-Every phase should include basic tests, safety checks, and docs updates.
-Do not save observability, evals, or performance thinking for the very end.
-```
-
-## Phase 6: World Knowledge And Persistent Memory
-
-Goal: give LLMs the right world information and let the world remember validated
-facts beyond a single scene.
-
-This phase merges RAG and persistent world memory because they are two sides of
-the same system:
-
-- static canon: countries, cities, gods, churches, classes, tone, policy;
-- dynamic memory: generated NPCs, location memories, relation changes,
-  committed events, player-known facts, and hidden facts.
-
-Main work:
-
-- split world canon into smaller Markdown files;
-- define metadata: country, city, god, church, class, tone, policy, visibility;
-- build a local chunker and keyword/BM25-like retriever first;
-- add embeddings only after simple retrieval becomes insufficient;
-- persist generated but validated NPCs, locations, rumors, events, and faction
-  changes;
-- add visibility levels: player-known, NPC-known, faction-known, system-secret;
-- add memory summarization so context does not grow forever.
-
-Suggested stages:
-
-### Phase 6.1 Canon Corpus Split
-
-- Split `docs/world_bible.md` into topic files under a canon folder.
-- Keep `world_bible.md` as a readable overview.
-- Add simple metadata headers.
-- Keep inspiration notes separate from canon facts.
-
-Done when:
-
-- countries, gods, churches, classes, tone, and forbidden-output docs can be
-  retrieved independently.
-
-### Phase 6.2 Local Retriever
-
-- Build deterministic local retrieval over Markdown chunks.
-- Return only top relevant chunks to Turn Director.
-- Add tests for country, city, church, god, class, and tone retrieval.
-- Replace ad hoc lore-card retrieval only when the new retriever is stable.
-
-Done when:
-
-- obvious queries retrieve the right canon chunks without dumping huge docs into
-  each LLM call.
-
-### Phase 6.3 Persistent Memory Schema
-
-- Move memory storage from `GameState.agentic_memory` toward persistence-layer
-  tables or structured snapshots.
-- Keep SQLite first.
-- Preserve visibility boundaries.
-- Do not persist raw LLM output directly as truth.
-
-Done when:
-
-- validated player-known and hidden memory can survive save/load and API session
-  persistence.
-
-### Phase 6.4 Generated Fact Commit
-
-- Add a validator for turning temporary content into persistent world facts.
-- Persist recurring NPCs, locations, relation signals, and committed rumors only
-  after validation.
-- Keep temporary generated content cheap and disposable.
-
-Done when:
-
-- an NPC, rumor, or local event can become persistent only through an explicit
-  validated commit.
-
-### Phase 6.5 Relationship And Faction Memory
-
-- Store NPC attitude, faction pressure, church legality changes, and nation
-  relation signals.
-- Keep relation changes as evidence-backed deltas, not arbitrary rewrites.
-
-Done when:
-
-- church/nation/NPC relationship changes can accumulate over multiple turns.
-
-### Phase 6.6 Memory Summarizer
-
-- Summarize committed history without adding new facts.
-- Never summarize hidden memory into player-visible context by accident.
-- Keep summaries short enough for Turn Director prompts.
-
-Done when:
-
-- long sessions can continue without context growing uncontrollably.
-
-### Phase 6.7 Embedding Retriever
-
-- Add embeddings behind a provider boundary only after local retrieval works.
-- Start with local files or SQLite storage.
-- Consider pgvector only when PostgreSQL becomes necessary.
-
-Done when:
-
-- retrieval quality improves without breaking visibility or authority rules.
-
-Non-goals:
-
-- final UX polish;
-- full web UI;
-- full progression system;
-- production deployment.
 
 ## Phase 7: Minimum Playable Experience Calibration
 
-Goal: make the world-mode game minimally comfortable to test after the knowledge
-and memory foundation is in place.
-
-Why this comes after Phase 6:
-
-RAG and persistent memory will change context shape, prompt content, latency,
-and narrative grounding. Phase 7 should not be final polish. It should only make
-the game clear enough to test Phase 8 and Phase 9 without fighting the CLI.
-
-Main work:
-
-- reduce obviously bad LLM latency and prompt bloat after real retrieval is integrated;
-- improve Turn Director output enough for repeatable playtests;
-- make high-risk actions show clear dice math and consequences;
-- improve opening introduction, player identity, and first-scene hooks;
-- make CLI feel like a tabletop chat instead of a debug console;
-- add a simple playtest checklist and regression fixtures.
-
-Suggested stages:
-
-### Phase 7.1 Basic Runtime Speed Pass
-
-- Keep Turn Director as the default live path.
-- Shrink Turn Director schema further if needed.
-- Add optional `PANTHEON_FAST_MODE=1` for shorter narration and lower token use.
-- Record per-turn latency in debug mode only.
-- Compare model choices through a small live smoke script.
-
-Done when:
-
-- one normal world-mode turn succeeds without fallback;
-- runtime report can show elapsed time when enabled;
-- normal tests still do not call the network.
-
-### Phase 7.2 Basic Story Output Pass
-
-- Make narration more like a game master response.
-- Remove mechanical or awkward filler from player-facing text.
-- Ensure NPC speech, scene pressure, and next-action hooks are clear.
-- Make dice results appear only when a real check occurs.
-
-Done when:
-
-- a 5-turn CLI playtest reads like a coherent scene;
-- no runtime/debug labels appear unless `PANTHEON_SHOW_RUNTIME=1`.
-
-### Phase 7.3 Opening And Player Onboarding
-
-- Polish world-mode introduction.
-- Make selected class, faith, country, ethnicity, city, and identity matter in
-  the opening text.
-- Offer a few natural first actions without forcing button choices.
-
-Done when:
-
-- a new player knows who they are, where they are, and what kinds of things they
-  can try.
-
-### Phase 7.4 Live Playtest Fixtures
-
-- Add a small set of scripted sample turns.
-- Add expected safety properties, not exact story text.
-- Cover violence, social inquiry, occult investigation, stealth, prayer, and
-  travel attempt.
-
-Done when:
-
-- the project has a repeatable playtest checklist before Phase 8.
+Goal: make world-mode comfortable enough to test for 20-30 minutes without
+fighting the CLI, debug text, location drift, or unclear consequences.
 
 Non-goals:
 
-- full vector RAG redesign;
-- major database redesign;
+- full progression;
+- final combat balance;
 - web UI;
-- full progression system;
-- final balance or final UX polish.
+- production deployment;
+- replacing the current Agentic Runtime architecture.
+
+### Phase 7.1 Runtime Latency Baseline
+
+Goal: understand and reduce obvious turn latency without changing game design.
+
+Scope:
+
+- `agentic_runtime/orchestrator.py`
+- `agentic_runtime/providers.py`
+- `phase1_cli/main.py`
+- `docs/live_llm_testing.md`
+
+Tasks:
+
+- add compact per-turn timing to runtime/debug payloads;
+- keep timing hidden unless `PANTHEON_SHOW_RUNTIME=1`;
+- record which branch ran: local, Turn Director, fallback, or full multi-agent;
+- add a small live-smoke command that can be run manually without affecting
+  normal tests;
+- document fast settings for playtesting.
+
+Done when:
+
+- normal CLI output stays clean;
+- debug mode can show total turn time and provider branch;
+- unit tests do not call network;
+- user can compare fast and full paths deliberately.
+
+### Phase 7.2 Story Output Calibration
+
+Goal: make the CLI feel like a tabletop host, not a runtime report.
+
+Scope:
+
+- `prompts/turn_director.md`
+- `prompts/agentic_narrator.md`
+- `agentic_runtime/validators.py`
+- `phase1_cli/story.py`
+
+Tasks:
+
+- remove remaining debug-shaped wording from player-facing narration;
+- make generated text longer only when it adds useful scene, choice, or tension;
+- prefer concrete NPC action, sensory detail, and next hooks;
+- keep state/debug/status behind explicit commands;
+- ensure narration does not claim uncommitted clues, kills, items, or travel.
+
+Done when:
+
+- five normal turns read like story responses;
+- no “临时切片 / 本次不会自动授予” style engineering text appears in normal mode;
+- validator tests still reject unauthorized death/reward/location claims.
+
+### Phase 7.3 Opening And First Hook
+
+Goal: make a new game start with enough identity, situation, and direction.
+
+Scope:
+
+- `phase1_cli/main.py`
+- `phase1_cli/story.py`
+- `phase1_cli/scenarios.py`
+- `phase1_cli/character.py`
+- `docs/world_bible.md` if opening canon changes
+
+Tasks:
+
+- polish country, city, class, faith, ethnicity, and identity selection flow;
+- generate a short opening based on those choices;
+- give 2-4 natural possible actions without forcing fixed buttons;
+- make opening hooks differ by country/city/faith/background.
+
+Done when:
+
+- player knows who they are, where they are, and why this first scene matters;
+- starting in different countries produces visibly different openings;
+- tests cover public character origin fields.
+
+### Phase 7.4 Location And Scene Continuity Pass
+
+Goal: stop the game from moving the player unless the player actually moves.
+
+Scope:
+
+- `phase1_cli/game_state.py`
+- `phase1_cli/scenarios.py`
+- `agentic_runtime/context_pack.py`
+- `agentic_runtime/state_commit.py`
+- `agentic_runtime/world_slice.py`
+- prompts that mention location continuity
+
+Tasks:
+
+- strengthen `current_location` as city-level truth;
+- strengthen `current_scene_focus` as concrete local scene truth;
+- make local actions preserve scene focus by default;
+- allow explicit in-city movement to update scene focus;
+- require explicit travel authorization to change city/country.
+
+Done when:
+
+- a 5-turn scene stays in the same place unless the player moves;
+- “问水手/观察墙壁/检查桌子” does not teleport the player;
+- “去前厅/离开码头/乘船去维拉尔” produces distinct local/travel handling.
+
+### Phase 7.5 Dice And Consequence UX
+
+Goal: make risk feel fair and visible.
+
+Scope:
+
+- `agentic_runtime/rule_arbiter_agent.py`
+- `agentic_runtime/state_commit.py`
+- `agentic_runtime/contracts.py`
+- `phase1_cli/story.py`
+
+Tasks:
+
+- show dice math only when a check happens;
+- show DC, attribute, roll, modifier, and result in readable form;
+- distinguish attempt, partial success, full success, and failure;
+- keep lethal outcomes gated by explicit authority;
+- make violent/social/stealth/occult risks produce different consequence types.
+
+Done when:
+
+- “杀守卫” cannot simply become “守卫死了” without committed authority;
+- high-risk actions show why they succeeded or failed;
+- player can understand consequences without reading debug payloads.
+
+### Phase 7.6 Playtest Checklist And Fixtures
+
+Goal: make manual playtesting repeatable.
+
+Scope:
+
+- `docs/playtest_checklist.md`
+- tests if small behavior can be asserted safely
+
+Tasks:
+
+- write a 20-minute CLI playtest checklist;
+- include opening, social, investigation, violence, prayer, travel, and memory
+  cases;
+- define expected safety properties instead of exact LLM prose;
+- record known acceptable rough edges.
+
+Done when:
+
+- every future phase can be checked against the same basic playtest path;
+- regressions are easier to notice.
 
 ## Phase 8: Progression And Core Mechanics
 
-Goal: turn the character sheet into a meaningful game system.
+Goal: turn character choices into meaningful mechanical differences.
 
-Main work:
+Non-goals:
 
-- implement the six-attribute model from `docs/progression_design.md`;
-- add class level and faith level;
-- add skills, talents, prayers, favor, revelation, and burdens in small slices;
-- add ritual promotion requirements;
-- define item categories and equipment effects;
-- improve checks for combat, stealth, social pressure, occult risk, and travel.
+- final balance;
+- MMO-style progression depth;
+- huge skill tree;
+- web UI.
 
-Suggested stages:
+### Phase 8.1 Character Model Migration
 
-### Phase 8.1 Character Model Migration Plan
+Scope:
 
-- Design save/API compatibility before changing fields.
-- Decide how current four stats migrate to six attributes.
+- `phase1_cli/character.py`
+- `phase1_cli/game_state.py`
+- `phase2_api/schemas.py`
+- save/load tests
 
-### Phase 8.2 Minimal Leveling Slice
+Tasks:
 
-- Add class level and faith level.
-- Add one skill per class and one prayer per god.
-- Add tests for serialization and public state.
-
-### Phase 8.3 Ritual And Cost Slice
-
-- Add ritual promotion as a validated proposal.
-- Add costs such as corruption, suspicion, debt, burden, or faction pressure.
-
-### Phase 8.4 Item And Equipment Slice
-
-- Add item categories.
-- Allow temporary generated items to become real only after validation and
-  explicit commit.
+- migrate toward the six-attribute model in `docs/progression_design.md`;
+- preserve compatibility with old saves where possible;
+- expose public state clearly for CLI/API/web.
 
 Done when:
 
-- character choices create different options in play;
-- leveling is explainable in interviews and visible in gameplay.
+- character serialization round-trips;
+- old minimal character data can still load or fail gracefully.
+
+### Phase 8.2 Minimal Class Skills
+
+Tasks:
+
+- add one signature skill per class;
+- make each skill usable by Agentic Runtime as an action affordance;
+- validate that skills can help checks but not auto-win.
+
+Done when:
+
+- knight, mage, spy, ranger, priest, and alchemist feel different in play.
+
+### Phase 8.3 Minimal Faith Talents And Prayers
+
+Tasks:
+
+- add one talent or prayer per major god;
+- model favor, burden, or risk in a small way;
+- keep hostile/illegal faith context relevant.
+
+Done when:
+
+- faith choice changes possible actions and risks.
+
+### Phase 8.4 Generic Check System
+
+Tasks:
+
+- route common checks through shared check data;
+- support combat, social, stealth, investigation, occult, travel, and ritual
+  checks;
+- keep the arbiter agent flexible but validator-controlled.
+
+Done when:
+
+- different actions can use consistent DC/result/consequence handling.
+
+### Phase 8.5 Ritual Advancement Slice
+
+Tasks:
+
+- add class level and faith level;
+- add ritual requirements for advancement;
+- require cost, evidence, or story milestone before promotion.
+
+Done when:
+
+- the player can complete one small advancement path in test/demo form.
+
+### Phase 8.6 Items And Relics Slice
+
+Tasks:
+
+- define item categories;
+- allow temporary generated items to become real only after validated commit;
+- add simple equipment effects without bloating combat.
+
+Done when:
+
+- items can matter mechanically without letting LLM hand out free rewards.
 
 ## Phase 9: Web UI And API Product Experience
 
-Goal: make the game playable outside the terminal.
+Goal: make the current game playable in a browser.
 
-Main work:
+Non-goals:
 
-- React + TypeScript + Vite frontend;
-- chat-style story panel;
-- player input box;
-- character sheet;
-- status, inventory, clues, memory, and event log panels;
-- API client for FastAPI endpoints;
-- API response polish for world-mode and agentic runtime output;
-- loading states and friendly error display.
+- complex deployment;
+- account system;
+- production payment/auth;
+- final art direction.
 
-Suggested stages:
+### Phase 9.1 API Shape For World Mode
 
-### Phase 9.1 Minimal Chat UI
+Tasks:
 
-- Start a web app.
-- Connect to existing FastAPI endpoints.
-- Create a game and submit actions.
-
-### Phase 9.2 Game Panels
-
-- Add character, status, inventory, clues, and memory panels.
-- Keep UI display-only for state. Rules stay backend-side.
-
-### Phase 9.3 API Product Polish
-
-- Make world-mode create-game and action endpoints comfortable for frontend use.
-- Keep runtime debug data hidden unless requested.
-- Add readable API errors for LLM timeout, fallback, and validation failure.
-
-### Phase 9.4 Streaming Or Loading UX
-
-- Add loading state first.
-- Consider streaming narration later if provider support and architecture are
-  ready.
+- ensure FastAPI endpoints can create world-mode games;
+- expose clean action responses for frontend;
+- hide runtime debug unless requested;
+- document API examples.
 
 Done when:
 
-- a user can play the current world-mode loop in a browser.
+- frontend can create a character/game and submit actions without CLI-only
+  behavior.
+
+### Phase 9.2 Minimal Web App Scaffold
+
+Tasks:
+
+- create a small `web_ui/` app;
+- use React + TypeScript + Vite unless a later decision changes the stack;
+- connect to FastAPI in dev.
+
+Done when:
+
+- browser can load a game shell and call health/classes/origins endpoints.
+
+### Phase 9.3 Chat-style Play Surface
+
+Tasks:
+
+- add story log;
+- add player input box;
+- add loading/error states;
+- show host narration cleanly.
+
+Done when:
+
+- user can play a few turns in browser.
+
+### Phase 9.4 Character And World Panels
+
+Tasks:
+
+- add character sheet panel;
+- add status/inventory/clues/memory panels;
+- show current country, city, and scene focus;
+- keep panels display-only unless a command explicitly changes state.
+
+Done when:
+
+- browser view is easier to read than CLI without changing game rules.
+
+### Phase 9.5 API Product Polish
+
+Tasks:
+
+- improve API errors;
+- add timeout/fallback messages;
+- align response shapes with frontend needs;
+- update README run instructions.
+
+Done when:
+
+- a new developer can run API + web UI locally from docs.
 
 ## Phase 10: Engineering Quality And Final Experience Optimization
 
-Goal: make the project debuggable, safer, reproducible, portable, and optionally
-cheaper to run, then perform the final broad gameplay polish pass.
+Goal: make the project reliable, explainable, cheaper to operate, and demo-ready.
 
-Main work:
+### Phase 10.1 Observability And Trace Records
 
-- structured traces for LLM calls;
-- token, cost, latency, fallback, and validator logs;
-- eval fixtures for safety and story quality;
-- prompt injection tests;
-- model comparison scripts;
-- Docker / Docker Compose;
-- environment profiles for local, dev, and production;
-- optional local model provider through OpenAI-compatible APIs;
-- database migration strategy;
-- deployment notes.
-- final gameplay pacing, balance, model choice, prompt quality, and web/CLI
-  experience polish.
+Tasks:
 
-Suggested stages:
-
-### Phase 10.1 Trace Records
-
-- Store prompt name, model, latency, output validity, fallback reason, and
-  validator decision.
-
-### Phase 10.2 Safety Evals
-
-- Test that LLM does not invent gods, grant free items, reveal secrets, confirm
-  deaths, or mutate protected state.
-
-### Phase 10.3 Quality Evals
-
-- Add sample scenes and score broad properties: coherence, next hook, canon
-  consistency, and player agency.
-
-### Phase 10.4 Dockerized API
-
-- Containerize FastAPI service.
-- Keep `.env` secret handling clear.
-
-### Phase 10.5 Local Model Provider
-
-- Add `OPENAI_BASE_URL` or equivalent provider config.
-- Test with a local OpenAI-compatible server.
-- Keep the same validators.
-
-### Phase 10.6 Production Deployment
-
-- Add persistent database config.
-- Add basic health checks and startup docs.
-
-### Phase 10.7 Final Experience Optimization
-
-- Review speed, cost, story quality, profession/faith balance, UI comfort, and
-  long-session memory behavior together.
-- Tune prompts, model choices, schema size, progression balance, and playtest
-  fixtures.
-- Decide what is demo-ready for resume/interview presentation.
+- log prompt name, model, provider branch, latency, token estimate, validation
+  result, fallback reason, and commit result;
+- keep secrets out of logs;
+- make traces opt-in or local-safe.
 
 Done when:
 
-- regressions in agent behavior are visible before manual playtesting;
-- another machine can run the API and optional web UI with documented setup;
-- the project has one polished demo path suitable for showing to others.
+- bad turns can be debugged without guessing which agent failed.
 
-## Recommended Next Step
+### Phase 10.2 Evals And Safety Fixtures
 
-Start Phase 6: World Knowledge And Persistent Memory.
+Tasks:
 
-Reason:
+- add prompt-injection cases;
+- test no free items, no unauthorized death, no secret leaks, no invented core
+  gods, no uncommitted travel;
+- test memory visibility boundaries.
 
-The next large architectural change is how the runtime retrieves canon and
-remembers validated world facts. It will change Turn Director prompts, context
-packing, persistence, and narration grounding. Build that foundation first, do
-minimum playability calibration in Phase 7, then save final experience polish for
-Phase 10.
+Done when:
+
+- important agent regressions are caught before manual playtesting.
+
+### Phase 10.3 Quality Evals
+
+Tasks:
+
+- build sample scenes;
+- score coherence, player agency, next hooks, canon grounding, and pacing;
+- compare model/settings combinations.
+
+Done when:
+
+- prompt/model changes can be compared with evidence.
+
+### Phase 10.4 Cost And Speed Optimization
+
+Tasks:
+
+- shrink schemas and prompts based on traces;
+- cache stable canon retrieval;
+- compare keyword/vector/hybrid retrieval;
+- choose fast/default and high-quality/manual modes.
+
+Done when:
+
+- normal play has an acceptable latency/cost profile.
+
+### Phase 10.5 Local Model Provider
+
+Tasks:
+
+- support OpenAI-compatible local endpoints;
+- document local model limitations;
+- keep validators identical across providers.
+
+Done when:
+
+- the game can run against a local-compatible provider for experiments.
+
+### Phase 10.6 Docker And Dev Profiles
+
+Tasks:
+
+- add Docker or Docker Compose for API/web/database where useful;
+- keep `.env` examples safe;
+- document local/dev/demo profiles.
+
+Done when:
+
+- another machine can run the project without hand-reconstructing setup.
+
+### Phase 10.7 Final Demo Pass
+
+Tasks:
+
+- choose one polished demo path;
+- tune opening, pacing, progression slice, UI, prompts, and model settings
+  together;
+- write resume/interview explanation notes.
+
+Done when:
+
+- the project has one reliable demo path that shows Agentic Runtime, RAG,
+  memory, validation, progression, and UI working together.
+
+## Recommended Next Task
+
+Start with Phase 7.1 Runtime Latency Baseline.
+
+Reason: speed and debug visibility affect every later playtest, but this task
+does not force major gameplay design decisions.

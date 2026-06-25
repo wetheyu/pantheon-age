@@ -298,6 +298,8 @@ ORIGIN_CHURCH_RELATIONS = {
 }
 
 WORLD_START_LOCATION = PLAYABLE_ORIGINS[DEFAULT_ORIGIN_COUNTRY_ID]["cities"][0]["name"]
+CURRENT_SCENE_FOCUS_FLAG = "current_scene_focus"
+SCENE_FOCUS_HISTORY_FLAG = "scene_focus_history"
 
 
 def game_mode_from_env():
@@ -345,6 +347,8 @@ def configure_character_for_game_mode(
         character.flags.update(origin)
         character.flags.update(resolve_background(background_id))
         character.current_location = origin["origin_city"]
+        character.flags[CURRENT_SCENE_FOCUS_FLAG] = default_scene_focus(origin["origin_city"])
+        character.flags[SCENE_FOCUS_HISTORY_FLAG] = [character.flags[CURRENT_SCENE_FOCUS_FLAG]]
     else:
         character.current_location = character.current_location or TUTORIAL_START_LOCATION
     return character
@@ -505,6 +509,31 @@ def location_description_for_state(state):
             state.current_location,
         )
     return LOCATION_DESCRIPTIONS.get(state.current_location, "当前位置暂无固定描述。")
+
+
+def default_scene_focus(city_name):
+    return f"{city_name}的开放街区"
+
+
+def current_scene_focus_for_state(state):
+    if not is_world_mode_state(state):
+        return state.current_location
+    focus = state.player.flags.get(CURRENT_SCENE_FOCUS_FLAG)
+    if focus:
+        return focus
+    return default_scene_focus(state.current_location)
+
+
+def set_current_scene_focus(state, scene_focus):
+    focus = str(scene_focus or "").strip()
+    if not focus:
+        focus = default_scene_focus(state.current_location)
+    state.player.flags[CURRENT_SCENE_FOCUS_FLAG] = focus
+    history = list(state.player.flags.get(SCENE_FOCUS_HISTORY_FLAG, []))
+    if not history or history[-1] != focus:
+        history.append(focus)
+    state.player.flags[SCENE_FOCUS_HISTORY_FLAG] = history[-12:]
+    return focus
 
 
 def objective_for_state(state, tutorial_objective):

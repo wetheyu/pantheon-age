@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+- 新增 `docs/phase1_6_architecture_summary.md`，将 Phase 1-6 收束为当前架构基线，明确 Phase 1 tutorial、Phase 2 API、Phase 3 persistence、Phase 4 compatibility bridge、Phase 5 Agentic Runtime 和 Phase 6 RAG/memory 的职责边界；
+- 删除已被合并吸收的 `docs/refactor_plan.md`，避免旧方向文档与当前 Agentic Runtime 主线重复；
+- 重写 `docs/future_phase_plan.md`，将 Phase 7-10 拆成 Codex-friendly 小任务：最小可玩体验校准、成长系统与核心机制、Web UI/API 产品体验、工程质量与最终体验优化；
+- 新增 `docs/README.md` 文档总入口，并精简 README 项目状态与设计文档部分，使项目首页更偏专业概览，详细阶段记录交给 docs 索引和 phase summary；
+- world-mode 新增 `current_scene_focus` 具体场景锚点：`current_location` 继续表示城市级位置，`current_scene_focus` 表示玩家当前所在的具体街区、建筑或场景；
+- 非移动行动默认保留在当前具体场景中，避免 LLM 叙事把玩家无端写到市场、旅店、码头等新地点；
+- 明确“前往/进入/走向/去”等本城移动时，只更新具体场景锚点，不自动改变城市级位置；
+- Turn Director / WorldBundle / Agentic Narrator prompt 增加 location continuity 规则，要求主持人尊重当前场景连续性。
+
+## v6.0.0 - Phase 6 World Knowledge And Persistent Memory
+
+- Phase 6 开始：新增 `docs/phase6_world_memory_plan.md`，将世界知识与长期记忆拆分为 canon corpus、local retriever、persistent memory schema、generated fact commit、relationship/faction memory、memory summarizer 和 embedding retriever 七个阶段；
+- Phase 6 完成：新增 `docs/phase6_completion_summary.md`，将 canon corpus、retriever、persistent memory、generated fact commit、relationship memory、memory summarizer、embedding provider 和 SQLite vector cache 收口为 `v6.0.0`；
+- 新增 `docs/canon/` canon corpus，将世界地理、国家、城市、八神教会、职业身份、叙事文风、LLM 禁区和事实权限拆成带 metadata 的可检索文档；
+- 新增 `rag/canon.py` 本地 deterministic canon retriever，支持加载 `docs/canon/*.md`、解析 metadata、切分 Markdown chunk、按标题/标签/正文打分并返回紧凑结果；
+- Agentic Runtime 的 context pack 开始优先使用 Phase 6 canon retriever，旧 `rag_seed_cards.md` 保留为 fallback；
+- Phase 6.3 开始：SQLite persistence 新增 `game_memories` 结构化记忆表，保存 session 时同步 `GameState.agentic_memory` 中的 `MemoryRecord`，读取 session 时回填状态记忆，并提供默认隐藏 secret/system_secret 的 `list_memory_records()` 查询接口；
+- Phase 6.4 开始：新增 `GeneratedFactProposal`、generated fact validator 和 `commit_generated_fact_proposals()`，为 LLM 生成的 NPC、地点、传闻、事件、组织、关系、物品和秘密提供显式“验证后成为长期事实”的提交入口；
+- Generated fact commit 复用现有 memory candidate / memory store 流程，要求 evidence，拒绝直接来自 raw OpenAI/LLM provider 的持久事实，并阻止未经规则授权的死亡事实提交；
+- Phase 6.5 开始：新增 `faction` 记忆桶和 `agentic_runtime/relationship_memory.py`，支持国家关系、教会合法性、派系压力、NPC 态度的 evidence-backed relationship memory；
+- `NationRelationSignal` 现在要求 evidence，且可通过 `commit_nation_relation_signals()` 写入长期 faction memory；secret relationship memory 会进入 hidden context，不会暴露给玩家可见上下文；
+- Phase 6.6 开始：新增 `agentic_runtime/memory_summarizer.py`，以本地抽取式摘要压缩早期 `MemoryRecord`，`memory_retriever.py` 现在按“早期摘要 + 最近完整记录”构造上下文，并保持 secret/npc hidden memory 不进入玩家可见上下文；
+- Phase 6.7：新增 `rag/embeddings.py`、`LocalHashEmbeddingProvider` 和可选 `OpenAIEmbeddingProvider`，为本地 fallback、OpenAI embeddings、本地模型或后续向量数据库建立 provider 边界；
+- Phase 6.8：新增 `rag/vector_store.py` 和 `SQLiteCanonVectorStore`，把 canon chunk embedding 缓存到本地 SQLite，提供项目内置轻量向量检索地基；
+- `retrieve_canon_chunks()` 支持 `keyword`、`embedding`、`hybrid`、`vector`、`vector_hybrid` 五种检索策略，`agentic_runtime/context_pack.py` 可通过 `PANTHEON_CANON_RETRIEVAL` 切换，默认仍为稳定的 `keyword`；
 - 新增 `docs/future_phase_plan.md`，将 Phase 6 之后的执行路线合并为“世界知识与长期记忆 -> 最小可玩体验校准 -> 成长系统 -> Web/API 体验 -> 工程质量与最终体验优化”的阶段计划；
 - Phase 5 live path 新增 OpenAI Turn Director 默认快速路径：一次结构化调用返回开放行动理解、裁定建议、临时场景、NPC、事件、物件和紧凑叙事，程序随后验证、掷骰、提交状态并在高风险场景补充或回退安全叙事；
 - 新增 `PANTHEON_AGENTIC_TURN_DIRECTOR=1`，普通试玩默认使用单调用快速路径；设置为 `0` 可回到旧版 OpenAI Intent + Rule Arbiter + WorldBundle 多调用路径；
