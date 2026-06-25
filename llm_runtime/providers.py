@@ -388,8 +388,9 @@ def parse_json_object(text):
             raise OpenAIProviderError("OpenAI response JSON could not be parsed.") from exc
 
 
-def load_runtime_notes():
-    limit = int(os.getenv(RAG_CHAR_LIMIT_ENV_VAR, "6000"))
+def load_runtime_notes(limit=None):
+    if limit is None:
+        limit = int(os.getenv(RAG_CHAR_LIMIT_ENV_VAR, "6000"))
     note_files = (
         "docs/rag_seed_cards.md",
         "docs/tone_guide.md",

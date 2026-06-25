@@ -1,4 +1,4 @@
-"""Static game data for 神座纪元 v4.7.
+"""Static game data for 神座纪元 v5.8.0.
 
 This file is intentionally plain dictionaries and lists. Later phases can move
 the same data into JSON files, PostgreSQL rows, or a RAG knowledge base.
@@ -6,9 +6,9 @@ the same data into JSON files, PostgreSQL rows, or a RAG knowledge base.
 
 PROJECT_NAME = "神座纪元"
 PROJECT_ENGLISH_NAME = "Pantheon Age"
-PROJECT_VERSION = "4.7.0"
-PROJECT_INTERNAL_MILESTONE = "Phase 4"
-PROJECT_STAGE = "Real LLM CLI Runtime"
+PROJECT_VERSION = "5.8.0"
+PROJECT_INTERNAL_MILESTONE = "Phase 5"
+PROJECT_STAGE = "Phase 5 Final Integration"
 
 BASE_STATS = {
     "strength": 5,
@@ -48,9 +48,9 @@ GODS = [
 CLASSES = {
     "warrior": {
         "class_id": "warrior",
-        "name": "战士",
-        "english_name": "Warrior",
-        "description": "擅长正面战斗、力量检定和防御的职业。",
+        "name": "骑士",
+        "english_name": "Knight",
+        "description": "擅长正面战斗、护卫、决斗礼仪和力量检定的职业。",
         "stat_bonus": {
             "strength": 3,
             "agility": 1,
@@ -59,7 +59,7 @@ CLASSES = {
         },
         "hp_bonus": 5,
         "san_bonus": 0,
-        "starting_items": ["旧长剑", "木盾"],
+        "starting_items": ["制式佩剑", "旧式手盾"],
         "skill_tags": ["attack", "guard", "force"],
         "rule_modifiers": {
             "attack_bonus": 2,
@@ -92,9 +92,9 @@ CLASSES = {
     },
     "rogue": {
         "class_id": "rogue",
-        "name": "盗贼",
-        "english_name": "Rogue",
-        "description": "擅长潜行、开锁、偷听、欺骗和获取黑市情报的职业。",
+        "name": "密探",
+        "english_name": "Operative",
+        "description": "擅长潜行、开锁、偷听、伪装和获取地下情报的职业。",
         "stat_bonus": {
             "strength": 0,
             "agility": 3,
@@ -103,7 +103,7 @@ CLASSES = {
         },
         "hp_bonus": 0,
         "san_bonus": 0,
-        "starting_items": ["开锁工具", "暗色斗篷"],
+        "starting_items": ["开锁工具", "假名证件"],
         "skill_tags": ["stealth", "lockpick", "deceive", "listen"],
         "rule_modifiers": {
             "stealth_bonus": 2,
@@ -240,12 +240,12 @@ CORE_TRUTH_CLUES = {
 MAIN_OBJECTIVE = "探索雾中修道院，收集至少 4 个核心线索，避免 SAN 归零或污染过高。"
 
 ITEMS = {
-    "旧长剑": {
-        "description": "有缺口的长剑，仍适合近身战斗。",
+    "制式佩剑": {
+        "description": "旧军制式佩剑，剑身有磨痕，但仍适合近身战斗和正式决斗。",
         "consumable": False,
     },
-    "木盾": {
-        "description": "边缘开裂的盾牌，可以给人一点安全感。",
+    "旧式手盾": {
+        "description": "边缘开裂的手盾，可以在近身冲突中提供一点安全感。",
         "consumable": False,
     },
     "破旧法术书": {
@@ -262,6 +262,10 @@ ITEMS = {
     },
     "暗色斗篷": {
         "description": "在昏暗空间里能降低存在感。",
+        "consumable": False,
+    },
+    "假名证件": {
+        "description": "一份做旧的假名证件，适合应付粗略盘问，但经不起正式审查。",
         "consumable": False,
     },
     "猎刀": {
@@ -295,11 +299,15 @@ ITEMS = {
 }
 
 ITEM_ALIASES = {
-    "旧长剑": "旧长剑",
-    "长剑": "旧长剑",
-    "剑": "旧长剑",
-    "木盾": "木盾",
-    "盾": "木盾",
+    "制式佩剑": "制式佩剑",
+    "佩剑": "制式佩剑",
+    "旧长剑": "制式佩剑",
+    "长剑": "制式佩剑",
+    "剑": "制式佩剑",
+    "旧式手盾": "旧式手盾",
+    "手盾": "旧式手盾",
+    "木盾": "旧式手盾",
+    "盾": "旧式手盾",
     "破旧法术书": "破旧法术书",
     "法术书": "破旧法术书",
     "仪式粉末": "仪式粉末",
@@ -308,6 +316,9 @@ ITEM_ALIASES = {
     "工具": "开锁工具",
     "暗色斗篷": "暗色斗篷",
     "斗篷": "暗色斗篷",
+    "假名证件": "假名证件",
+    "证件": "假名证件",
+    "假证": "假名证件",
     "猎刀": "猎刀",
     "简易陷阱": "简易陷阱",
     "陷阱": "简易陷阱",

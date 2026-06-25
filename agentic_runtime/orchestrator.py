@@ -1,0 +1,489 @@
+"""Phase 5 Agentic Runtime orchestrator."""
+
+from llm_runtime.providers import OpenAIProviderError
+
+from .contracts import AgenticTurnResult
+from .providers import (
+    LocalIntentAgentProvider,
+    LocalEventAgentProvider,
+    LocalItemAgentProvider,
+    LocalNPCAgentProvider,
+    LocalNarratorAgentProvider,
+    LocalRuleArbiterProvider,
+    build_agentic_providers_from_env,
+)
+from .memory_store import commit_memory_candidates
+from .state_commit import commit_adjudication
+from .validators import (
+    validate_event_proposal,
+    validate_item_proposal,
+    validate_memory_candidate,
+    validate_npc_proposal,
+    validate_narration_proposal,
+    validate_open_action,
+    validate_rule_adjudication,
+    validate_state_commit,
+    validate_temporary_content,
+)
+
+
+def run_agentic_turn(state, user_text, providers=None):
+    providers = providers or build_agentic_providers_from_env()
+    memory_retrieval = providers.memory_retriever.retrieve_memory(state, user_text)
+    runtime_errors = []
+
+    if providers.turn_director:
+        directed_result = run_turn_director_path(
+            state,
+            user_text,
+            providers,
+            memory_retrieval,
+            runtime_errors,
+        )
+        if directed_result is not None:
+            return directed_result
+
+    try:
+        open_action = providers.intent_agent.propose_open_action(user_text, state, memory_retrieval)
+    except OpenAIProviderError as exc:
+        runtime_errors.append(str(exc))
+        open_action = LocalIntentAgentProvider().propose_open_action(user_text, state, memory_retrieval)
+
+    temporary_content = providers.scene_agent.propose_temporary_content(
+        state,
+        open_action,
+        memory_retrieval,
+    )
+    try:
+        adjudication = providers.rule_arbiter.propose_rule_adjudication(state, open_action)
+    except OpenAIProviderError as exc:
+        runtime_errors.append(str(exc))
+        adjudication = LocalRuleArbiterProvider().propose_rule_adjudication(state, open_action)
+
+    validations = {
+        "open_action": validate_open_action(open_action),
+    }
+    adjudication_validation = validate_rule_adjudication(adjudication)
+    validations["adjudication"] = adjudication_validation
+    if not adjudication_validation.is_valid:
+        runtime_errors.append(
+            "Rule arbiter proposal failed validation: " + "; ".join(adjudication_validation.errors)
+        )
+        adjudication = LocalRuleArbiterProvider().propose_rule_adjudication(state, open_action)
+        validations["adjudication_fallback"] = validate_rule_adjudication(adjudication)
+
+    valid_temporary_content = []
+    for index, content in enumerate(temporary_content):
+        validation = validate_temporary_content(content)
+        validations[f"temporary_content_{index}"] = validation
+        if validation.is_valid:
+            valid_temporary_content.append(content)
+
+    commit = commit_adjudication(state, adjudication)
+    validations["commit"] = validate_state_commit(commit)
+
+    memory_candidates = providers.memory_curator.curate_memory(open_action, adjudication, commit)
+    valid_memory_candidates = []
+    for index, candidate in enumerate(memory_candidates):
+        validation = validate_memory_candidate(candidate)
+        validations[f"memory_candidate_{index}"] = validation
+        if validation.is_valid:
+            valid_memory_candidates.append(candidate)
+
+    memory_records = commit_memory_candidates(state, valid_memory_candidates)
+
+    bundle_scenes = bundle_npcs = bundle_events = bundle_items = ()
+    bundle_narration = None
+    if providers.world_bundle:
+        try:
+            (
+                bundle_scenes,
+                bundle_npcs,
+                bundle_events,
+                bundle_items,
+                bundle_narration,
+            ) = providers.world_bundle.propose_world_bundle(
+                state,
+                memory_retrieval,
+                open_action,
+                tuple(valid_temporary_content),
+                adjudication,
+                commit,
+                memory_candidates,
+            )
+        except OpenAIProviderError as exc:
+            runtime_errors.append(str(exc))
+
+    if bundle_scenes:
+        valid_bundle_scenes = []
+        for index, content in enumerate(bundle_scenes):
+            validation = validate_temporary_content(content)
+            validations[f"bundle_scene_{index}"] = validation
+            if validation.is_valid:
+                valid_bundle_scenes.append(content)
+        if valid_bundle_scenes:
+            valid_temporary_content = valid_bundle_scenes
+
+    if bundle_npcs or bundle_events or bundle_items:
+        npc_proposals = bundle_npcs
+        event_proposals = bundle_events
+        item_proposals = bundle_items
+    else:
+        npc_proposals, event_proposals, item_proposals = generate_separate_world_content(
+            providers,
+            state,
+            open_action,
+            memory_retrieval,
+            runtime_errors,
+        )
+
+    valid_npcs = validate_npcs(npc_proposals, validations)
+    valid_events = validate_events(event_proposals, validations)
+    valid_items = validate_items(item_proposals, validations)
+
+    if providers.world_bundle and npc_proposals and not valid_npcs:
+        fallback_npcs = LocalNPCAgentProvider().propose_npcs(state, open_action, memory_retrieval)
+        valid_npcs = validate_npcs(fallback_npcs, validations, prefix="npc_fallback")
+    if providers.world_bundle and event_proposals and not valid_events:
+        fallback_events = LocalEventAgentProvider().propose_events(
+            state,
+            open_action,
+            memory_retrieval,
+            npcs=tuple(valid_npcs),
+        )
+        valid_events = validate_events(fallback_events, validations, prefix="event_fallback")
+    if providers.world_bundle and item_proposals and not valid_items:
+        fallback_items = LocalItemAgentProvider().propose_items(state, open_action, memory_retrieval)
+        valid_items = validate_items(fallback_items, validations, prefix="item_fallback")
+
+    narration = bundle_narration
+    if narration is None:
+        narration = narrate_with_provider(
+            providers,
+            state,
+            memory_retrieval,
+            open_action,
+            tuple(valid_temporary_content),
+            adjudication,
+            commit,
+            memory_candidates,
+            tuple(valid_npcs),
+            tuple(valid_events),
+            tuple(valid_items),
+            runtime_errors,
+        )
+
+    narration_validation = validate_narration_proposal(narration, commit)
+    validations["narration"] = narration_validation
+    if not narration_validation.is_valid:
+        runtime_errors.extend(narration_validation.errors)
+        narration = LocalNarratorAgentProvider().narrate_turn(
+            state,
+            memory_retrieval,
+            open_action,
+            tuple(valid_temporary_content),
+            adjudication,
+            commit,
+            memory_candidates,
+            npc_proposals=tuple(valid_npcs),
+            event_proposals=tuple(valid_events),
+            item_proposals=tuple(valid_items),
+        )
+        validations["narration_fallback"] = validate_narration_proposal(narration, commit)
+
+    return AgenticTurnResult(
+        providers=providers.to_dict(),
+        errors=tuple(runtime_errors),
+        memory_retrieval=memory_retrieval,
+        open_action=open_action,
+        temporary_content=tuple(valid_temporary_content),
+        npcs=tuple(valid_npcs),
+        events=tuple(valid_events),
+        items=tuple(valid_items),
+        adjudication=adjudication,
+        validations=validations,
+        commit=commit,
+        memory_candidates=memory_candidates,
+        memory_records=memory_records,
+        narration=narration,
+        )
+
+
+def run_turn_director_path(state, user_text, providers, memory_retrieval, runtime_errors):
+    try:
+        directed_turn = providers.turn_director.propose_turn(state, user_text, memory_retrieval)
+    except OpenAIProviderError as exc:
+        runtime_errors.append(str(exc))
+        return None
+
+    open_action = directed_turn.open_action
+    adjudication = directed_turn.adjudication
+    validations = {
+        "open_action": validate_open_action(open_action),
+    }
+    if not validations["open_action"].is_valid:
+        runtime_errors.append(
+            "Turn Director open action failed validation: "
+            + "; ".join(validations["open_action"].errors)
+        )
+        return None
+
+    adjudication_validation = validate_rule_adjudication(adjudication)
+    validations["adjudication"] = adjudication_validation
+    if not adjudication_validation.is_valid:
+        runtime_errors.append(
+            "Turn Director adjudication failed validation: "
+            + "; ".join(adjudication_validation.errors)
+        )
+        return None
+
+    valid_temporary_content = validate_or_fallback_temporary_content(
+        directed_turn.temporary_content,
+        providers,
+        state,
+        open_action,
+        memory_retrieval,
+        validations,
+    )
+    valid_npcs = validate_or_fallback_npcs(
+        directed_turn.npcs,
+        state,
+        open_action,
+        memory_retrieval,
+        validations,
+    )
+    valid_events = validate_or_fallback_events(
+        directed_turn.events,
+        state,
+        open_action,
+        memory_retrieval,
+        valid_npcs,
+        validations,
+    )
+    valid_items = validate_or_fallback_items(
+        directed_turn.items,
+        state,
+        open_action,
+        memory_retrieval,
+        validations,
+    )
+
+    commit = commit_adjudication(state, adjudication)
+    validations["commit"] = validate_state_commit(commit)
+
+    memory_candidates = providers.memory_curator.curate_memory(open_action, adjudication, commit)
+    valid_memory_candidates = []
+    for index, candidate in enumerate(memory_candidates):
+        validation = validate_memory_candidate(candidate)
+        validations[f"memory_candidate_{index}"] = validation
+        if validation.is_valid:
+            valid_memory_candidates.append(candidate)
+
+    memory_records = commit_memory_candidates(state, valid_memory_candidates)
+
+    narration = directed_turn.narration_for_commit(commit)
+    narration_validation = validate_narration_proposal(narration, commit)
+    validations["narration"] = narration_validation
+    if not narration_validation.is_valid:
+        runtime_errors.extend(narration_validation.errors)
+        narration = LocalNarratorAgentProvider().narrate_turn(
+            state,
+            memory_retrieval,
+            open_action,
+            tuple(valid_temporary_content),
+            adjudication,
+            commit,
+            memory_candidates,
+            npc_proposals=tuple(valid_npcs),
+            event_proposals=tuple(valid_events),
+            item_proposals=tuple(valid_items),
+        )
+        validations["narration_fallback"] = validate_narration_proposal(narration, commit)
+
+    return AgenticTurnResult(
+        providers=providers.to_dict(),
+        errors=tuple(runtime_errors),
+        memory_retrieval=memory_retrieval,
+        open_action=open_action,
+        temporary_content=tuple(valid_temporary_content),
+        npcs=tuple(valid_npcs),
+        events=tuple(valid_events),
+        items=tuple(valid_items),
+        adjudication=adjudication,
+        validations=validations,
+        commit=commit,
+        memory_candidates=memory_candidates,
+        memory_records=memory_records,
+        narration=narration,
+    )
+
+
+def validate_or_fallback_temporary_content(
+    temporary_content,
+    providers,
+    state,
+    open_action,
+    memory_retrieval,
+    validations,
+):
+    valid_content = []
+    for index, content in enumerate(temporary_content):
+        validation = validate_temporary_content(content)
+        validations[f"temporary_content_{index}"] = validation
+        if validation.is_valid:
+            valid_content.append(content)
+    if valid_content:
+        return valid_content
+
+    fallback_content = providers.scene_agent.propose_temporary_content(
+        state,
+        open_action,
+        memory_retrieval,
+    )
+    for index, content in enumerate(fallback_content):
+        validation = validate_temporary_content(content)
+        validations[f"temporary_content_fallback_{index}"] = validation
+        if validation.is_valid:
+            valid_content.append(content)
+    return valid_content
+
+
+def validate_or_fallback_npcs(npc_proposals, state, open_action, memory_retrieval, validations):
+    valid_npcs = validate_npcs(npc_proposals, validations)
+    if valid_npcs:
+        return valid_npcs
+    fallback_npcs = LocalNPCAgentProvider().propose_npcs(state, open_action, memory_retrieval)
+    return validate_npcs(fallback_npcs, validations, prefix="npc_fallback")
+
+
+def validate_or_fallback_events(
+    event_proposals,
+    state,
+    open_action,
+    memory_retrieval,
+    valid_npcs,
+    validations,
+):
+    valid_events = validate_events(event_proposals, validations)
+    if valid_events:
+        return valid_events
+    fallback_events = LocalEventAgentProvider().propose_events(
+        state,
+        open_action,
+        memory_retrieval,
+        npcs=tuple(valid_npcs),
+    )
+    return validate_events(fallback_events, validations, prefix="event_fallback")
+
+
+def validate_or_fallback_items(item_proposals, state, open_action, memory_retrieval, validations):
+    valid_items = validate_items(item_proposals, validations)
+    if valid_items:
+        return valid_items
+    fallback_items = LocalItemAgentProvider().propose_items(state, open_action, memory_retrieval)
+    return validate_items(fallback_items, validations, prefix="item_fallback")
+
+
+def generate_separate_world_content(providers, state, open_action, memory_retrieval, runtime_errors):
+    try:
+        npc_proposals = providers.npc_agent.propose_npcs(state, open_action, memory_retrieval)
+    except OpenAIProviderError as exc:
+        runtime_errors.append(str(exc))
+        npc_proposals = LocalNPCAgentProvider().propose_npcs(state, open_action, memory_retrieval)
+
+    try:
+        event_proposals = providers.event_agent.propose_events(
+            state,
+            open_action,
+            memory_retrieval,
+            npcs=npc_proposals,
+        )
+    except OpenAIProviderError as exc:
+        runtime_errors.append(str(exc))
+        event_proposals = LocalEventAgentProvider().propose_events(
+            state,
+            open_action,
+            memory_retrieval,
+            npcs=npc_proposals,
+        )
+
+    try:
+        item_proposals = providers.item_agent.propose_items(state, open_action, memory_retrieval)
+    except OpenAIProviderError as exc:
+        runtime_errors.append(str(exc))
+        item_proposals = LocalItemAgentProvider().propose_items(state, open_action, memory_retrieval)
+
+    return npc_proposals, event_proposals, item_proposals
+
+
+def validate_npcs(npc_proposals, validations, prefix="npc"):
+    valid_npcs = []
+    for index, npc in enumerate(npc_proposals):
+        validation = validate_npc_proposal(npc)
+        validations[f"{prefix}_{index}"] = validation
+        if validation.is_valid:
+            valid_npcs.append(npc)
+    return valid_npcs
+
+
+def validate_events(event_proposals, validations, prefix="event"):
+    valid_events = []
+    for index, event in enumerate(event_proposals):
+        validation = validate_event_proposal(event)
+        validations[f"{prefix}_{index}"] = validation
+        if validation.is_valid:
+            valid_events.append(event)
+    return valid_events
+
+
+def validate_items(item_proposals, validations, prefix="item"):
+    valid_items = []
+    for index, item in enumerate(item_proposals):
+        validation = validate_item_proposal(item)
+        validations[f"{prefix}_{index}"] = validation
+        if validation.is_valid:
+            valid_items.append(item)
+    return valid_items
+
+
+def narrate_with_provider(
+    providers,
+    state,
+    memory_retrieval,
+    open_action,
+    temporary_content,
+    adjudication,
+    commit,
+    memory_candidates,
+    valid_npcs,
+    valid_events,
+    valid_items,
+    runtime_errors,
+):
+    try:
+        return providers.narrator_agent.narrate_turn(
+            state,
+            memory_retrieval,
+            open_action,
+            temporary_content,
+            adjudication,
+            commit,
+            memory_candidates,
+            npc_proposals=valid_npcs,
+            event_proposals=valid_events,
+            item_proposals=valid_items,
+        )
+    except OpenAIProviderError as exc:
+        runtime_errors.append(str(exc))
+        return LocalNarratorAgentProvider().narrate_turn(
+            state,
+            memory_retrieval,
+            open_action,
+            temporary_content,
+            adjudication,
+            commit,
+            memory_candidates,
+            npc_proposals=valid_npcs,
+            event_proposals=valid_events,
+            item_proposals=valid_items,
+        )

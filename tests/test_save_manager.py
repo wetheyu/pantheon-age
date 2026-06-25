@@ -16,10 +16,10 @@ class SaveManagerTests(unittest.TestCase):
     def test_character_creation_applies_class_config(self):
         character = build_character("阿洛", "warrior", "死亡之神")
 
-        self.assertEqual(character.class_name, "战士")
+        self.assertEqual(character.class_name, "骑士")
         self.assertEqual(character.max_hp, 25)
         self.assertEqual(character.stats["strength"], 8)
-        self.assertIn("旧长剑", character.inventory)
+        self.assertIn("制式佩剑", character.inventory)
         self.assertEqual(character.rule_modifiers["attack_bonus"], 2)
 
     def test_save_and_load_round_trip(self):

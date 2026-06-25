@@ -1,8 +1,8 @@
 # 神座纪元 / Pantheon Age
 
-**神座纪元（Pantheon Age）** 是一个以固定神明体系、维多利亚神秘学、调查冒险和规则裁定为核心的文字冒险系统。当前版本是 `v4.7.0 Phase 4 Real LLM CLI Runtime`，已经把 Phase 1 CLI 核心能力暴露成 REST API，把 API 游戏会话持久化到 SQLite，并建立受规则约束的 LLM 运行时契约、provider 接口、prompt/policy 文件、语义行动候选、开放生成 proposal、场景/事件提案验证、通用裁定请求和可选 OpenAI provider。
+**神座纪元（Pantheon Age）** 是一个以固定神明体系、维多利亚神秘学、调查冒险和规则裁定为核心的文字冒险系统。当前版本是 `v5.8.0 Phase 5 Final Integration`，已经把 Phase 1 CLI 核心能力暴露成 REST API，把 API 游戏会话持久化到 SQLite，并建立受规则约束的 LLM 运行时契约、provider 接口、prompt/policy 文件、语义行动候选、开放生成 proposal、场景/事件提案验证、通用裁定请求、可选 OpenAI provider，以及 Phase 5 的 Agentic Runtime baseline。
 
-Phase 4 的目标已经完成：CLI 可以启用真实 LLM，也能在没有 API key、模型失败或输出越权时安全回退。下一阶段不再继续给旧的 `ActionCandidate(intent=...)` 工作流打补丁，而是进入 Phase 5 Agentic Runtime，让 Agent 负责理解、生成、裁定建议、记忆整理和叙事组织，程序负责验证、提交状态、持久化和审计。
+Phase 4 的目标已经完成：CLI 可以启用真实 LLM，也能在没有 API key、模型失败或输出越权时安全回退。Phase 5 的 Agentic Runtime baseline 也已经完成：项目不再继续给旧的 `ActionCandidate(intent=...)` 工作流打补丁，而是引入 `agentic_runtime/`，让 Agent 负责理解、生成、裁定建议、记忆整理和叙事组织，程序负责验证、提交状态、持久化和审计。
 
 ## 项目动机
 
@@ -24,13 +24,13 @@ LLM 只能 propose，系统负责 validate，只有 validated content 才能 com
 ## 版本状态
 
 ```text
-内部里程碑：Phase 4 Open Generation Proposal Runtime
+内部里程碑：Phase 5 Agentic Runtime Baseline
 对外起点版本：v1.0.0
-当前公开版本：v4.7.0
-Phase 4 状态：已完成，下一阶段为 Phase 5 Agentic Runtime Baseline
+当前公开版本：v5.8.0
+Phase 5 状态：Agentic Runtime baseline 完成。world-mode 支持八个重要国家出身、开局城市、奥斯特民族选择、常用身份选择、本地宗教合法性上下文、动态国家关系接口、OpenAI Turn Director 默认快速路径、旧版 Intent/RuleArbiter/WorldBundle 多调用路径可选回退、OpenAI NPC/Event/Item/Narrator Agents full 模式可选启用、跨回合 Agentic Memory Store 检索、故事化 CLI 输出，以及完整 Phase 5 收口文档和服务层集成测试
 ```
 
-`v4.7.0` 已完成：
+当前已完成：
 
 - 命令行连续游玩；
 - 角色创建、职业、神明选择；
@@ -75,7 +75,7 @@ Phase 4 状态：已完成，下一阶段为 Phase 5 Agentic Runtime Baseline
 - `OpenAINarrationProvider` 真实 OpenAI 叙事 provider；
 - `PANTHEON_USE_LLM=1`：启用真实 LLM；
 - `PANTHEON_OPENAI_MODEL`：覆盖默认模型；
-- `PANTHEON_SHOW_RUNTIME=1`：在 CLI 显示 Phase 4 runtime 摘要；
+- `PANTHEON_SHOW_RUNTIME=1`：在 CLI 显示 Phase 4 / Phase 5 runtime 调试摘要；
 - `prompts/narrator.md` 叙事 prompt 与禁止行为文件；
 - `ActionCandidate` / `ActionCandidateValidation` / `ActionCandidateResult`；
 - `ActionCandidate` 语义字段：`method`、`desired_outcome`、`risk_tags`、`skill_tags`、`assumptions`；
@@ -106,6 +106,44 @@ Phase 4 状态：已完成，下一阶段为 Phase 5 Agentic Runtime Baseline
 - 项目长期开发规则 `AGENTS.md`；
 - README Demo 路线；
 - README 和 CHANGELOG 项目记录。
+- `agentic_runtime/` Phase 5 最小运行时；
+- `OpenActionProposal`：保留玩家开放行动、方法、目标、猜测和请求效果；
+- `RuleAdjudicationProposal`：由 Rule Arbiter Agent 提出裁定建议、允许效果、拒绝效果和桥接行动；
+- `StateCommitProposal`：由 State Commit Layer 统一写入 `GameState`；
+- `MemoryCandidate`：由 Memory Curator Agent 提出哪些信息应保存、丢弃或保持临时；
+- `MemoryRetrievalResult`：为行动前上下文检索预留结构；
+- `TemporaryContentProposal`：让 Scene Agent 生成临时场景细节但不能写入世界事实；
+- `NarrationProposal`：由 Narrator Agent 基于已确认结果生成最终文本；
+- `PANTHEON_USE_AGENTIC_RUNTIME=1`：启用 Phase 5 CLI 路径；
+- `PANTHEON_USE_AGENTIC_LLM=1`：启用 Phase 5 OpenAI-backed Agentic Runtime；
+- `PANTHEON_AGENTIC_TURN_DIRECTOR=1`：默认快速路径，一次 OpenAI 调用返回 intent、rule adjudication、scene、NPC、event、item 和 narration；
+- `PANTHEON_AGENTIC_TURN_DIRECTOR=0`：关闭快速路径，回到旧版 OpenAI Intent + Rule Arbiter + WorldBundle 多调用路径；
+- `PANTHEON_AGENTIC_FULL_LLM=1`：改用较慢的 OpenAI NPC/Event/Item/Narrator 分离 agents；
+- `OpenAITurnDirectorProvider`：真实 OpenAI 回合导演 provider，把一回合的理解、裁定建议、临时世界内容和叙事草稿合并到一次结构化调用中；
+- `OpenAIIntentAgentProvider`：真实 OpenAI Intent Agent provider；
+- `OpenAIWorldBundleProvider`：真实 OpenAI 世界总包 provider，一次生成场景、NPC、事件、物件和玩家可见叙事；
+- `OpenAINarratorAgentProvider`：真实 OpenAI 主持人叙事 provider，用于 full 模式或 WorldBundle 回退；
+- `OpenAINPCAgentProvider` / `OpenAIEventAgentProvider` / `OpenAIItemAgentProvider`：真实 OpenAI 临时世界内容 provider，用于 full 模式实验；
+- `prompts/open_action.md`：Phase 5 Open Action prompt，不要求模型输出旧式固定 intent；
+- `prompts/npc_agent.md` / `prompts/event_agent.md` / `prompts/item_agent.md`：Phase 5 NPC、事件和物件生成 prompt；
+- `MemoryRecord`：经过验证后写入本地 memory store 的长期记忆记录；
+- `agentic_runtime/memory_store.py`：按 player / npc / location / quest / secret 分桶保存 validated memory candidates；
+- `memory_retriever.py` 会读取 memory store，让 validated memory candidates 进入后续回合上下文；
+- secret memory 保留在内部 `hidden_context`，默认不会进入 runtime 序列化、公开状态或叙事文本；
+- `world_slice.py`：为 world-mode 本地 agents 提供城市、出身和可见记忆上下文；
+- world-mode Narrator 默认输出玩家可读的故事文本；Agent 结构、边界和 provider 信息只在 `PANTHEON_SHOW_RUNTIME=1` 时显示；
+- `NPCProposal` / `EventProposal` / `ItemProposal`：临时人物、事件、物品候选；
+- `LocalNPCAgentProvider` / `LocalEventAgentProvider` / `LocalItemAgentProvider`：本地临时世界内容生成；
+- NPC / Event / Item validators：拒绝临时内容直接 claim 线索、背包变化、状态变化或永久事实；
+- `phase1_cli/scenarios.py`：区分 Mist Abbey tutorial 与 Phase 5 world-mode；
+- `PANTHEON_GAME_MODE=world`：进入 Agentic World Mode，并在创建角色时选择八个重要国家出身和开局城市；
+- 奥斯特帝国出身会额外选择民族：`奥斯特人`、`佩斯塔人`、`波西恩人`；
+- 出身信息：公开状态会记录 `origin_country`、`origin_identity`、`origin_ethnicity`、`origin_city`、`background_name` 和本地宗教合法性上下文；
+- `world_action`：world-mode 专用提交类型，记录开放行动但不自动改写地点、线索、背包或角色状态；
+- Phase 5 runtime debug 输出；
+- `跳向前厅` 通过 Phase 5 开放意图和 Rule Arbiter 桥接为移动，不需要给旧 parser 增加“跳向”关键词；
+- Phase 5 Agentic Runtime 自动化测试；
+- [docs/phase5_completion_summary.md](docs/phase5_completion_summary.md)：Phase 5 最终完成总结。
 
 ## 项目结构
 
@@ -119,6 +157,7 @@ project-root/
     game_service.py
     intent_parser.py
     rule_engine.py
+    scenarios.py
     save_manager.py
     story.py
     data.py
@@ -140,6 +179,25 @@ project-root/
     config.py
     errors.py
     sqlite_repository.py
+  agentic_runtime/
+    __init__.py
+    contracts.py
+    event_agent.py
+    intent_agent.py
+    item_agent.py
+    memory_store.py
+    memory_curator.py
+    memory_retriever.py
+    narrator_agent.py
+    npc_agent.py
+    orchestrator.py
+    providers.py
+    rule_arbiter_agent.py
+    scene_agent.py
+    state_commit.py
+    validators.py
+    world_slice.py
+    world_relations.py
   llm_runtime/
     __init__.py
     adjudication.py
@@ -151,10 +209,15 @@ project-root/
     prompts.py
   prompts/
     action_candidate.md
+    event_agent.md
+    item_agent.md
     narrator.md
+    npc_agent.md
     open_generation.md
+    open_action.md
     scene_event.md
   tests/
+    test_agentic_runtime.py
     test_llm_runtime_adjudication.py
     test_llm_runtime_actions.py
     test_llm_runtime_narrator.py
@@ -174,6 +237,8 @@ project-root/
     rag_seed_cards.md
     progression_design.md
     agentic_runtime_architecture.md
+    phase5_agentic_runtime_plan.md
+    phase5_completion_summary.md
     phase2_api_plan.md
     phase4_llm_runtime_plan.md
     system_design.md
@@ -196,6 +261,9 @@ project-root/
 - [docs/rag_seed_cards.md](docs/rag_seed_cards.md)：最小 RAG 设定卡片。把八神、六大职业和国家气质整理成未来 LLM 容易检索的小卡片。
 - [docs/progression_design.md](docs/progression_design.md)：成长系统设计。记录职业等级、信仰等级、仪式晋升、道具系统、属性规划和代价系统。
 - [docs/agentic_runtime_architecture.md](docs/agentic_runtime_architecture.md)：长期 Agentic Runtime 架构。记录 Intent Agent、Rule Arbiter Agent、Scene/NPC/Event/Item Agents、Memory Curator Agent、State Commit Layer 和 Narrator Agent 的职责边界。
+- [docs/phase5_agentic_runtime_plan.md](docs/phase5_agentic_runtime_plan.md)：Phase 5 分阶段计划。记录 v5.0 到 v5.8 的开发顺序、完成情况和非目标。
+- [docs/phase5_completion_summary.md](docs/phase5_completion_summary.md)：Phase 5 完成总结。记录最终能力、数据流、边界和后续 Phase 6 方向。
+- [docs/future_phase_plan.md](docs/future_phase_plan.md)：Phase 6 之后的合并执行路线。先实现世界知识与长期记忆地基，再做最小可玩体验校准、成长系统、Web/API 体验，最后做工程质量与最终体验优化。
 - [docs/llm_runtime_design.md](docs/llm_runtime_design.md)：LLM 运行逻辑设计。记录 `propose -> validate -> commit`、RAG、内容分级、场景提案、事件生成和防止上下文污染的规则。
 - [docs/live_llm_testing.md](docs/live_llm_testing.md)：真实 LLM API key、本地 `.env`、smoke test 和 live test 的安全配置方式。
 - [docs/phase2_api_plan.md](docs/phase2_api_plan.md)：Phase 2 FastAPI 拆分计划。
@@ -255,7 +323,7 @@ PANTHEON_OPENAI_MODEL=gpt-4o-mini
 
 程序会自动读取项目根目录的 `.env`。`.env` 已被 `.gitignore` 忽略，不会上传 GitHub。
 
-只查看 Phase 4 runtime 摘要，不调用真实 LLM：
+只查看 runtime 调试摘要，不调用真实 LLM：
 
 ```bash
 PANTHEON_SHOW_RUNTIME=1 ./.venv/bin/python -m phase1_cli.main
@@ -283,15 +351,92 @@ Result: OpenAI action provider returned a candidate.
 
 这条测试会真实调用一次模型，验证类似“跳向前厅”的自然表达是否被模型归一为合法 `move` action。它只有在 `.env` 中设置 `PANTHEON_RUN_LIVE_LLM_TESTS=1` 时才会运行，默认测试套件不会消耗 API token。
 
-如果终端中文输入退格显示异常，可以关闭彩色输入提示：
+CLI 交互输入会优先使用 `prompt_toolkit`，它比原生 `input()` 更适合中文输入、删除和光标移动。如果你的终端环境和 `prompt_toolkit` 不兼容，可以强制退回原生输入：
+
+```bash
+PANTHEON_SIMPLE_INPUT=1 ./.venv/bin/python -m phase1_cli.main
+```
+
+`PANTHEON_SIMPLE_INPUT=1` 可以直接放在 `.env` 里。world-mode 默认使用普通 `你>` 提示，不再依赖彩色提示来区分输入和输出。
+
+启用 Phase 5 Agentic Runtime：
+
+```text
+PANTHEON_USE_AGENTIC_RUNTIME=1
+```
+
+启用 Phase 5 world-mode：
+
+```text
+PANTHEON_GAME_MODE=world
+```
+
+world-mode 会在创建角色时要求选择出身国家和开局城市，并自动使用 Phase 5 Agentic Runtime。奥斯特帝国出身会额外选择民族。默认 `tutorial` 模式仍然是雾中修道院教程场景。需要查看 Agent 内部结构时，再额外设置 `PANTHEON_SHOW_RUNTIME=1`。
+
+当前 world-mode 开放八个重要国家：
+
+```text
+阿尔比昂联合王国：格兰威克、布莱摩尔、圣维兰
+卢米埃共和国：卢塞恩、圣雷米尔、维拉尔
+瓦尔德铁血邦联：格莱芬、科伦海姆、霍恩维克
+奥斯特帝国：维伦纳、卡洛维茨、佩斯塔
+伊斯特亚王冠领：阿尔卡萨、贝拉诺、米拉诺
+诺克提亚：诺克提亚城
+塞勒米亚苏丹国：萨莱姆
+罗斯维亚大公国：维亚洛夫
+```
+
+每个出身国家还会带入初始本地宗教合法性上下文，例如国教/主导教会、合法公开教会、受限/异端风险教会和敌对异教/邪教。合法公开不等于政治友好，有些教会只是因为条约、港口贸易、侨民保护或列强压力而被允许存在。五大列强通常把深渊信仰视为敌对异教；塞勒米亚则把密仪会作为国教，同时因为列强实力和金门海峡贸易压力，允许其他七神教会在境内合法存在。这个信息会进入公开状态和 Agentic Runtime memory context，方便后续 Agent 判断公开祈祷、传教、调查教会和接触异端时的社会风险。宗教合法性是初始值，后续可以被世界事件和验证后的 memory/state commit 改变。
+
+国家关系不会写死成固定表。世界观只固定国家的政体、地理、城市、官方信仰、经济利益和地缘压力；两国当前亲疏、外交危机、联盟、制裁、战争风险等关系状态，后续由 Agent 根据事件提出 `relation signal`，再由程序验证后写入长期世界记忆。当前代码已提供 `agentic_runtime/world_relations.py` 作为动态国家关系接口。
+
+如果还想让 Phase 5 的 Agentic Runtime 调用 OpenAI，而不是使用完全本地 deterministic providers：
+
+```text
+PANTHEON_USE_AGENTIC_LLM=1
+PANTHEON_AGENTIC_TURN_DIRECTOR=1
+OPENAI_API_KEY=你的真实_key
+```
+
+当前 Phase 5 默认 live 路径使用 OpenAI Turn Director。这样每回合通常只需要一次模型调用：Turn Director 一次返回玩家开放行动理解、规则裁定建议、临时场景、NPC、事件、物件，以及紧凑玩家叙事。程序随后负责验证裁定范围、掷骰、提交状态、拒绝越权结果，并在高风险场景补充或回退安全叙事。Memory / State Commit 默认仍使用本地 provider，以便守住现实写入、记忆边界和最终提交。
+
+如果要调试旧版多 Agent 分离链路，可以关闭导演快速路径：
+
+```text
+PANTHEON_AGENTIC_TURN_DIRECTOR=0
+```
+
+关闭后会回到 OpenAI Intent Agent + OpenAI Rule Arbiter Agent + OpenAI WorldBundle Agent，速度会比默认路径慢，但方便单独观察各个 Agent。
+
+如果想让 NPC / Event / Item / Narrator Agents 分别调用 OpenAI，可以额外开启 full 模式：
+
+```text
+PANTHEON_AGENTIC_FULL_LLM=1
+```
+
+full 模式更适合拆分调试各个 Agent，但每回合调用次数更多，速度会明显变慢。普通试玩优先使用默认 Turn Director 路径。
+
+试玩时建议给 Turn Director 留出足够结构化输出空间，避免 JSON 被截断后回退：
+
+```text
+PANTHEON_OPENAI_MAX_OUTPUT_TOKENS=1400
+```
+
+然后运行：
 
 ```bash
 ./.venv/bin/python -m phase1_cli.main
 ```
 
-此时 `PANTHEON_PLAIN_PROMPT=1` 可以直接放在 `.env` 里。
+默认情况下，Phase 5 路径仍使用本地 deterministic agents，不会额外消耗 LLM token。开启 `PANTHEON_USE_AGENTIC_LLM=1` 且提供 `OPENAI_API_KEY` 后，默认由 Turn Director 调用 OpenAI；任一模型调用失败或裁定不合规时会自动回退到旧链路或本地 provider。Phase 5 默认快速链路是：
 
-启用 LLM 后，玩家输入会先进入 `OpenAIActionCandidateProvider`，生成结构化 `ActionCandidate`，通过本地 validator 后再交给 `rule_engine.py`。规则结果出来后，`OpenAINarrationProvider` 会生成结构化 `NarrationProposal`，再次通过本地 validator 后才展示给玩家。没有 API key、调用失败或输出不合规时，系统会自动回退到本地关键词解析和模板叙事。
+```text
+Memory Retriever -> Turn Director Agent
+-> Validators -> State Commit Layer -> Memory Curator Agent
+-> Narration Branch Selection -> CLI 输出
+```
+
+如果使用旧的 Phase 4 LLM 路径，也就是只设置 `PANTHEON_USE_LLM=1` 而不启用 Phase 5，玩家输入会先进入 `OpenAIActionCandidateProvider`，生成结构化 `ActionCandidate`，通过本地 validator 后再交给 `rule_engine.py`。规则结果出来后，`OpenAINarrationProvider` 会生成结构化 `NarrationProposal`，再次通过本地 validator 后才展示给玩家。没有 API key、调用失败或输出不合规时，系统会自动回退到本地关键词解析和模板叙事。
 
 注意：这是 Phase 4 的过渡式接入，用来证明“真实 LLM provider + structured output + 本地 validator + fallback”可以跑通。它不是最终玩法架构。Phase 5 不会继续靠给 `ActionCandidate` 增加关键词或枚举来解决自然语言理解问题，而会改成更开放的 Agentic Runtime。
 
@@ -552,7 +697,7 @@ d20 + 属性值 + 职业修正 >= DC
 骑士、法师、密探、游侠、牧师、炼金术士
 ```
 
-当前 CLI 代码中仍保留早期命名 `战士 / 盗贼`，后续会与世界观文档统一为 `骑士 / 密探`。
+当前 CLI 显示名已经与世界观文档统一为 `骑士 / 密探`，内部 `class_id` 仍保留 `warrior / rogue` 以兼容旧存档和旧接口。
 
 职业通过三类配置影响规则：
 
@@ -562,9 +707,9 @@ d20 + 属性值 + 职业修正 >= DC
 
 当前 CLI 例子：
 
-- 战士攻击更强：`attack_bonus +2`。
+- 骑士攻击和护卫更强：`attack_bonus +2`。
 - 法师分析神秘知识更强：`analyze_bonus +2`、`lore_bonus +2`，但接触禁忌知识 SAN 风险更高。
-- 盗贼潜行和开锁更强，但隐秘路线会增加 Suspicion。
+- 密探潜行、开锁和伪装更强，但隐秘路线会增加 Suspicion。
 - 游侠追踪和侦察更强。
 - 牧师祈祷、净化、抵抗污染更强。
 - 炼金术士使用药剂、鉴定异常物质更强。
@@ -576,8 +721,7 @@ d20 + 属性值 + 职业修正 >= DC
 - CLI 当前只有单一默认本地存档，还没有多存档位或账号系统。
 - API 当前使用 SQLite 保存游戏会话，还没有 PostgreSQL、账号系统或多用户隔离。
 - API 当前不处理本地 JSON 存档/读档，CLI 仍保留本地存档功能。
-- 代码职业命名还未完全对齐世界观文档，后续会把 `战士 / 盗贼` 统一为 `骑士 / 密探`。
-- 地图只有「雾中修道院」一个小副本。
+- 默认 tutorial 模式仍是「雾中修道院」小副本；`PANTHEON_GAME_MODE=world` 已可选择八个重要国家出身与开局城市，并支持奥斯特民族选择、本地宗教合法性上下文、可见长期记忆和故事化 CLI 输出。
 - API 已经持久化行动日志，但还没有搜索、分类或完整时间线界面。
 - 战斗和道具系统是最小可玩版本，还没有复杂怪物、装备或任务系统。
 

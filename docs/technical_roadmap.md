@@ -400,6 +400,28 @@ player input
 
 Goal: move from "LLM plugged into the old CLI" to a real agentic game loop.
 
+Current status: `v5.8.0` completes the Phase 5 Agentic Runtime baseline.
+World-mode now has playable origin selection across eight important countries,
+optional Ost ethnicity selection, local church legality context, a dynamic nation
+relation interface, optional OpenAI-backed Turn Director fast path, optional legacy
+OpenAI-backed Intent/RuleArbiter/WorldBundle Agents, optional full OpenAI
+NPC/Event/Item/Narrator Agents, local Rule Arbiter/Memory/Commit providers,
+validated memory storage, cross-turn memory retrieval, player-facing CLI story
+output, and service-layer integration tests.
+
+Current live-play optimization adds an optional OpenAI Turn Director fast path.
+The default Phase 5 LLM route now uses one structured OpenAI call to propose
+intent, adjudication, temporary world content, and compact narration, while
+local validation, dice rolls, state commit, and memory commit still guard game
+truth. The older Intent/RuleArbiter/WorldBundle multi-call route remains
+available for debugging.
+
+Phase 5 final summary:
+
+```text
+docs/phase5_completion_summary.md
+```
+
 Core direction:
 
 ```text
@@ -415,8 +437,8 @@ docs/agentic_runtime_architecture.md
 ```
 
 Phase 5 should not keep expanding `ActionCandidate(intent=...)` with one-off
-keyword or enum patches. The next runtime should preserve open player intent and
-let specialized agents reason over it.
+keyword or enum patches. The completed baseline preserves open player intent and
+lets specialized agents reason over it.
 
 Target modules:
 
@@ -433,16 +455,47 @@ agentic_runtime/
   item_agent.py
   memory_retriever.py
   memory_curator.py
+  memory_store.py
   state_commit.py
   narrator_agent.py
   validators.py
+  world_slice.py
+```
+
+Scenario split helper:
+
+```text
+phase1_cli/scenarios.py
+```
+
+Current implemented modules:
+
+```text
+agentic_runtime/
+  __init__.py
+  contracts.py
+  event_agent.py
+  intent_agent.py
+  item_agent.py
+  memory_curator.py
+  memory_retriever.py
+  memory_store.py
+  narrator_agent.py
+  npc_agent.py
+  orchestrator.py
+  providers.py
+  rule_arbiter_agent.py
+  scene_agent.py
+  state_commit.py
+  validators.py
+  world_slice.py
 ```
 
 Core proposal objects:
 
 ```text
 OpenActionProposal
-SceneProposal
+TemporaryContentProposal
 NPCProposal
 EventProposal
 ItemProposal
@@ -461,7 +514,7 @@ Minimum Phase 5 workflow:
 Player Input
   -> Memory Retriever
   -> Intent Agent
-  -> Scene/NPC/Event Agents
+  -> Scene/NPC/Event/Item Agents
   -> Rule Arbiter Agent
   -> Validator Layer
   -> State Commit Layer
@@ -472,14 +525,25 @@ Player Input
 
 Phase 5 completion target:
 
-- Intent Agent preserves complex player intent without forcing it into old button-like intents too early.
-- Rule Arbiter Agent proposes checks, risks, costs, allowed effects, and denied effects.
-- Scene/NPC/Event Agents can generate temporary content.
-- Memory Curator Agent decides what to store, discard, compress, retrieve, or keep hidden.
-- State Commit Layer is still the only layer that writes game reality.
-- CLI can run the agentic flow in a small world-mode slice.
+- Intent Agent preserves complex player intent without forcing it into old button-like intents too early. Baseline done with local agent; optional OpenAI Intent Agent done in `v5.1`.
+- Rule Arbiter Agent proposes checks, risks, costs, allowed effects, and denied effects. Baseline supports local fallback and optional OpenAI-backed contextual adjudication.
+- Scene/NPC/Event/Item Agents can generate temporary content. Baseline done in `v5.2`; optional OpenAI-backed NPC/Event/Item Agents done in `v5.4`; generated NPCs, events, and items are not persistent yet.
+- Tutorial/world-mode split is available through `PANTHEON_GAME_MODE=world`.
+- World-mode origin selection currently supports the five great powers, Noctia, Selemia, and Rosvia.
+- Memory Curator Agent decides what to store, discard, compress, retrieve, or keep hidden. Baseline done with local validated memory storage in `v5.5`; retrieval integration done in `v5.6`.
+- State Commit Layer is still the only layer that writes game reality. Baseline done through `phase1_cli.rule_engine.apply_rule()`.
+- CLI can run the agentic flow in both tutorial and world-mode slices. Tutorial can opt into Phase 5 through `PANTHEON_USE_AGENTIC_RUNTIME=1`; world-mode starts through `PANTHEON_GAME_MODE=world`.
 - Fake provider tests cover every agent.
 - Optional live LLM tests can be enabled through environment variables.
+
+Provider adoption rule:
+
+```text
+Add one LLM-backed agent at a time.
+Keep local providers as fallback.
+Use fake client tests before live tests.
+Do not let model-backed agents commit state directly.
+```
 
 Important boundary:
 
@@ -516,6 +580,31 @@ Validators should check:
 - memory visibility is correct.
 
 ## Phase 6: RAG And World Canon
+
+Note:
+
+The execution-oriented post-Phase-5 roadmap now lives in:
+
+```text
+docs/future_phase_plan.md
+```
+
+That plan intentionally uses a consolidated execution order:
+
+```text
+Phase 6: World Knowledge And Persistent Memory
+Phase 7: Minimum Playable Experience Calibration
+Phase 8: Progression And Core Mechanics
+Phase 9: Web UI And API Product Experience
+Phase 10: Engineering Quality And Final Experience Optimization
+```
+
+The RAG section below remains the technical design direction for the knowledge
+retrieval part of the consolidated Phase 6.
+
+Older headings later in this technical roadmap may keep their original numbers
+as historical technical categories. For execution order, follow
+`docs/future_phase_plan.md`.
 
 Goal: retrieve only the relevant world canon for each LLM call.
 

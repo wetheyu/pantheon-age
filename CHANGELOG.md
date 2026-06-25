@@ -2,6 +2,220 @@
 
 ## Unreleased
 
+- 新增 `docs/future_phase_plan.md`，将 Phase 6 之后的执行路线合并为“世界知识与长期记忆 -> 最小可玩体验校准 -> 成长系统 -> Web/API 体验 -> 工程质量与最终体验优化”的阶段计划；
+- Phase 5 live path 新增 OpenAI Turn Director 默认快速路径：一次结构化调用返回开放行动理解、裁定建议、临时场景、NPC、事件、物件和紧凑叙事，程序随后验证、掷骰、提交状态并在高风险场景补充或回退安全叙事；
+- 新增 `PANTHEON_AGENTIC_TURN_DIRECTOR=1`，普通试玩默认使用单调用快速路径；设置为 `0` 可回到旧版 OpenAI Intent + Rule Arbiter + WorldBundle 多调用路径；
+- world-mode CLI 默认输出从 Agent 工作报告调整为玩家可读的故事文本；
+- 旧版 OpenAI Intent + Rule Arbiter + WorldBundle 路径仍保留为可回退/可调试模式：Intent 负责理解玩家开放行动，Rule Arbiter 按上下文提出 DC、检定属性、目标画像、阻拦和后果，WorldBundle 一次生成场景、NPC、事件、物件和玩家可见叙事；
+- 出于试玩速度考虑，`PANTHEON_USE_AGENTIC_LLM=1` 默认配合 Turn Director 使用；`PANTHEON_AGENTIC_FULL_LLM=1` 才改用较慢的 OpenAI NPC/Event/Item/Narrator 分离 Agents；
+- `PANTHEON_SHOW_RUNTIME=1` 现在是显示 Agentic Runtime 调试摘要的唯一开关，world-mode 和 LLM 开关本身不再自动展开调试信息；
+- world-mode 开局新增常用身份选择、世界背景、角色职业/信仰/国家/身份介绍和行动示例，引导玩家知道自己是谁、在哪、可以做什么；
+- world-mode 主循环不再每回合自动打印状态栏；状态、背包、线索等改为通过命令查看；
+- CLI 职业显示名与世界观文档对齐：`战士` -> `骑士`，`盗贼` -> `密探`，内部 class_id 保持兼容；
+- 本地 Scene/NPC/Event/Item Agent 的默认文本去掉工程化“临时切片/不能成为事实”等玩家不该看到的表达。
+- CLI 输入优先使用 `prompt_toolkit`，改善中文输入删除、光标移动和多字节字符编辑问题；可用 `PANTHEON_SIMPLE_INPUT=1` 强制退回原生 `input()`；
+- world-mode 高风险暴力行动会触发 d20 检定并显示计算过程，成功也只确认短暂优势和局势升级，不会自动确认击杀；
+- Agentic Runtime Narration validator 现在会拒绝未提交死亡权限的“杀死/死亡/尸体”等叙事确认，避免 LLM 把玩家尝试直接写成世界事实。
+- 新增 OpenAI Rule Arbiter Agent 和 `prompts/rule_arbiter.md`，允许 LLM 根据目标身份、地点压力和阻拦者动态提议 DC 与后果；程序会验证 DC 范围、属性、死亡越权和数据形状，不合规时回退本地裁定。
+- 新增 `agentic_runtime/context_pack.py`，把玩家状态、当前行动、可见记忆和轻量 RAG seed cards 打包为本回合上下文，避免把完整设定文档无脑塞进每次 LLM 调用。
+- WorldBundle 输出扩展为 `Scene/NPC/Event/Item/Narration`，默认 live 体验由 LLM 统一生成本回合场景和叙事，本地 Scene/NPC/Event/Item 主要作为 fallback。
+
+## v5.8.0 - Phase 5 Final Integration
+
+Phase 5 最终整合：
+
+- 将当前版本更新为 `v5.8.0 Phase 5 Final Integration`；
+- 新增 `docs/phase5_completion_summary.md`，集中总结 Phase 5 的最终架构、已完成能力、边界和非目标；
+- 将 `docs/phase5_agentic_runtime_plan.md` 的 `v5.8.0` 标记为完成，并明确 Phase 5 status 为 complete；
+- 更新 README、AGENTS、system design、technical roadmap 和 Agentic Runtime 架构说明，使它们统一描述 Phase 5 最终状态；
+- 新增服务层端到端测试，覆盖 `handle_player_input()` 进入 world-mode 后的完整 Phase 5 world slice、memory 写入、runtime payload 和公开状态边界；
+- 再次确认普通测试不触发真实 LLM 网络调用。
+
+## v5.7.0 - Phase 5 Agentic World Mode Slice
+
+Phase 5 CLI 世界切片：
+
+- 新增 `agentic_runtime/world_slice.py`，集中处理 world-mode 城市、出身、目标和可见记忆摘要；
+- world-mode 的本地 Scene / NPC / Event / Item Agents 现在会生成更具体的临时城市切片内容；
+- world-mode Narrator 输出 `【世界切片｜城市】`、行动、场景、临时人物、临时事件、可互动物件和边界提示；
+- 本地 Memory Curator 会把已提交的 `world_action` 玩家行动作为可见长期记忆保存；
+- world-mode 切片会读取可见长期记忆，但仍不会自动授予线索、物品、地点变化、阵营关系变化或成长奖励；
+- 新增测试，覆盖世界切片输出、可见记忆参与下一回合、临时物件不进背包、开放行动不改写地点/线索/角色状态。
+
+## v5.6.0 - Phase 5 Memory-integrated Agentic Loop
+
+Phase 5 记忆检索闭环：
+
+- `Memory Retriever` 现在会读取 `GameState.agentic_memory` 中的本地 memory store；
+- `player_known` 和 `quest` 桶会进入玩家已知上下文；
+- `location` 桶会进入地点上下文；
+- `npc_known` 和 `secret` 桶会进入内部 `hidden_context`；
+- `MemoryRetrievalResult.to_dict()` 默认不序列化 `hidden_context`，避免秘密记忆出现在 CLI/API runtime payload；
+- Secret memory 不会进入 `GameState.to_public_dict()`，也不会被本地 Narrator 输出；
+- 新增测试，覆盖可见记忆跨回合检索、秘密记忆隐藏边界和 `GameState.to_dict()` / `from_dict()` 往返后的记忆保留。
+
+## v5.5.0 - Phase 5 Memory Store Baseline
+
+Phase 5 本地记忆存储基线：
+
+- 新增 `MemoryRecord`，表示已经通过验证、可以写入本地 memory store 的结构化记忆；
+- 新增 `agentic_runtime/memory_store.py`；
+- 本地 memory store 按 `player_known`、`npc_known`、`location`、`quest`、`secret` 分桶保存记忆；
+- `GameState` 新增 `agentic_memory`，让本地 memory store 可以跟随存档和 API snapshot 保存；
+- `Memory Curator` 现在会把已提交的确定性效果转成 `should_persist=True` 的 `quest_memory`；
+- `run_agentic_turn()` 会验证 memory candidates，并且只写入验证通过且允许持久化的候选记忆；
+- Memory validator 阻止 `temporary` / `flavor` 记忆持久化；
+- Memory validator 阻止直接来自 `openai-*` / `llm-*` provider 的原始生成内容被当作长期事实保存；
+- Secret memory 必须使用 `secret_memory + system_secret` 组合，避免秘密内容进入玩家可见桶；
+- 新增测试，覆盖 memory store 分桶、secret memory 隔离、非法原始 LLM 记忆拒绝和 Agentic Runtime 回合写入。
+
+## v5.4.0 - Phase 5 LLM-backed World Agents
+
+Phase 5 世界生成 Agent 接入真实模型：
+
+- 新增 `OpenAINPCAgentProvider`，让 NPC Agent 可以在 `PANTHEON_USE_AGENTIC_LLM=1` 时调用 OpenAI 生成临时 NPC 候选；
+- 新增 `OpenAIEventAgentProvider`，让 Event Agent 可以调用 OpenAI 生成临时事件候选；
+- 新增 `OpenAIItemAgentProvider`，让 Item Agent 可以调用 OpenAI 生成临时物件候选；
+- 新增 `NPCOutput`、`EventOutput` 和 `ItemOutput` structured output model；
+- 新增 `prompts/npc_agent.md`、`prompts/event_agent.md` 和 `prompts/item_agent.md`；
+- `PANTHEON_USE_AGENTIC_LLM=1` 在当时会启用 OpenAI-backed Intent / NPC / Event / Item Agents；当前默认 live 路径已在 Unreleased 中改为 Intent + Rule Arbiter + WorldBundle；
+- Rule Arbiter、Memory Retriever、Memory Curator、State Commit 和 Narrator 仍保持本地 provider，继续由程序负责验证、提交、记忆边界和最终现实写入；
+- OpenAI NPC / Event / Item Agent 失败时，orchestrator 会按 agent 粒度记录错误并回退到对应本地 provider；
+- 新增 fake-client 自动化测试，覆盖 OpenAI world agent provider 输出、validator 路径和 per-agent fallback；
+- 普通测试仍不调用真实网络、不消耗 API token。
+
+## v5.3.4 - Phase 5 Dynamic World Relations
+
+Phase 5 动态国家关系接口：
+
+- 将 `docs/world_bible.md` 中的固定国家关系矩阵改为动态建模原则；
+- 明确教会合法性是开局初始秩序，不是永远不变的绝对关系；
+- 将教会合法性等级从“受限容忍”和“异端风险”拆分表述合并为“受限 / 异端风险”，并将最后一档表述为“敌对异教 / 邪教”；
+- 将“友好公开”表述调整为“合法公开”，避免把条约保护误解为政治友好；
+- 调整塞勒米亚宗教合法性：密仪会为国教，其他七神教会因列强压力、通商条约、侨民保护和金门海峡贸易需求而合法存在；
+- 调整奥斯特宗教合法性：潮汐圣会在帝国港口和海运体系中合法公开，夜幕修会仍保持受限 / 异端风险；
+- 根据国家政体、地理、法律需求、军工需求、港口需求和情报风险重新平衡初始教会合法性矩阵；
+- 明确阿尔比昂对白塔院和夜幕修会更警惕，卢米埃和伊斯特亚允许审判庭合法公开，瓦尔德允许白塔院参与工程/军工体系，罗斯维亚允许审判庭处理继承和遗嘱秩序；
+- 新增测试约束，确保七神教会的初始公开合法分布保持在相近区间，避免某一教会全图通吃；
+- 明确世界观只固定国家结构性条件，例如政体、地理、城市、官方信仰、经济利益和地缘压力；
+- 明确国家之间当前亲疏、联盟、制裁、外交危机和战争风险属于动态世界状态；
+- 新增 `agentic_runtime/world_relations.py`；
+- 新增 `NationRelationSignal`，用于表达事件对两国关系的影响；
+- 新增 `NationRelationSnapshot`，用于表达某一对国家的当前关系状态；
+- 新增国家关系 signal 校验、neutral snapshot 创建和 signal 应用函数；
+- 更新 README、world bible、LLM forbidden outputs、LLM runtime design 和 Phase 5 plan；
+- 扩展测试，覆盖合法关系信号更新和非法关系信号拒绝。
+
+## v5.3.3 - Phase 5 Origin Culture Relations
+
+Phase 5 出身文化与宗教合法性上下文：
+
+- 奥斯特帝国出身新增民族选择：奥斯特人、佩斯塔人、波西恩人；
+- `configure_character_for_game_mode()` 支持 `origin_ethnicity`；
+- `Character.to_public_dict()` 的 `origin` 新增 `ethnicity` 和 `church_context`；
+- 新增八个可选出身国家的初始本地教会合法性上下文；
+- Agentic Runtime memory retrieval 会读取出身民族和本地宗教合法性，供后续 Agent 判断社会风险；
+- `docs/world_bible.md` 新增教会合法性矩阵、教会关系矩阵和国家关系速览；
+- 更新 README、Phase 5 plan、system design、technical roadmap 和 Agentic Runtime 架构文档；
+- 扩展测试，覆盖奥斯特民族选择、塞勒米亚深渊国教例外和 memory context 中的宗教合法性。
+
+## v5.3.2 - Phase 5 Playable Origin Selection
+
+Phase 5 可选出身国家扩展：
+
+- world-mode 出身国家从五大列强扩展为八个重要国家；
+- 新增诺克提亚、塞勒米亚苏丹国、罗斯维亚大公国作为可选出身；
+- 诺克提亚开放首都兼唯一城市 `诺克提亚城`；
+- 塞勒米亚开放首都 `萨莱姆`；
+- 罗斯维亚开放首都 `维亚洛夫`；
+- 将出身配置从 `GREAT_POWER_ORIGINS` 调整为 `PLAYABLE_ORIGINS`，避免代码语义继续绑定“五大列强”；
+- 更新 README、AGENTS、Phase 5 plan、system design、technical roadmap 和 Agentic Runtime 架构文档；
+- 扩展测试，覆盖八国出身列表、单城国家开局和 Agentic Runtime memory context。
+
+## v5.3.1 - Phase 5 Great Power Origin Selection
+
+Phase 5 出身与开局城市选择：
+
+- world-mode 创建角色时新增出身国家选择；
+- 暂时只开放五大列强：阿尔比昂、卢米埃、瓦尔德、奥斯特、伊斯特亚；
+- 每个国家开放三个核心城市作为开局地点；
+- 新增出身信息写入 `Character.flags`：`origin_country_id`、`origin_country`、`origin_country_formal_name`、`origin_identity`、`origin_city`；
+- `Character.to_public_dict()` 新增 `origin`，方便 API、前端和 Agentic Runtime 读取玩家身份；
+- `Memory Retriever` 会把出身国家、身份和开局城市加入 player-known context；
+- world-mode 开场文本、状态描述和地点描述不再固定为格兰威克；
+- 更新 README、AGENTS 和 `.env.example`；
+- 扩展测试，覆盖五大列强出身选择、公开状态导出和 Agent 记忆上下文。
+
+## v5.3.0 - Phase 5 Tutorial World Mode Split
+
+Phase 5 场景分流：
+
+- 新增 `phase1_cli/scenarios.py`，集中管理 tutorial/world-mode 的模式、场景 ID、起始地点、目标和地点描述；
+- 新增 `PANTHEON_GAME_MODE=world`，让 CLI 从格兰威克进入 Phase 5 world-mode；
+- 默认 `tutorial` 模式仍然保留雾中修道院固定教程场景；
+- world-mode 会自动使用 Phase 5 Agentic Runtime，不需要额外设置 `PANTHEON_USE_AGENTIC_RUNTIME=1`；
+- 新增 `world_action` 裁定类型，避免开放世界行动被硬塞进旧修道院地图；
+- `State Commit Layer` 新增 world-mode 提交流程：记录开放行动和回合，但不自动改写地点、线索、背包或角色状态；
+- `GameState.to_public_dict()` 新增 `game_mode`、`scenario_id` 和 `is_world_mode`；
+- `story.py` 的开场、状态、目标和地图输出支持 tutorial/world-mode 分流；
+- `rule_engine.handle_move()` 对非固定地图地点更加安全，不再要求当前位置一定存在于教程 `LOCATIONS`；
+- 更新 README、AGENTS、system design、technical roadmap、Phase 5 plan 和 Agentic Runtime 架构文档；
+- 扩展测试，覆盖 world-mode 自动走 Agentic Runtime 和 `world_action` 提交流程。
+
+## v5.2.0 - Phase 5 Temporary World Agents
+
+Phase 5 临时世界生成：
+
+- 新增 `agentic_runtime/npc_agent.py`，生成当前场景中的临时 NPC 候选；
+- 新增 `agentic_runtime/event_agent.py`，生成当前场景的临时事件候选；
+- 新增 `agentic_runtime/item_agent.py`，生成可观察、可询问、可尝试使用的临时物件候选；
+- 新增 `NPCProposal`、`EventProposal` 和 `ItemProposal`；
+- 新增 NPC / Event / Item validators，禁止这些临时候选直接授予线索、背包物品、状态修改或长期世界事实；
+- 扩展 `AgenticProviders`，加入 NPC Agent、Event Agent 和 Item Agent provider interface；
+- 扩展 `run_agentic_turn()`，让 Phase 5 流程变成 Memory -> Intent -> Scene/NPC/Event/Item -> Rule Arbiter -> Validation -> Commit -> Memory Curator -> Narrator；
+- Narrator Agent 现在可以把已验证的临时场景、NPC、事件和物件纳入输出文本；
+- CLI Phase 5 debug 输出新增 generated 计数；
+- 新增 `docs/phase5_agentic_runtime_plan.md`，记录 Phase 5 从 v5.0 到 v5.6 的分阶段计划；
+- 更新 README、AGENTS、system design、technical roadmap 和 Agentic Runtime 架构文档；
+- 扩展 `tests/test_agentic_runtime.py`，覆盖临时 NPC / Event / Item 的生成、验证和 trace 输出。
+
+## v5.1.0 - Phase 5 Agent Provider Interfaces
+
+Phase 5 provider 化：
+
+- 新增 `agentic_runtime/providers.py`；
+- 新增 Phase 5 provider interfaces：Memory Retriever、Intent Agent、Scene Agent、Rule Arbiter、Memory Curator、Narrator Agent；
+- 新增 local provider 实现，封装现有 deterministic Agent 函数；
+- 新增 `OpenAIIntentAgentProvider`，让 Phase 5 Intent Agent 可以可选调用真实 OpenAI 模型；
+- 新增 `prompts/open_action.md`，要求模型输出开放行动 `OpenActionProposal`，不再输出旧 Phase 4 固定 `intent`；
+- 新增 `PANTHEON_USE_AGENTIC_LLM=1`，独立控制 Phase 5 LLM-backed agents；
+- `run_agentic_turn()` 改为通过 `AgenticProviders` 调用各 Agent；
+- OpenAI Intent Agent 失败时自动回退到 local Intent Agent；
+- Phase 5 runtime trace 现在记录 provider 信息、模型、fallback reason 和 runtime errors；
+- CLI Phase 5 debug 输出 provider 信息；
+- 更新 `.env.example`、README、AGENTS、system design、technical roadmap 和 Agentic Runtime 架构文档；
+- 扩展 `tests/test_agentic_runtime.py`，使用 fake OpenAI client 验证 OpenAI Intent Agent provider 路径，不消耗真实 API token。
+
+## v5.0.0 - Phase 5 Agentic Runtime Baseline
+
+Phase 5 起步：
+
+- 新增 `agentic_runtime/` 包；
+- 新增 `OpenActionProposal`、`TemporaryContentProposal`、`RuleAdjudicationProposal`、`StateCommitProposal`、`MemoryCandidate`、`MemoryRetrievalResult` 和 Phase 5 `NarrationProposal`；
+- 新增 local `Intent Agent`，保留玩家开放行动、方法、目标、猜测和请求效果；
+- 新增 local `Scene Agent`，生成 `temporary` 场景细节但不能写入世界事实；
+- 新增 local `Rule Arbiter Agent`，把开放行动桥接到当前 deterministic rule engine 可执行的行动；
+- 新增 `State Commit Layer`，统一调用 `phase1_cli.rule_engine.apply_rule()` 写入游戏现实；
+- 新增 local `Memory Retriever` 和 `Memory Curator Agent`，为后续长期记忆系统建立结构化入口；
+- 新增 local `Narrator Agent`，基于已提交结果生成输出；
+- 新增 Phase 5 validators，检查开放行动、临时内容、裁定、提交和 memory candidates；
+- 新增 `PANTHEON_USE_AGENTIC_RUNTIME=1`，可在 CLI 中启用 Phase 5 路径；
+- 新增 Phase 5 runtime debug 输出；
+- 让 `跳向前厅` 通过开放意图和 Rule Arbiter 桥接为移动，不再通过给 Phase 1 关键词 parser 增加“跳向”补丁解决；
+- 更新 `README.md`、`AGENTS.md`、`docs/system_design.md`、`docs/technical_roadmap.md` 和 `docs/agentic_runtime_architecture.md`；
+- 新增 `tests/test_agentic_runtime.py`；
+- 更新 `tests/test_game_service.py`，普通测试默认禁用真实 LLM 和 Phase 5 runtime，避免误消耗 API token。
+
 方向校准：
 
 - 明确规则引擎的目标是限制“改变现实的权限”，不是限制 LLM 的想象力；

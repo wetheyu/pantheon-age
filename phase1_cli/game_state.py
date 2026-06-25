@@ -4,7 +4,13 @@ from dataclasses import dataclass, field
 from typing import Optional, Set
 
 from .character import Character
-from .data import CORE_TRUTH_CLUES, LOCATIONS
+from .data import CORE_TRUTH_CLUES
+from .scenarios import (
+    available_exits_for_state,
+    game_mode_for_state,
+    is_world_mode_state,
+    scenario_id_for_state,
+)
 
 
 @dataclass
@@ -16,6 +22,10 @@ class GameState:
     ending_text: str = ""
     event_log: list = field(default_factory=list)
     visited_locations: Set[str] = field(default_factory=lambda: {"修道院门口"})
+    agentic_memory: dict = field(default_factory=dict)
+
+    def __post_init__(self):
+        self.visited_locations.add(self.current_location)
 
     @property
     def current_location(self):
@@ -45,6 +55,7 @@ class GameState:
             "player": self.player.to_dict(),
             "visited_locations": sorted(self.visited_locations),
             "event_log": self.event_log,
+            "agentic_memory": self.agentic_memory,
         }
 
     def to_public_dict(self):
@@ -52,7 +63,10 @@ class GameState:
         return {
             "turn": self.turn,
             "current_location": self.current_location,
-            "available_exits": list(LOCATIONS[self.current_location]),
+            "available_exits": available_exits_for_state(self),
+            "game_mode": game_mode_for_state(self),
+            "scenario_id": scenario_id_for_state(self),
+            "is_world_mode": is_world_mode_state(self),
             "is_game_over": self.is_game_over,
             "ending_id": self.ending_id,
             "ending_text": self.ending_text,
@@ -73,4 +87,5 @@ class GameState:
             ending_text=data.get("ending_text", ""),
             event_log=list(data.get("event_log", [])),
             visited_locations=set(data.get("visited_locations", ["修道院门口"])),
+            agentic_memory=dict(data.get("agentic_memory", {})),
         )

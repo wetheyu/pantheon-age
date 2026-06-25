@@ -1,4 +1,4 @@
-"""Deterministic rule engine for 神座纪元 v4.2.
+"""Deterministic rule engine for 神座纪元 v5.3.
 
 The key project idea starts here:
 - LLM/future story layer can describe events.
@@ -149,10 +149,11 @@ def next_archive_clue(state):
 def handle_move(state, action, result):
     current = state.current_location
     target = action["target"]
-    exits = LOCATIONS[current]
+    exits = LOCATIONS.get(current, [])
 
     if not target:
-        result["messages"].append(f"你需要说明要去哪里。当前位置可前往：{', '.join(exits)}。")
+        exit_text = ", ".join(exits) or "暂无固定出口"
+        result["messages"].append(f"你需要说明要去哪里。当前位置可前往：{exit_text}。")
         return
 
     if target == current:
@@ -160,7 +161,8 @@ def handle_move(state, action, result):
         return
 
     if target not in exits:
-        result["messages"].append(f"从{current}不能直接前往{target}。可前往：{', '.join(exits)}。")
+        exit_text = ", ".join(exits) or "暂无固定出口"
+        result["messages"].append(f"从{current}不能直接前往{target}。可前往：{exit_text}。")
         return
 
     state.move_to(target)

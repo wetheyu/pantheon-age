@@ -507,7 +507,7 @@ Only validated state is persisted.
 
 ## Phase 5: Agentic Runtime Baseline
 
-Planned status: next phase.
+Current status: `v5.8.0 Phase 5 Final Integration`.
 
 Phase 5 should replace the old "LLM fills a narrow action schema" loop with a
 small agentic game loop.
@@ -516,6 +516,42 @@ The long-term architecture is documented in:
 
 ```text
 docs/agentic_runtime_architecture.md
+```
+
+Phase 5 completion summary:
+
+```text
+docs/phase5_completion_summary.md
+```
+
+### Current Implemented Modules
+
+```text
+agentic_runtime/
+  __init__.py
+  contracts.py
+  event_agent.py
+  intent_agent.py
+  item_agent.py
+  memory_curator.py
+  memory_retriever.py
+  memory_store.py
+  narrator_agent.py
+  npc_agent.py
+  orchestrator.py
+  providers.py
+  rule_arbiter_agent.py
+  scene_agent.py
+  state_commit.py
+  validators.py
+  world_slice.py
+  world_relations.py
+```
+
+The tutorial/world-mode split is handled by:
+
+```text
+phase1_cli/scenarios.py
 ```
 
 ### Target Phase 5 Flow
@@ -533,11 +569,113 @@ player input
   -> CLI / API / Web UI
 ```
 
+### Current Baseline Flow
+
+```text
+player input
+  -> Memory Retriever
+  -> local Intent Agent
+  -> local Scene Agent
+  -> local NPC Agent
+  -> local Event Agent
+  -> local Item Agent
+  -> local Rule Arbiter Agent
+  -> validators
+  -> State Commit Layer
+  -> phase1_cli.rule_engine.apply_rule()
+  -> local Memory Curator Agent
+  -> local Narrator Agent
+  -> GameResponse.llm_runtime["agentic_runtime"]
+```
+
+The baseline is enabled with:
+
+```text
+PANTHEON_USE_AGENTIC_RUNTIME=1
+```
+
+The optional OpenAI Turn Director fast path is enabled with:
+
+```text
+PANTHEON_USE_AGENTIC_LLM=1
+PANTHEON_AGENTIC_TURN_DIRECTOR=1
+OPENAI_API_KEY=...
+```
+
+Current Phase 5 routes the live path through one optional OpenAI Turn Director
+call by default. Turn Director proposes open intent, contextual
+DC/check/consequence, categorized Scene/NPC/Event/Item content, and compact
+narration. Memory, validation, dice rolls, and
+Commit stay local for clearer authority boundaries. Set
+`PANTHEON_AGENTIC_TURN_DIRECTOR=0` to debug the older multi-call Intent / Rule
+Arbiter / WorldBundle path. To route NPC / Event / Item / Narrator agents
+through separate OpenAI calls, set `PANTHEON_AGENTIC_FULL_LLM=1`; this is slower
+and mainly useful for agent-level debugging.
+
+`v5.5` adds a local memory store. The store writes only validated
+`MemoryCandidate` objects with `should_persist=True`, separates records into
+player-known, NPC-known, location, quest, and secret buckets, and refuses raw
+OpenAI/LLM provider output as persistent truth.
+
+`v5.6` connects that store back into retrieval. Visible player and quest memory
+can affect later turns, location memory enriches scene context, and NPC/secret
+memory stays in internal hidden context. Hidden context is not included in the
+default serialized runtime payload or public game state.
+
+`v5.7` adds a visible CLI world-mode slice. Local agents generate temporary
+scene, NPC, event, and item content from city/origin/visible-memory context, and
+the narrator renders a distinct world-slice response while preserving the rule
+boundary: no automatic clues, inventory, location changes, faction changes, or
+progression rewards.
+
+`v5.3` adds:
+
+```text
+PANTHEON_GAME_MODE=world
+```
+
+Tutorial mode remains the fixed Mist Abbey scenario. World mode starts from
+one of eight important countries, automatically uses Phase 5 Agentic Runtime, and
+commits open player actions as `world_action` records instead of forcing them
+into the tutorial map.
+
+World-mode character creation currently stores:
+
+```text
+origin_country_id
+origin_country
+origin_country_formal_name
+origin_identity
+origin_ethnicity
+origin_city
+origin_church_context
+```
+
+This origin data flows into public player state and Agentic Runtime memory
+retrieval, so future agents can reason from the player's nationality, ethnicity,
+starting city, and local church legality.
+
+Nation-to-nation relations are not fixed canon. They should be modeled as
+dynamic world state through:
+
+```text
+NationRelationSignal
+NationRelationSnapshot
+```
+
+Future agents may propose relation signals from politics, factions, religion,
+rulers, trade, wars, scandals, and player actions. Program validation and memory
+commit decide whether those signals become persistent world state.
+
+Default CLI behavior remains unchanged when this flag is not enabled.
+
 ### Phase 5 Responsibilities
 
 - Intent Agent preserves open player intent instead of forcing it into a fixed
   button-like intent too early.
 - Scene, NPC, Event, and Item Agents generate temporary possibilities.
+- NPC, Event, and Item proposals are validated as temporary content and cannot
+  claim clues, inventory changes, state changes, or persistent facts.
 - Rule Arbiter Agent proposes checks, risks, costs, allowed effects, and denied
   effects.
 - Validators approve or reject proposals.
@@ -554,9 +692,16 @@ Agents organize and reason over them.
 Programs validate, commit, remember, and audit.
 ```
 
-Phase 5 should still start small. The first slice only needs to run in CLI and
-prove one world-mode scene with fake providers, optional live LLM providers, and
-tests for every agent boundary.
+Phase 5 is complete as a baseline. The completed slice runs in CLI, supports
+world-mode, keeps tutorial compatibility, uses fake providers in ordinary tests,
+and can optionally call live LLM providers through explicit environment flags.
+
+The agentic boundary is proven in both tutorial and world-mode paths. For
+example, `跳向前厅` is preserved as an open player method, then the Rule Arbiter
+bridges it to a deterministic `move` action because `前厅` is reachable from the
+current location. In world-mode, open actions generate temporary scene, NPC,
+event, and item content while validated memory records can flow into later
+turns. This does not add `跳向` as a Phase 1 keyword.
 
 ### Content Authority Levels
 

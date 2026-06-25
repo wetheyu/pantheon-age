@@ -1,12 +1,14 @@
-"""Reusable game service layer for 神座纪元 v4.7.
+"""Reusable game service layer for 神座纪元 v5.8.0.
 
 This module has no input() or print() calls. The current CLI and the future
 FastAPI layer can both call handle_player_input().
 """
 
+import os
 from dataclasses import dataclass
 from typing import Optional
 
+from agentic_runtime.orchestrator import run_agentic_turn
 from llm_runtime.actions import build_keyword_action_candidate, resolve_action_candidate
 from llm_runtime.adjudication import adjudicate_candidate
 from llm_runtime.narrator import render_safe_narration
@@ -15,10 +17,12 @@ from llm_runtime.providers import (
     OpenAIProviderError,
     TemplateNarrationProvider,
     build_runtime_providers_from_env,
+    load_local_env,
 )
 
 from .game_state import GameState
 from .rule_engine import apply_rule
+from .scenarios import is_world_mode_state
 from .story import (
     render_clues,
     render_ending,
@@ -26,6 +30,7 @@ from .story import (
     render_help,
     render_log,
     render_map,
+    render_mechanical_summary,
     render_result,
     render_status,
 )
@@ -40,6 +45,8 @@ GOAL_COMMANDS = {"目标", "goal", "objective"}
 CLUE_COMMANDS = {"线索", "clues", "clue"}
 MAP_COMMANDS = {"地图", "map"}
 LOG_COMMANDS = {"日志", "log", "history"}
+AGENTIC_RUNTIME_ENV_VAR = "PANTHEON_USE_AGENTIC_RUNTIME"
+TRUTHY_VALUES = {"1", "true", "yes", "on"}
 
 
 @dataclass
@@ -76,6 +83,15 @@ def normalize_command(user_text):
     return user_text.strip().lower()
 
 
+def is_agentic_runtime_enabled():
+    load_local_env()
+    return os.getenv(AGENTIC_RUNTIME_ENV_VAR, "").strip().lower() in TRUTHY_VALUES
+
+
+def should_use_agentic_runtime_for_state(state):
+    return is_agentic_runtime_enabled() or is_world_mode_state(state)
+
+
 def handle_player_input(state, user_text):
     raw_text = user_text.strip()
     command = normalize_command(user_text)
@@ -88,9 +104,12 @@ def handle_player_input(state, user_text):
         )
 
     if command in QUIT_COMMANDS:
+        quit_text = "你合上冒险日志，暂时离开神座纪元。"
+        if not is_world_mode_state(state):
+            quit_text = "你合上冒险日志，暂时离开雾中修道院。"
         return GameResponse(
             kind="quit",
-            text="你合上冒险日志，暂时离开雾中修道院。",
+            text=quit_text,
             state=state,
             should_exit=True,
         )
@@ -118,6 +137,9 @@ def handle_player_input(state, user_text):
 
     if command in LOAD_COMMANDS:
         return GameResponse(kind="load", text="请求读取本地存档。", state=state, should_load=True)
+
+    if should_use_agentic_runtime_for_state(state):
+        return handle_agentic_player_input(state, raw_text)
 
     runtime = build_runtime_providers_from_env()
     runtime_errors = []
@@ -171,3 +193,27 @@ def handle_player_input(state, user_text):
         "errors": runtime_errors,
     }
     return response
+
+
+def handle_agentic_player_input(state, raw_text):
+    result = run_agentic_turn(state, raw_text)
+    ending_text = render_ending(state) if state.is_game_over else ""
+    response_text = result.narration.text
+    if is_world_mode_state(state):
+        mechanical_summary = render_mechanical_summary(result.commit.rule_result)
+        if mechanical_summary:
+            response_text = f"{mechanical_summary}\n\n{response_text}"
+
+    return GameResponse(
+        kind="action",
+        text=response_text,
+        state=state,
+        consumes_turn=True,
+        action=result.commit.rule_action,
+        rule_result=result.commit.rule_result,
+        llm_runtime={
+            "phase": "phase5-agentic-runtime",
+            "agentic_runtime": result.to_dict(),
+        },
+        ending_text=ending_text,
+    )

@@ -394,22 +394,117 @@ NarrationProposal
 
 ## Phase 5 起点
 
-Phase 5 应该从这里开始：
+Phase 5 baseline 已经完成：
 
 ```text
 Phase 5: Agentic Runtime Baseline
 ```
 
-最小目标：
+当前 `v5.8.0` 已完成第一条最小链路、第一层 provider interface、临时
+NPC / Event / Item Agents、tutorial/world-mode 分流、八个重要国家出身选择、奥斯特民族选择、常用身份选择、本地教会合法性上下文、动态国家关系接口、OpenAI-backed Turn Director 默认快速路径、旧版 Intent / Rule Arbiter / WorldBundle 多调用路径、可选 full OpenAI NPC / Event / Item / Narrator Agents、本地 Agentic Memory Store baseline、跨回合 memory retrieval 集成、CLI 故事化输出，以及 Phase 5 最终集成测试和完成总结：
 
-1. 新增 `OpenActionProposal`；
-2. 新增 `RuleAdjudicationProposal`；
-3. 新增 `StateCommitProposal`；
-4. 新增 `MemoryCandidate`；
-5. 实现 `Intent Agent -> Rule Arbiter Agent -> Validator -> Commit -> Narrator Agent` 的最小 CLI 闭环；
-6. 将修道院降级为 tutorial/demo scenario；
-7. 新增 world mode，让 LLM 生成临时场景、NPC 和事件；
-8. 为每个 Agent 增加 fake provider test 和可选 live LLM smoke test。
+```text
+Memory Retriever
+  -> Turn Director Agent
+  -> Validator Layer
+  -> State Commit Layer
+  -> Memory Curator Agent
+  -> Narration Branch Selection
+```
+
+当前实现位于：
+
+```text
+agentic_runtime/
+phase1_cli/scenarios.py
+```
+
+最终完成总结位于：
+
+```text
+docs/phase5_completion_summary.md
+```
+
+新增 provider 边界：
+
+```text
+agentic_runtime/providers.py
+```
+
+当前已支持：
+
+- local Memory Retriever；
+- local Intent Agent；
+- optional OpenAI Intent Agent；
+- local Scene Agent；
+- local NPC Agent；
+- optional OpenAI NPC Agent；
+- local Event Agent；
+- optional OpenAI Event Agent；
+- local Item Agent；
+- optional OpenAI Item Agent；
+- local Rule Arbiter Agent；
+- local Memory Curator Agent；
+- local Memory Store；
+- local World Slice helpers；
+- local Narrator Agent；
+- optional OpenAI Turn Director Agent。
+
+当前默认 live 路径让 Turn Director Agent 可选接入真实 LLM。Turn Director 在一次
+模型调用里返回开放行动理解、规则裁定建议、Scene / NPC / Event / Item 和紧凑叙事；
+程序随后验证裁定、掷骰、提交状态，并在高风险场景补充或回退安全叙事。
+Memory 和 Commit 仍保持本地 provider，避免一次性把整个运行时变成不可控的模型调用链。
+关闭 `PANTHEON_AGENTIC_TURN_DIRECTOR` 后，旧版 Intent / Rule Arbiter / WorldBundle
+多调用路径仍可用于 agent-level 调试。full 模式仍可让 NPC / Event / Item / Narrator
+Agents 分别接入真实 LLM，主要用于更细粒度调试。NPC / Event / Item Agents 目前只生成
+`temporary` 候选内容，不会写入长期世界事实。
+
+`v5.5` 新增本地 memory store。它只保存通过 validator 的
+`MemoryCandidate`，并按 `player_known`、`npc_known`、`location`、`quest`
+和 `secret` 分桶。直接来自 OpenAI / LLM provider 的原始生成内容不能被当成
+长期事实写入；secret memory 只能进入系统秘密桶。
+
+`v5.6` 让 memory store 进入下一回合检索：`player_known` / `quest` 进入
+玩家已知上下文，`location` 进入地点上下文，`npc_known` / `secret` 进入内部
+`hidden_context`。默认 `to_dict()` 不序列化 hidden context，避免秘密记忆出现在
+CLI/API runtime payload、公开状态或玩家叙事里。
+
+`v5.7` 让 world-mode 在 CLI 中形成可见小切片：本地 Scene / NPC / Event /
+Item Agents 会根据城市、出身和可见记忆生成临时内容。随后 CLI 默认输出调整为
+玩家可读的故事文本；Agent 结构、provider、验证和边界摘要只在
+`PANTHEON_SHOW_RUNTIME=1` 时显示。
+
+`v5.3` 新增：
+
+```text
+PANTHEON_GAME_MODE=world
+```
+
+默认 `tutorial` 仍然是雾中修道院固定地图。`world` 会让玩家从八个重要国家中
+选择出身国家和开局城市，自动进入 Phase 5 Agentic Runtime，并使用
+`world_action` 记录开放行动，避免把开放世界行动硬塞进修道院教程地图。
+
+当前 CLI 可通过以下开关启用：
+
+```text
+PANTHEON_USE_AGENTIC_RUNTIME=1
+```
+
+第一条链路证明了：
+
+- 开放玩家行动会先进入 `OpenActionProposal`；
+- Rule Arbiter Agent 只在规则边界生成 `bridge_action`；
+- State Commit Layer 才调用 deterministic `rule_engine` 写入状态；
+- Memory Curator Agent 只提出 memory candidates，不直接持久化；
+- Narrator Agent 基于已提交结果生成输出；
+- `跳向前厅` 可以在不新增 Phase 1 关键词的情况下桥接为移动。
+
+剩余目标：
+
+1. 为 Scene / NPC / Event / Item / Rule Arbiter / Memory / Narrator 增加真实 LLM-backed providers；
+2. 增加 Phase 5 可选 live LLM smoke test；
+3. 增加持久化 memory store；
+4. 让 world-mode 开始写入经过验证的长期 NPC、地点和事件记忆。
 
 Phase 5 的目标不是立刻做完整开放世界，而是证明：
 

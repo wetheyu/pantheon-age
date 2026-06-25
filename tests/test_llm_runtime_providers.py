@@ -158,7 +158,7 @@ class LLMRuntimeProviderTests(unittest.TestCase):
             with patch.dict(
                 "os.environ",
                 {"OPENAI_API_KEY": "from-shell"},
-                clear=False,
+                clear=True,
             ):
                 load_local_env(env_path)
 

@@ -1,4 +1,4 @@
-"""Character creation for 神座纪元 v4.2."""
+"""Character creation for 神座纪元 v5.8.0."""
 
 from dataclasses import dataclass, field
 
@@ -83,6 +83,19 @@ class Character:
             "skills": list(self.skills),
             "current_location": self.current_location,
             "clues": list(self.clues),
+            "origin": {
+                "country_id": self.flags.get("origin_country_id"),
+                "country": self.flags.get("origin_country"),
+                "formal_name": self.flags.get("origin_country_formal_name"),
+                "identity": self.flags.get("origin_identity"),
+                "ethnicity": self.flags.get("origin_ethnicity"),
+                "city": self.flags.get("origin_city"),
+                "city_title": self.flags.get("origin_city_title"),
+                "background_id": self.flags.get("background_id"),
+                "background_name": self.flags.get("background_name"),
+                "background_description": self.flags.get("background_description"),
+                "church_context": self.flags.get("origin_church_context"),
+            },
         }
 
     @classmethod

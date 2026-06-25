@@ -42,12 +42,14 @@ Current implementation:
 - Phase 2: FastAPI service layer.
 - Phase 3: SQLite persistence complete.
 - Phase 4: structured LLM proposal runtime with optional OpenAI provider.
-- Current milestone: Phase 4 complete / Agentic Runtime handoff.
-- Next milestone: Phase 5 Agentic Runtime Baseline.
+- Phase 5: Agentic Runtime baseline complete.
+- Current milestone: Phase 5 final integration complete.
+- Next milestone: Phase 6 World Knowledge And Persistent Memory.
 - Existing reusable core lives in `phase1_cli/`.
 - Existing API layer lives in `phase2_api/`.
 - Existing persistence layer lives in `phase3_persistence/`.
 - Existing LLM runtime contracts live in `llm_runtime/`.
+- Existing Agentic Runtime baseline lives in `agentic_runtime/`.
 
 Current important files:
 
@@ -58,12 +60,30 @@ Current important files:
 - `phase1_cli/game_state.py`: mutable game state.
 - `phase1_cli/character.py`: character model and creation.
 - `phase1_cli/save_manager.py`: local JSON save/load.
+- `phase1_cli/scenarios.py`: tutorial/world-mode scenario helpers and game-mode flags.
 - `phase2_api/main.py`: FastAPI app entry point.
 - `phase2_api/routes/`: API route modules.
 - `phase2_api/services/session_store.py`: API session service.
 - `phase3_persistence/config.py`: persistence configuration.
 - `phase3_persistence/errors.py`: persistence-layer errors.
 - `phase3_persistence/sqlite_repository.py`: SQLite game session and event repository.
+- `agentic_runtime/contracts.py`: Phase 5 proposal/result contracts.
+- `agentic_runtime/orchestrator.py`: minimal Agentic Runtime turn orchestration.
+- `agentic_runtime/providers.py`: Phase 5 provider interfaces, local providers, default optional OpenAI Turn Director provider, optional legacy OpenAI Intent/RuleArbiter/WorldBundle providers, and optional full OpenAI NPC/Event/Item/Narrator providers.
+- `agentic_runtime/intent_agent.py`: local Intent Agent baseline.
+- `agentic_runtime/rule_arbiter_agent.py`: local Rule Arbiter Agent baseline.
+- `agentic_runtime/scene_agent.py`: temporary scene proposal baseline.
+- `agentic_runtime/npc_agent.py`: temporary NPC proposal baseline.
+- `agentic_runtime/event_agent.py`: temporary event proposal baseline.
+- `agentic_runtime/item_agent.py`: temporary item proposal baseline.
+- `agentic_runtime/state_commit.py`: commit layer that writes validated rule results.
+- `agentic_runtime/memory_retriever.py`: local memory retrieval baseline.
+- `agentic_runtime/memory_curator.py`: local Memory Curator baseline.
+- `agentic_runtime/memory_store.py`: local validated memory record store.
+- `agentic_runtime/world_slice.py`: world-mode city/origin/visible-memory slice helpers.
+- `agentic_runtime/narrator_agent.py`: local Narrator Agent baseline.
+- `agentic_runtime/validators.py`: Phase 5 validators.
+- `agentic_runtime/world_relations.py`: dynamic nation relation signal and snapshot interface.
 - `llm_runtime/contracts.py`: structured LLM proposal/result contracts.
 - `llm_runtime/actions.py`: structured action candidate validation and fallback.
 - `llm_runtime/adjudication.py`: generic adjudication requests from semantic action candidates.
@@ -85,6 +105,9 @@ Current important files:
 - `docs/live_llm_testing.md`: safe local `.env` setup for real LLM smoke/live tests.
 - `docs/phase2_api_plan.md`: FastAPI migration plan.
 - `docs/phase4_llm_runtime_plan.md`: Phase 4 LLM runtime implementation plan.
+- `docs/phase5_agentic_runtime_plan.md`: Phase 5 Agentic Runtime staged implementation plan.
+- `docs/phase5_completion_summary.md`: Phase 5 final integration summary.
+- `docs/future_phase_plan.md`: execution-oriented Phase 6+ roadmap.
 - `docs/agentic_runtime_architecture.md`: long-term multi-agent runtime architecture.
 - `docs/refactor_plan.md`: corrected direction for creative LLM generation and rule authority.
 - `docs/system_design.md`: phase-by-phase architecture and data flow.
@@ -293,6 +316,7 @@ Use these commands from the project root:
 ./.venv/bin/python -m py_compile phase2_api/*.py phase2_api/routes/*.py phase2_api/services/*.py
 ./.venv/bin/python -m py_compile phase3_persistence/*.py
 ./.venv/bin/python -m py_compile llm_runtime/*.py
+./.venv/bin/python -m py_compile agentic_runtime/*.py
 ./.venv/bin/python -m unittest discover -s tests
 ```
 
@@ -385,3 +409,25 @@ Phase 4 LLM runtime contract rules:
 - Invalid proposals must fall back to deterministic story text.
 - Do not require API keys or network calls in tests.
 - Do not let `llm_runtime/` mutate `GameState`.
+
+Phase 5 Agentic Runtime rules:
+
+- Keep `agentic_runtime/` separate from `llm_runtime/`; Phase 5 orchestrates agents, Phase 4 provides older LLM proposal providers.
+- Enable the current Phase 5 CLI path with `PANTHEON_USE_AGENTIC_RUNTIME=1`.
+- Enable Phase 5 OpenAI-backed Agentic Runtime with `PANTHEON_USE_AGENTIC_LLM=1`; this is separate from Phase 4 `PANTHEON_USE_LLM`.
+- Keep `PANTHEON_AGENTIC_TURN_DIRECTOR=1` for normal low-latency live play. This uses one OpenAI Turn Director call to propose intent, adjudication, scene, NPC, event, item, and compact narration.
+- Set `PANTHEON_AGENTIC_TURN_DIRECTOR=0` only when debugging the older multi-call Intent/RuleArbiter/WorldBundle path.
+- Enable slower full-agent NPC/Event/Item/Narrator OpenAI calls only with `PANTHEON_AGENTIC_FULL_LLM=1`.
+- `PANTHEON_GAME_MODE=world` starts the CLI in Phase 5 world-mode; tutorial remains the default fixed Mist Abbey scenario.
+- World-mode character creation currently allows eight important countries as origin countries: the five great powers, Noctia, Selemia, and Rosvia.
+- Store origin country, identity, and starting city on `Character.flags` so Agentic Runtime and future API/UI layers can use them.
+- `PANTHEON_USE_AGENTIC_LLM=1` normally uses OpenAI Turn Director; the program still validates adjudication, rolls dice, commits state, and falls back if proposals fail validation.
+- Memory Retriever, Memory Curator, and State Commit remain local providers in the Phase 5 baseline.
+- Intent Agent must preserve open player method, goals, targets, and assumptions.
+- Rule Arbiter Agent may propose adjudication, but it cannot directly mutate state.
+- State Commit Layer is the only Phase 5 layer that writes game reality, and it currently delegates to the deterministic `rule_engine`.
+- Memory Curator Agent proposes memory candidates; validated persistent candidates are stored through the local memory store.
+- NPC/Event/Item Agents may generate temporary candidates only; they must not grant clues, inventory changes, state changes, or persistent facts.
+- Do not solve Phase 5 natural-language issues by patching Phase 1 keyword lists unless the task is explicitly about the tutorial parser.
+- Phase 5 stage-gated work is complete as of `v5.8.0`.
+- Do not start Phase 6 unless the user explicitly asks for Phase 6 planning or development.
