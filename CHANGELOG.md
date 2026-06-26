@@ -2,6 +2,40 @@
 
 ## Unreleased
 
+- Phase 9.7 完成 Phase 1-9 Consolidation And Final Plan：新增 `docs/phase1_9_architecture_summary.md` 作为当前架构基线，替换旧 `docs/phase1_8_architecture_summary.md`；
+- 新增 `docs/final_phase10_plan.md`，把最终 Phase 10 拆成 Observability、Agent Safety Evals、Narrative Quality Evals、Cost/Speed Optimization、Provider Strategy、Packaging/Dev Profiles 和 Final Demo Pass；
+- 新增 `tests/test_live_agentic_runtime.py`，为当前 Agentic Runtime 主路径补充显式 opt-in 的真实 LLM live test；
+- README、docs/README、AGENTS、technical roadmap 和 live LLM testing 文档同步 Phase 1-9 基线、真实 LLM 测试授权规则和最终 Phase 10 计划；
+- 将项目版本推进到 `v9.7.0 Phase 9.7 Phase 1-9 Consolidation And Final Plan`，下一阶段进入 Phase 10.1 Observability；
+- Phase 9.6 完成 API/Web Playtest Pass：网页试玩界面新增开场行动建议、新建角色入口、游戏结束态处理和故事日志自动滚动；
+- 新增 `web_ui/scripts/api-smoke.mjs` 与 `npm run smoke:api`，在 FastAPI 服务运行时可快速检查 `/health`、`/origins`、`/classes`、`/gods`、`POST /games` 和 `POST /games/{game_id}/actions` 的浏览器主链路；
+- README、Web README、AGENTS、future phase plan、technical roadmap 和 Phase 9/10 execution plan 更新到 `v9.6.0 Phase 9.6 API/Web Playtest Pass`；
+- Phase 9 Web UI/API 产品体验收口，下一阶段进入 Phase 10.1 Observability；
+- Phase 9.5 完成 Character And World Panels：网页游玩界面新增只读角色与世界状态侧栏；
+- 状态侧栏展示角色身份、HP、SAN、Suspicion、Corruption、当前位置、已访问地点、六属性、旧四维、成长等级、Revelation、Favor、Devotion、技能、天赋、祷告、负担、背包道具和线索；
+- 前端类型扩展到完整公开 `GameState.to_public_dict()` 形状，行动返回后状态面板会跟随后端公开状态刷新；
+- 背包面板展示道具 affordance 摘要，但不在前端执行道具效果，仍由后端裁定；
+- 将项目版本推进到 `v9.5.0 Phase 9.5 Character And World Panels`，下一阶段进入 Phase 9.6 API/Web Playtest Pass；
+- Phase 9.4 完成 Chat-Style Play Surface：网页端创建游戏后可以输入玩家行动并调用 `POST /games/{game_id}/actions`；
+- 网页端新增故事日志，区分玩家输入、主持人回复、系统错误和“主持人思考中”加载状态；
+- 行动响应会更新浏览器中的公开状态，并展示轻量机制摘要，包括是否消耗回合、是否发生检定、提交效果和状态变化；
+- 前端默认不请求 debug payload，正常游玩界面不暴露 runtime/debug 信息；
+- 将项目版本推进到 `v9.4.0 Phase 9.4 Chat-Style Play Surface`，下一阶段进入 Phase 9.5 Character And World Panels；
+- Phase 9.3 完成 Character Creation Flow：网页客户端新增 world-mode 角色创建表单；
+- 玩家现在可以在浏览器里选择名字、出身国家、开局城市、民族、职业、信仰和身份背景，并调用 `POST /games` 创建游戏；
+- 创建成功后，网页会展示 `game_id`、当前位置、身份摘要和后端返回的 `opening_text` 开场叙事；
+- 前端保持规则边界：只收集选择并调用 API，不复制角色规则、掷骰、验证、记忆或状态提交逻辑；
+- 将项目版本推进到 `v9.3.0 Phase 9.3 Character Creation Flow`，下一阶段进入 Phase 9.4 Chat-Style Play Surface；
+- Phase 9.2 完成 Web App Scaffold：新增 `web_ui/` React + TypeScript + Vite 最小网页客户端；
+- 网页客户端现在会读取 `GET /health`、`GET /classes`、`GET /gods` 和 `GET /origins`，展示 API 状态、职业、神明、出身国家、城市和身份背景；
+- FastAPI 增加本地开发 CORS 配置，默认允许 `http://localhost:5173` 和 `http://127.0.0.1:5173`；
+- 新增 CORS API 测试，确保 Vite 本地开发页面可以访问后端；
+- 将项目版本推进到 `v9.2.0 Phase 9.2 Web App Scaffold`，下一阶段进入 Phase 9.3 Character Creation Flow；
+- Phase 9.1 完成 API Contract Cleanup：新增 `GET /origins`，前端可读取八个出身国家、城市、民族和常用身份背景；
+- `POST /games` 现在支持 `game_mode`、`origin_country_id`、`origin_city`、`origin_ethnicity` 和 `background_id`，可以直接创建 world-mode 游戏并返回 `game_mode` 与 `setup`；
+- `POST /games/{game_id}/actions` 保留旧 `response` 字段，同时新增前端友好的 `story`、`state`、`mechanics` 和可选 `debug` 字段；调试信息默认隐藏，只有请求 `include_debug=true` 时返回；
+- API 测试补齐 origins、world-mode 建档、行动响应合同、debug 开关和非法出身配置校验；
+- 将项目版本推进到 `v9.1.0 Phase 9.1 API Contract Cleanup`，下一阶段进入 Phase 9.2 Web App Scaffold；
 - 将 `docs/phase1_6_architecture_summary.md` 升级并改名为 `docs/phase1_8_architecture_summary.md`，把 Phase 1-8 收束为当前架构基线，明确 CLI、API、SQLite、Phase 4 兼容层、Agentic Runtime、RAG/memory、可玩性校准和成长机制的职责边界；
 - 新增 `docs/phase9_10_execution_plan.md`，明确 Phase 9 Web UI/API 产品体验和 Phase 10 工程质量/最终体验优化的逻辑结构、阶段任务和完成标准；
 - 更新 README、docs/README、AGENTS 和 technical roadmap，将当前状态推进到 `v8.7.0 Phase 8` 完成后，并把下一阶段指向 Phase 9.1 API Contract Cleanup；

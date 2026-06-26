@@ -30,6 +30,11 @@ class LocationListResponse(BaseModel):
     locations: list[LocationSummary]
 
 
+class OriginListResponse(BaseModel):
+    countries: list[dict[str, Any]]
+    backgrounds: list[dict[str, Any]]
+
+
 class CharacterCreateRequest(BaseModel):
     name: str = Field(default="无名冒险者", min_length=1)
     class_id: str
@@ -41,13 +46,19 @@ class CharacterResponse(BaseModel):
 
 
 class GameCreateRequest(CharacterCreateRequest):
-    pass
+    game_mode: str = Field(default="tutorial")
+    origin_country_id: str | None = None
+    origin_city: str | None = None
+    origin_ethnicity: str | None = None
+    background_id: str | None = None
 
 
 class GameCreateResponse(BaseModel):
     game_id: str
     state: dict[str, Any]
     opening_text: str
+    game_mode: str
+    setup: dict[str, Any]
 
 
 class GameSessionSummary(BaseModel):
@@ -87,8 +98,13 @@ class GameDeleteResponse(BaseModel):
 
 class ActionRequest(BaseModel):
     text: str = Field(min_length=1)
+    include_debug: bool = False
 
 
 class ActionResponse(BaseModel):
     game_id: str
     response: dict[str, Any]
+    story: str
+    state: dict[str, Any]
+    mechanics: dict[str, Any]
+    debug: dict[str, Any] | None = None

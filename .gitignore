@@ -6,3 +6,7 @@ __pycache__/
 saves/*.json
 data/*.sqlite3
 data/*.db
+web_ui/node_modules/
+web_ui/dist/
+web_ui/.env.local
+web_ui/*.tsbuildinfo

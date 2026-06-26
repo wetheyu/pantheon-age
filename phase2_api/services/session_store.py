@@ -12,6 +12,16 @@ from phase1_cli.character import build_character
 from phase1_cli.data import CLASSES, GODS
 from phase1_cli.game_service import handle_player_input
 from phase1_cli.game_state import GameState
+from phase1_cli.scenarios import (
+    WORLD_GAME_MODE,
+    background_options,
+    city_names_for_origin,
+    configure_character_for_game_mode,
+    ethnicity_names_for_origin,
+    origin_country_ids,
+    get_origin_country,
+    normalize_game_mode,
+)
 from phase1_cli.story import render_opening
 from phase3_persistence.errors import PersistenceError
 from phase3_persistence.sqlite_repository import GameSessionRepository
@@ -39,12 +49,103 @@ def build_api_character(name, class_id, god):
     return build_character(name.strip() or "无名冒险者", class_id, god)
 
 
-def create_game_session(name, class_id, god):
+def list_origin_options():
+    countries = []
+    for country_id in origin_country_ids():
+        country = get_origin_country(country_id)
+        countries.append(
+            {
+                "country_id": country_id,
+                "name": country["name"],
+                "formal_name": country["formal_name"],
+                "identity": country["identity"],
+                "summary": country["summary"],
+                "cities": [dict(city) for city in country["cities"]],
+                "ethnicities": [dict(ethnicity) for ethnicity in country.get("ethnicities", ())],
+            }
+        )
+    return {
+        "countries": countries,
+        "backgrounds": [dict(background) for background in background_options()],
+    }
+
+
+def validate_game_mode(game_mode):
+    raw_mode = str(game_mode or "tutorial").strip().lower()
+    accepted = {"tutorial", "world", "agentic", "open_world", "open-world"}
+    if raw_mode not in accepted:
+        raise HTTPException(status_code=400, detail=f"Unknown game_mode: {game_mode}")
+    return normalize_game_mode(raw_mode)
+
+
+def validate_world_origin_input(origin_country_id=None, origin_city=None, origin_ethnicity=None, background_id=None):
+    country_id = origin_country_id or "albion"
+    if country_id not in origin_country_ids():
+        raise HTTPException(status_code=400, detail=f"Unknown origin_country_id: {origin_country_id}")
+
+    if origin_city and origin_city not in city_names_for_origin(country_id):
+        raise HTTPException(status_code=400, detail=f"Unknown origin_city for {country_id}: {origin_city}")
+
+    ethnicities = ethnicity_names_for_origin(country_id)
+    if origin_ethnicity and ethnicities and origin_ethnicity not in ethnicities:
+        raise HTTPException(status_code=400, detail=f"Unknown origin_ethnicity for {country_id}: {origin_ethnicity}")
+
+    background_ids = {background["background_id"] for background in background_options()}
+    if background_id and background_id not in background_ids:
+        raise HTTPException(status_code=400, detail=f"Unknown background_id: {background_id}")
+
+
+def create_game_session(
+    name,
+    class_id,
+    god,
+    game_mode="tutorial",
+    origin_country_id=None,
+    origin_city=None,
+    origin_ethnicity=None,
+    background_id=None,
+):
+    mode = validate_game_mode(game_mode)
+    if mode == WORLD_GAME_MODE:
+        validate_world_origin_input(origin_country_id, origin_city, origin_ethnicity, background_id)
+
     character = build_api_character(name, class_id, god)
+    configure_character_for_game_mode(
+        character,
+        mode,
+        origin_country_id=origin_country_id,
+        origin_city=origin_city,
+        origin_ethnicity=origin_ethnicity,
+        background_id=background_id,
+    )
     state = GameState(character)
     game_id = uuid4().hex
     _save_state(game_id, state)
     return game_id, state, render_opening(character)
+
+
+def build_game_setup_payload(state):
+    player = state.player
+    flags = player.flags
+    return {
+        "game_mode": flags.get("game_mode", "tutorial"),
+        "scenario_id": flags.get("scenario_id"),
+        "origin": {
+            "country_id": flags.get("origin_country_id"),
+            "country": flags.get("origin_country"),
+            "formal_name": flags.get("origin_country_formal_name"),
+            "identity": flags.get("origin_identity"),
+            "ethnicity": flags.get("origin_ethnicity"),
+            "city": flags.get("origin_city"),
+            "city_title": flags.get("origin_city_title"),
+            "background_id": flags.get("background_id"),
+            "background_name": flags.get("background_name"),
+            "wealth_level": flags.get("wealth_level"),
+            "wealth_label": flags.get("wealth_label"),
+        },
+        "current_scene_focus": flags.get("current_scene_focus"),
+        "opening_profile": flags.get("opening_profile"),
+    }
 
 
 def summarize_game_session(game_id, state):
@@ -83,6 +184,44 @@ def submit_game_action(game_id, text):
     response = handle_player_input(state, text)
     _save_state(game_id, state)
     return response
+
+
+def build_action_api_view(response, include_debug=False):
+    legacy_payload = response.to_dict()
+    mechanics = {
+        "kind": response.kind,
+        "consumes_turn": response.consumes_turn,
+        "rule_result": response.rule_result,
+        "action": response.action,
+        "ending_text": response.ending_text,
+        "committed_effects": committed_effects_from_response(response),
+        "roll": (response.rule_result or {}).get("roll") if response.rule_result else None,
+        "state_changes": list((response.rule_result or {}).get("state_changes", [])),
+        "new_clues": list((response.rule_result or {}).get("new_clues", [])),
+    }
+    return {
+        "response": legacy_payload,
+        "story": response.text,
+        "state": response.state.to_public_dict(),
+        "mechanics": mechanics,
+        "debug": build_action_debug_payload(response) if include_debug else None,
+    }
+
+
+def committed_effects_from_response(response):
+    runtime = response.llm_runtime or {}
+    agentic = runtime.get("agentic_runtime", {})
+    commit = agentic.get("commit", {})
+    return list(commit.get("committed_effects", []))
+
+
+def build_action_debug_payload(response):
+    runtime = response.llm_runtime or {}
+    return {
+        "llm_runtime": runtime,
+        "rule_result": response.rule_result,
+        "action": response.action,
+    }
 
 
 def list_game_events(game_id):

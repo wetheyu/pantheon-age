@@ -7,19 +7,19 @@
 当前版本：
 
 ```text
-v8.7.0 / Phase 8 Progression And Core Mechanics Baseline
+v9.7.0 / Phase 9.7 Phase 1-9 Consolidation And Final Plan
 ```
 
 当前主线：
 
 ```text
-Agentic Runtime + Canon Retrieval + Persistent Memory + Progression Mechanics
+Agentic Runtime + Canon Retrieval + Persistent Memory + Progression Mechanics + FastAPI + Web Playtest Baseline + Final Phase Plan
 ```
 
 下一阶段：
 
 ```text
-Phase 9 Web UI And API Product Experience
+Phase 10.1 Observability
 ```
 
 ## 项目动机
@@ -81,6 +81,7 @@ phase3_persistence/    SQLite 游戏会话、事件和长期记忆持久化
 agentic_runtime/       当前主线 Agentic Runtime
 llm_runtime/           Phase 4 结构化 LLM 兼容层
 rag/                   canon 检索、embedding provider 和向量缓存
+web_ui/                React + TypeScript + Vite 网页客户端骨架
 docs/                  世界观、架构、阶段计划和运行文档
 docs/canon/            可检索世界设定语料
 prompts/               LLM / Agent prompt 文件
@@ -194,6 +195,7 @@ GET    /health
 GET    /classes
 GET    /gods
 GET    /locations
+GET    /origins
 POST   /characters
 POST   /games
 GET    /games
@@ -201,6 +203,39 @@ GET    /games/{game_id}
 GET    /games/{game_id}/events
 DELETE /games/{game_id}
 POST   /games/{game_id}/actions
+```
+
+创建世界模式游戏示例：
+
+```json
+{
+  "name": "伊芙",
+  "class_id": "mage",
+  "god": "真理之神",
+  "game_mode": "world",
+  "origin_country_id": "lumiere",
+  "origin_city": "维拉尔",
+  "background_id": "dock_scribe"
+}
+```
+
+提交行动示例：
+
+```json
+{
+  "text": "去码头账房查昨晚的船只记录",
+  "include_debug": false
+}
+```
+
+`POST /games/{game_id}/actions` 会同时返回：
+
+```text
+story       玩家可见叙事
+state       公开状态
+mechanics   掷骰、提交效果和规则结果摘要
+debug       可选调试信息，默认不返回
+response    兼容旧客户端的完整响应
 ```
 
 默认数据库：
@@ -213,6 +248,48 @@ data/pantheon_age.sqlite3
 
 ```text
 PANTHEON_DB_PATH=data/dev.sqlite3
+```
+
+## 启动网页客户端
+
+先启动 API：
+
+```bash
+./.venv/bin/uvicorn phase2_api.main:app
+```
+
+再启动网页客户端：
+
+```bash
+cd web_ui
+npm install
+npm run dev
+```
+
+浏览器打开：
+
+```text
+http://127.0.0.1:5173
+```
+
+默认 API 地址：
+
+```text
+http://127.0.0.1:8000
+```
+
+如需改 API 地址，在 `web_ui/.env.local` 中设置：
+
+```text
+VITE_API_BASE_URL=http://127.0.0.1:8000
+```
+
+当前网页客户端已经支持 Phase 9.6 试玩基线：选择名字、出身国家、开局城市、民族、职业、信仰和身份背景，创建 world-mode 游戏，在浏览器里输入行动，使用开场行动建议，并查看角色状态、位置、属性、成长、背包和线索。
+
+后端 API 启动后，可以从 `web_ui/` 运行快速 smoke 检查：
+
+```bash
+npm run smoke:api
 ```
 
 ## 运行测试
@@ -228,6 +305,19 @@ env PANTHEON_USE_AGENTIC_LLM=0 PANTHEON_USE_LLM=0 PANTHEON_EMBEDDING_PROVIDER=lo
 
 ```text
 PANTHEON_RUN_LIVE_LLM_TESTS=1
+PANTHEON_USE_AGENTIC_LLM=1
+```
+
+旧 Phase 4 provider live test：
+
+```bash
+./.venv/bin/python -m unittest tests.test_live_openai_provider
+```
+
+当前 Agentic Runtime live test：
+
+```bash
+./.venv/bin/python -m unittest tests.test_live_agentic_runtime
 ```
 
 手动检查 Agentic Runtime 分支与耗时：
@@ -248,26 +338,26 @@ PANTHEON_RUN_LIVE_LLM_TESTS=1
 
 建议阅读顺序：
 
-1. [docs/phase1_8_architecture_summary.md](docs/phase1_8_architecture_summary.md)：当前架构基线；
+1. [docs/phase1_9_architecture_summary.md](docs/phase1_9_architecture_summary.md)：当前架构基线；
 2. [docs/agentic_runtime_architecture.md](docs/agentic_runtime_architecture.md)：长期 Agentic Runtime 设计；
 3. [docs/phase6_completion_summary.md](docs/phase6_completion_summary.md)：Phase 6 完成情况；
 4. [docs/phase7_completion_summary.md](docs/phase7_completion_summary.md)：Phase 7 完成情况；
 5. [docs/phase8_completion_summary.md](docs/phase8_completion_summary.md)：Phase 8 完成情况；
 6. [docs/playtest_checklist.md](docs/playtest_checklist.md)：世界模式试玩清单；
-7. [docs/future_phase_plan.md](docs/future_phase_plan.md)：Phase 9-10 开发路线；
-8. [docs/phase9_10_execution_plan.md](docs/phase9_10_execution_plan.md)：Phase 9/10 执行计划；
+7. [docs/final_phase10_plan.md](docs/final_phase10_plan.md)：最终 Phase 10 开发计划；
+8. [docs/future_phase_plan.md](docs/future_phase_plan.md)：阶段总路线；
 9. [docs/world_bible.md](docs/world_bible.md)：世界观总览。
 
 ## 当前限制
 
 - 世界模式已经可试玩；地点连续性、风险反馈、基本安全边界和 Phase 8 核心机制已有回归测试，长期玩法仍需要继续打磨。
 - Phase 8 已完成技能、天赋、祷告、六属性检定、仪式晋升和道具机制的基础基线，完整成长体验仍会继续扩展。
-- 网页界面尚未开始。
+- 网页界面已经具备最小 React/Vite 骨架、角色创建流程、聊天式行动提交、行动建议、只读状态面板和 API smoke 检查；下一步进入工程观测、评测和最终体验优化。
 - 真实 LLM 与真实向量接口调用需要用户自行配置 API key，并会产生 API 成本。
 
 ## 后续阶段
 
 ```text
-Phase 9: 网页界面与 API 产品体验
+Phase 10.1: Observability 与 trace 记录
 Phase 10: 工程质量与最终体验优化
 ```

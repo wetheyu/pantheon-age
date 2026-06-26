@@ -2,7 +2,7 @@
 
 Phase 2 的目标是把当前 CLI 游戏拆成 FastAPI 服务。Phase 1.4 已经先抽出 `game_service.py`，所以未来 API 不需要调用 `input()`、`print()` 或终端颜色逻辑。
 
-当前状态：`v2.1.0 Phase 2 Complete` 已经实现最小 API 骨架、基础配置查询、基础会话管理、schema 打磨和 API 测试。Phase 2 当时使用内存 dict 暂存 `game_id -> GameState`；后续 `v3.1.0 Phase 3 Persistence Complete` 已经把 API 会话底层升级为 SQLite repository，并新增事件日志查询。
+当前状态：`v2.1.0 Phase 2 Complete` 已经实现最小 API 骨架、基础配置查询、基础会话管理、schema 打磨和 API 测试。Phase 2 当时使用内存 dict 暂存 `game_id -> GameState`；后续 `v3.1.0 Phase 3 Persistence Complete` 已经把 API 会话底层升级为 SQLite repository，并新增事件日志查询。`v9.1.0 Phase 9.1` 又补齐了前端产品化所需的 world-mode 建档合同和行动响应分层。
 
 当前 `phase1_cli/` 已经是 Python package，Phase 2 可以直接从项目根目录导入：
 
@@ -30,7 +30,7 @@ save_manager.py 负责 CLI 本地 JSON 存档；API 会话在 Phase 3 起由 SQL
 
 ## 建议接口
 
-以下接口已在 Phase 2 中实现。
+以下接口已在 Phase 2 及后续 API 产品化阶段中实现。
 
 ### `GET /health`
 
@@ -57,6 +57,10 @@ save_manager.py 负责 CLI 本地 JSON 存档；API 会话在 Phase 3 起由 SQL
 
 返回地图配置，用于前端地图页。
 
+### `GET /origins`
+
+返回 world-mode 可选出身国家、城市、民族和常用身份背景，用于前端创建角色页。
+
 ### `POST /characters`
 
 创建角色。
@@ -75,11 +79,27 @@ save_manager.py 负责 CLI 本地 JSON 存档；API 会话在 Phase 3 起由 SQL
 
 创建新游戏。
 
+世界模式请求示例：
+
+```json
+{
+  "name": "伊芙",
+  "class_id": "mage",
+  "god": "真理之神",
+  "game_mode": "world",
+  "origin_country_id": "lumiere",
+  "origin_city": "维拉尔",
+  "background_id": "dock_scribe"
+}
+```
+
 响应应包含：
 
 - `game_id`
 - `state`
 - `opening_text`
+- `game_mode`
+- `setup`
 
 ### `GET /games/{game_id}`
 
@@ -99,14 +119,19 @@ state.to_public_dict()
 
 ```json
 {
-  "text": "进入前厅"
+  "text": "去码头账房查昨晚的船只记录",
+  "include_debug": false
 }
 ```
 
-响应可以直接参考：
+响应现在分为前端常用字段和兼容旧字段：
 
-```python
-handle_player_input(state, text).to_dict()
+```text
+story       玩家可见叙事
+state       公开状态
+mechanics   掷骰、提交效果和规则结果摘要
+debug       可选调试信息，默认不返回
+response    兼容旧客户端的完整 GameResponse.to_dict()
 ```
 
 ### `GET /games/{game_id}/events`

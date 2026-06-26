@@ -581,19 +581,27 @@ Validators should check:
 
 ## Current Execution Status
 
-Current status: `v8.7.0` completes the Phase 1-8 baseline. The project now has
-CLI/API foundations, SQLite persistence, Agentic Runtime, canon retrieval,
-persistent memory, playability calibration, and the first progression/core
-mechanics baseline.
+Current status: `v9.7.0` completes Phase 9.7 Phase 1-9 Consolidation And Final Plan. The project now
+has CLI/API foundations, SQLite persistence, Agentic Runtime, canon retrieval,
+persistent memory, playability calibration, the first progression/core
+mechanics baseline, a frontend-ready API contract for world-mode setup and
+action responses, and a minimal React/Vite browser client that can create a
+world-mode game, show the opening narration, submit player actions, and render
+host story responses with read-only character/world state panels, opening
+action suggestions, game-over handling, restart flow, and an API smoke check.
+The current baseline is consolidated in `docs/phase1_9_architecture_summary.md`,
+and final execution work is planned in `docs/final_phase10_plan.md`.
 
 See:
 
 ```text
-docs/phase1_8_architecture_summary.md
+docs/phase1_9_architecture_summary.md
 docs/phase6_world_memory_plan.md
 docs/phase6_completion_summary.md
 docs/phase7_completion_summary.md
 docs/phase8_completion_summary.md
+docs/phase9_10_execution_plan.md
+docs/final_phase10_plan.md
 ```
 
 Note:
@@ -615,7 +623,7 @@ The RAG section below remains the technical design direction for the knowledge
 retrieval part of the consolidated Phase 6/10 quality track.
 
 Older sections later in this technical roadmap are technical categories, not the
-execution order. For concrete Phase 9-10 tasks, follow `docs/future_phase_plan.md`.
+execution order. For concrete final-phase work, follow `docs/final_phase10_plan.md`.
 
 ## Phase 6: RAG And World Canon
 

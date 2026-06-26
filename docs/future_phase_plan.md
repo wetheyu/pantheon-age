@@ -1,6 +1,6 @@
 # Future Phase Plan
 
-This is the execution plan after the Phase 1-8 baseline.
+This is the execution roadmap after the Phase 1-9 baseline.
 
 It is written for small Codex-friendly development tasks: each stage should be
 scoped, testable, and easy to review.
@@ -491,6 +491,8 @@ Non-goals:
 
 ### Phase 9.1 API Shape For World Mode
 
+Status: complete.
+
 Tasks:
 
 - ensure FastAPI endpoints can create world-mode games;
@@ -503,7 +505,20 @@ Done when:
 - frontend can create a character/game and submit actions without CLI-only
   behavior.
 
+Implemented baseline:
+
+- `GET /origins` returns playable origin countries, cities, ethnicities, and
+  common background identities;
+- `POST /games` accepts world-mode setup fields and returns `game_mode`,
+  public state, opening text, and setup summary;
+- `POST /games/{game_id}/actions` returns `story`, `state`, `mechanics`, and
+  optional `debug` while preserving the legacy `response` payload;
+- API tests cover origins, world-mode creation, action response shape, debug
+  opt-in, and invalid origin configuration.
+
 ### Phase 9.2 Minimal Web App Scaffold
+
+Status: complete.
 
 Tasks:
 
@@ -515,7 +530,44 @@ Done when:
 
 - browser can load a game shell and call health/classes/origins endpoints.
 
-### Phase 9.3 Chat-style Play Surface
+Implemented baseline:
+
+- `web_ui/` contains a minimal React + TypeScript + Vite browser client;
+- frontend reads `/health`, `/classes`, `/gods`, and `/origins`;
+- API CORS allows local Vite origins by default;
+- README documents API + web startup commands.
+
+### Phase 9.3 Character Creation Flow
+
+Status: complete.
+
+Tasks:
+
+- choose origin country;
+- choose starting city where applicable;
+- choose class;
+- choose faith;
+- choose background identity;
+- create game session through API;
+- show opening narration.
+
+Done when:
+
+- a player can start world-mode from browser without using terminal prompts.
+
+Implemented baseline:
+
+- browser character creation form collects name, origin, city, ethnicity, class,
+  faith, and background identity;
+- frontend calls `POST /games` with `game_mode=world`;
+- successful creation displays `game_id`, location, identity summary, and
+  opening narration;
+- frontend still does not duplicate game rules, dice, validation, memory, or
+  state commit logic.
+
+### Phase 9.4 Chat-style Play Surface
+
+Status: complete.
 
 Tasks:
 
@@ -528,7 +580,17 @@ Done when:
 
 - user can play a few turns in browser.
 
-### Phase 9.4 Character And World Panels
+Implemented baseline:
+
+- created games now open a browser story log seeded with opening narration;
+- player actions submit to `POST /games/{game_id}/actions`;
+- host story responses, loading state, submit errors, and lightweight mechanics
+  summaries render in the browser;
+- debug/runtime payloads remain hidden by default.
+
+### Phase 9.5 Character And World Panels
+
+Status: complete.
 
 Tasks:
 
@@ -541,18 +603,41 @@ Done when:
 
 - browser view is easier to read than CLI without changing game rules.
 
-### Phase 9.5 API Product Polish
+Implemented baseline:
+
+- browser play surface now shows read-only character identity, HP/SAN,
+  suspicion, corruption, current city, scene focus, visited locations, six
+  attributes, legacy stats, progression resources, skills, talents, prayers,
+  burdens, inventory affordances, and clues;
+- panels update from the public API state after each submitted action;
+- frontend displays item affordances but does not execute item effects or mutate
+  state.
+
+### Phase 9.6 API/Web Playtest Pass
+
+Status: complete.
 
 Tasks:
 
-- improve API errors;
-- add timeout/fallback messages;
-- align response shapes with frontend needs;
+- improve browser playtest flow;
+- add opening action suggestions;
+- handle game-over state and new character restart;
+- add API smoke check;
 - update README run instructions.
 
 Done when:
 
 - a new developer can run API + web UI locally from docs.
+
+Implemented baseline:
+
+- browser play surface now shows opening action suggestions from the public
+  game state;
+- players can start a new character from the active play surface;
+- game-over state disables further action submission and displays ending text;
+- story log auto-scrolls during play;
+- `npm run smoke:api` checks the main browser-facing API path while FastAPI is
+  running.
 
 ## Phase 10: Engineering Quality And Final Experience Optimization
 
@@ -649,13 +734,14 @@ Done when:
 
 ## Recommended Next Task
 
-Start with Phase 9.1 API Contract Cleanup.
+Start with Phase 10.1 Observability And Trace Records.
 
-Reason: the browser should be built on a stable API contract. If the UI starts
-first, it will either duplicate rules or force response-shape churn later.
+Reason: Phase 9 now has a browser-playable product slice. The next step is to
+make weird turns explainable before adding broader evals, packaging, and final
+demo polish.
 
 Detailed Phase 9/10 execution guidance now lives in:
 
 ```text
-docs/phase9_10_execution_plan.md
+docs/final_phase10_plan.md
 ```

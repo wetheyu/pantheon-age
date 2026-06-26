@@ -10,6 +10,8 @@ can be run from the project without exposing secrets in chat or Git.
 - `.env.example` is safe to commit because it contains no real key.
 - Do not print `.env` in terminal output.
 - Live tests may spend API tokens, so they are opt-in.
+- Codex may run live LLM smoke/tests only when the user explicitly allows live
+  LLM testing in the current task.
 
 ## Local Setup
 
@@ -86,22 +88,29 @@ PANTHEON_AGENTIC_FULL_LLM=0
 In this mode, the LLM acts as the player-facing GM first. Python still owns
 memory, validation, dice, and state commit.
 
-## Live Unit Test
+## Live Unit Tests
 
-To let the optional live LLM unit test run, set this in `.env`:
+To let optional live LLM unit tests run, set this in `.env`:
 
 ```text
 PANTHEON_RUN_LIVE_LLM_TESTS=1
+PANTHEON_USE_AGENTIC_LLM=1
 ```
 
-Then run:
+Older Phase 4 provider test:
 
 ```bash
 ./.venv/bin/python -m unittest tests.test_live_openai_provider
 ```
 
-The default test suite still skips this test unless `PANTHEON_RUN_LIVE_LLM_TESTS`
-is enabled, so normal tests do not spend tokens by accident.
+Current Agentic Runtime live test:
+
+```bash
+./.venv/bin/python -m unittest tests.test_live_agentic_runtime
+```
+
+The default test suite still skips these tests unless live flags and
+`OPENAI_API_KEY` are present, so normal tests do not spend tokens by accident.
 
 ## CLI With Real LLM
 
@@ -131,6 +140,7 @@ and, when live unit tests are explicitly enabled:
 
 ```bash
 ./.venv/bin/python -m unittest tests.test_live_openai_provider
+./.venv/bin/python -m unittest tests.test_live_agentic_runtime
 ```
 
 Codex should not read or print `.env`. It only needs the environment variables to

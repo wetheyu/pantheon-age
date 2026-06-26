@@ -45,8 +45,8 @@ Current implementation:
 - Phase 5: Agentic Runtime baseline complete.
 - Phase 6: World Knowledge And Persistent Memory complete.
 - Phase 7: Minimum Playable Experience Calibration complete.
-- Current milestone: Phase 8 Progression And Core Mechanics complete.
-- Next milestone: Phase 9 Web UI And API Product Experience.
+- Current milestone: Phase 9.7 Phase 1-9 Consolidation And Final Plan complete.
+- Next milestone: Phase 10.1 Observability.
 - Existing reusable core lives in `phase1_cli/`.
 - Existing API layer lives in `phase2_api/`.
 - Existing persistence layer lives in `phase3_persistence/`.
@@ -67,6 +67,9 @@ Current important files:
 - `phase2_api/main.py`: FastAPI app entry point.
 - `phase2_api/routes/`: API route modules.
 - `phase2_api/services/session_store.py`: API session service.
+- `web_ui/`: React + TypeScript + Vite browser client scaffold.
+- `web_ui/src/api.ts`: frontend API client for FastAPI setup endpoints.
+- `web_ui/src/main.tsx`: current minimal browser shell.
 - `phase3_persistence/config.py`: persistence configuration.
 - `phase3_persistence/errors.py`: persistence-layer errors.
 - `phase3_persistence/sqlite_repository.py`: SQLite game session and event repository.
@@ -114,7 +117,8 @@ Current important files:
 - `docs/phase6_completion_summary.md`: Phase 6 completion summary.
 - `docs/phase8_progression_plan.md`: Phase 8 staged progression and core mechanics plan.
 - `docs/phase8_completion_summary.md`: Phase 8 completion summary.
-- `docs/phase9_10_execution_plan.md`: Phase 9 Web/API and Phase 10 quality execution plan.
+- `docs/phase9_10_execution_plan.md`: completed Phase 9 Web/API and initial Phase 10 quality execution plan.
+- `docs/final_phase10_plan.md`: final Phase 10 execution plan.
 - `docs/tone_guide.md`: original tone guide for narration and generation.
 - `docs/forbidden_outputs.md`: LLM forbidden outputs and authority boundaries.
 - `docs/inspiration_notes.md`: high-level inspirations and originality boundaries.
@@ -125,8 +129,8 @@ Current important files:
 - `docs/phase4_llm_runtime_plan.md`: Phase 4 LLM runtime implementation plan.
 - `docs/phase5_agentic_runtime_plan.md`: Phase 5 Agentic Runtime staged implementation plan.
 - `docs/phase5_completion_summary.md`: Phase 5 final integration summary.
-- `docs/phase1_8_architecture_summary.md`: consolidated current baseline after Phase 8.
-- `docs/future_phase_plan.md`: execution-oriented Phase 9-10 roadmap.
+- `docs/phase1_9_architecture_summary.md`: consolidated current baseline after Phase 9.
+- `docs/future_phase_plan.md`: execution-oriented roadmap.
 - `docs/agentic_runtime_architecture.md`: long-term multi-agent runtime architecture.
 - `docs/system_design.md`: phase-by-phase architecture and data flow.
 - `docs/technical_roadmap.md`: long-term technology stack and adoption order.
@@ -309,7 +313,7 @@ Rules:
 - When LLM, RAG, validation, or memory behavior changes, update `docs/llm_runtime_design.md`.
 - When API design changes, update `docs/phase2_api_plan.md` or the relevant API docs.
 - When architecture, module boundaries, or data flow changes, update `docs/system_design.md`.
-- When completed phase boundaries or the current baseline changes, update `docs/phase1_8_architecture_summary.md` or the relevant phase summary.
+- When completed phase boundaries or the current baseline changes, update `docs/phase1_9_architecture_summary.md` or the relevant phase summary.
 - When long-term technology choices, agent engineering capabilities, performance strategy, or adoption order changes, update `docs/technical_roadmap.md`.
 - Do not mix world canon, implementation notes, and runtime rules in the same document.
 
@@ -420,6 +424,7 @@ Phase 4 LLM runtime contract rules:
 - Use `.env.example` as the committed template for local secrets.
 - If a task touches provider behavior or live LLM behavior and `.env` is configured, run `./.venv/bin/python -m llm_runtime.smoke_test`.
 - Run `./.venv/bin/python -m unittest tests.test_live_openai_provider` only when live tests are explicitly enabled by `PANTHEON_RUN_LIVE_LLM_TESTS=1`.
+- Run `./.venv/bin/python -m unittest tests.test_live_agentic_runtime` only when the user explicitly allows live LLM testing and live flags are configured.
 - Future local model deployment should be added as a provider-compatible backend, not as a separate rule path.
 - Candidate local runtimes include Ollama, LM Studio, and vLLM through an OpenAI-compatible local endpoint.
 - Local model providers must pass the same validators and fallback rules as OpenAI providers.
@@ -453,4 +458,11 @@ Phase 5 Agentic Runtime rules:
 - Phase 6 stage-gated work is complete as of `v6.0.0`.
 - Phase 7 stage-gated work is complete.
 - Phase 8 stage-gated work is complete as of `v8.7.0`.
-- Do not start Phase 9 unless the user explicitly asks for Phase 9 planning or development.
+- Phase 9.1 API Contract Cleanup is complete as of `v9.1.0`.
+- Phase 9.2 Web App Scaffold is complete as of `v9.2.0`.
+- Phase 9.3 Character Creation Flow is complete as of `v9.3.0`.
+- Phase 9.4 Chat-Style Play Surface is complete as of `v9.4.0`.
+- Phase 9.5 Character And World Panels is complete as of `v9.5.0`.
+- Phase 9.6 API/Web Playtest Pass is complete as of `v9.6.0`.
+- Phase 9.7 Phase 1-9 Consolidation And Final Plan is complete as of `v9.7.0`.
+- Do not start Phase 10.1 unless the user explicitly asks for observability or quality optimization work.

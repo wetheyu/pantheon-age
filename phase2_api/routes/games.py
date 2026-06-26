@@ -13,6 +13,8 @@ from phase2_api.schemas import (
     GameStateResponse,
 )
 from phase2_api.services.session_store import (
+    build_action_api_view,
+    build_game_setup_payload,
     create_game_session,
     delete_game_session,
     get_game_state,
@@ -27,11 +29,22 @@ router = APIRouter(tags=["games"])
 
 @router.post("/games", response_model=GameCreateResponse)
 def create_game(request: GameCreateRequest):
-    game_id, state, opening_text = create_game_session(request.name, request.class_id, request.god)
+    game_id, state, opening_text = create_game_session(
+        request.name,
+        request.class_id,
+        request.god,
+        game_mode=request.game_mode,
+        origin_country_id=request.origin_country_id,
+        origin_city=request.origin_city,
+        origin_ethnicity=request.origin_ethnicity,
+        background_id=request.background_id,
+    )
     return GameCreateResponse(
         game_id=game_id,
         state=state.to_public_dict(),
         opening_text=opening_text,
+        game_mode=state.player.flags.get("game_mode", "tutorial"),
+        setup=build_game_setup_payload(state),
     )
 
 
@@ -60,4 +73,7 @@ def delete_game(game_id: str):
 @router.post("/games/{game_id}/actions", response_model=ActionResponse)
 def create_action(game_id: str, request: ActionRequest):
     response = submit_game_action(game_id, request.text)
-    return ActionResponse(game_id=game_id, response=response.to_dict())
+    return ActionResponse(
+        game_id=game_id,
+        **build_action_api_view(response, include_debug=request.include_debug),
+    )
