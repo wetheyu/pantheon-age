@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-- 新增 `docs/phase1_6_architecture_summary.md`，将 Phase 1-6 收束为当前架构基线，明确 Phase 1 tutorial、Phase 2 API、Phase 3 persistence、Phase 4 compatibility bridge、Phase 5 Agentic Runtime 和 Phase 6 RAG/memory 的职责边界；
+- 将 `docs/phase1_6_architecture_summary.md` 升级并改名为 `docs/phase1_8_architecture_summary.md`，把 Phase 1-8 收束为当前架构基线，明确 CLI、API、SQLite、Phase 4 兼容层、Agentic Runtime、RAG/memory、可玩性校准和成长机制的职责边界；
+- 新增 `docs/phase9_10_execution_plan.md`，明确 Phase 9 Web UI/API 产品体验和 Phase 10 工程质量/最终体验优化的逻辑结构、阶段任务和完成标准；
+- 更新 README、docs/README、AGENTS 和 technical roadmap，将当前状态推进到 `v8.7.0 Phase 8` 完成后，并把下一阶段指向 Phase 9.1 API Contract Cleanup；
 - 删除已被合并吸收的 `docs/refactor_plan.md`，避免旧方向文档与当前 Agentic Runtime 主线重复；
 - 重写 `docs/future_phase_plan.md`，将 Phase 7-10 拆成 Codex-friendly 小任务：最小可玩体验校准、成长系统与核心机制、Web UI/API 产品体验、工程质量与最终体验优化；
 - 新增 `docs/README.md` 中文文档总入口，并将 README 从长开发日志精简为 GitHub 首页式项目概览；
@@ -37,6 +39,36 @@
 - 优化 world-mode 新建角色开场：加入第一幕、资源处境和更自然的行动入口，减少设定说明书感；
 - 新增 world feasibility guard：调查记者、教会见习等开局身份会带有资源等级；明显超出资源/身份边界的大额购买（如直接买庄园别墅）会被程序拦截为 `feasibility_blocked`，并转化为询价、找担保人、贷款、调查产权纠纷等可玩路线；
 - Phase 7 最小可玩体验校准收口，下一阶段进入 Phase 8 成长系统与核心机制；
+- Phase 8.1 完成 Character Model Migration：新增六属性 `attributes`、职业等级、信仰等级、神秘阶位、见证值、神眷、虔诚、成长技能、天赋、祷告、代价和成长 flags；
+- `Character.to_dict()` / `from_dict()` / `to_public_dict()` 现在支持 Phase 8 成长字段，并能为旧存档自动补齐默认成长数据；
+- CLI “状态”输出新增职业等级、信仰等级、神秘阶位、Favor 和 Revelation，`docs/phase8_progression_plan.md` 记录 Phase 8 分阶段路线；
+- Phase 8.2 完成 Minimal Class Skills：每个职业新增一个 Lv1 签名技能，并能在匹配的 world-mode 检定中提供小额加成；
+- 掷骰结果现在会记录并展示命中的职业技能，例如 `技能：正面战斗基础 +2`，`check_context` 也会携带技能加成来源；
+- Agentic Runtime context pack 现在包含六属性、成长状态和职业技能 affordances，方便真实 LLM 主持人理解角色可用手段；
+- world-mode 检定新增自然 1 / 自然 20 处理：技能可以提高成功率，但自然 1 仍然会导致严重失败，自然 20 会成为完全成功；
+- Phase 8.3 完成 Minimal Faith Talents And Prayers：每位神明新增 Lv1 天赋和 Lv1 祷告基线；
+- 天赋现在会在匹配的 world-mode 检定中提供小额被动加成，祷告会消耗 `favor` 并提供主动加成；
+- 掷骰结果和 `check_context` 现在会记录 `talent_bonuses`、`prayer_bonuses` 和神眷不足时的 `blocked_prayers`；
+- 玩家可见掷骰文本现在会显示天赋/祷告来源，例如 `天赋：临终残响 +1`、`祷告：安魂 +3`；
+- 敌对或受限宗教环境中公开祷告会增加 Suspicion 风险，避免信仰能力变成无代价万能按钮；
+- Phase 8.4 完成 Generic Check System Migration：world-mode 检定现在会根据 `risk_type + check_stat` 选择六属性 profile；
+- 六属性现在通过 `attribute_modifier = (attribute - 10) // 2` 参与 `行动修正`，旧四属性仍保留为兼容桥；
+- 掷骰结果和 `check_context` 现在包含 `attribute_profile` 与 `attribute_modifier`，玩家可见文本会显示如 `属性：体魄 15 +2`；
+- 职业技能、信仰天赋、祷告和六属性修正现在共用同一条 world-mode modifier 路径，为后续仪式晋升和物品效果打地基；
+- Phase 8.5 完成 Ritual Advancement Slice：新增职业等级、信仰等级和第一次神秘阶位晋升的最小提交路径；
+- 晋升尝试现在会返回结构化 `advancement` 数据，包含 requirements、costs、rewards 和 denied_reasons；
+- 职业晋升 1 -> 2 会消耗 Revelation 并给职业相关六属性 +1，信仰晋升 1 -> 2 会消耗 Revelation/Favor 并给 Devotion +1；
+- 第一次神秘晋升 0 -> 1 需要职业等级 2、信仰等级 2、足够 Revelation/Favor，并会写入一个 burden；
+- 条件不足的晋升会被拒绝为 `advancement_denied`，并拒绝 `unearned_advancement`、`unearned_level_change` 和 `unearned_attribute_change`；
+- Phase 8.6 完成 Items And Relics Slice：新增 `phase1_cli/items.py`，将普通装备、消耗品和未来遗物/诅咒物的规则接口从背包字符串中抽出来；
+- 背包物品现在会公开 `item_affordances`，Agentic Runtime context pack 也会携带可用道具的结构化效果；
+- world-mode 检定现在支持明确调用道具后的 `item_bonuses`，并会在掷骰结果、`check_context` 和玩家可见文本中显示道具修正来源；
+- 消耗品检定会提交 `item_consumed` 并从背包移除，例如撒下 `仪式粉末` 解析异常；
+- 直接使用消耗品现在可以通过提交层改变状态，例如喝下 `镇静药剂` 恢复 SAN，且不能凭叙事生成免费道具；
+- Phase 8.7 完成 Phase 8 Final Integration：状态页现在显示六属性、职业技能、信仰天赋、祷告、可用道具和晋升状态；
+- 帮助文本新增 world-mode Phase 8 示例，说明职业技能、信仰天赋、祷告、道具和晋升如何与规则交互；
+- 新增组合流测试，覆盖职业技能 + 信仰天赋 + 祷告 + 道具 + 信仰晋升的连续玩法；
+- 新增 `docs/phase8_completion_summary.md`，将 Phase 8 收口为可交付的成长与核心机制基线；
 
 ## v6.0.0 - Phase 6 World Knowledge And Persistent Memory
 

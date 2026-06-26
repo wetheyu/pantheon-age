@@ -1,4 +1,4 @@
-"""Static game data for 神座纪元 v6.0.0.
+"""Static game data for 神座纪元 v8.7.0.
 
 This file is intentionally plain dictionaries and lists. Later phases can move
 the same data into JSON files, PostgreSQL rows, or a RAG knowledge base.
@@ -6,9 +6,9 @@ the same data into JSON files, PostgreSQL rows, or a RAG knowledge base.
 
 PROJECT_NAME = "神座纪元"
 PROJECT_ENGLISH_NAME = "Pantheon Age"
-PROJECT_VERSION = "6.0.0"
-PROJECT_INTERNAL_MILESTONE = "Phase 6"
-PROJECT_STAGE = "World Knowledge And Persistent Memory"
+PROJECT_VERSION = "8.7.0"
+PROJECT_INTERNAL_MILESTONE = "Phase 8.7"
+PROJECT_STAGE = "Progression And Core Mechanics Baseline"
 
 BASE_STATS = {
     "strength": 5,
@@ -364,4 +364,16 @@ HELP_TEXT = """支持的行动示例：
 - 休息：休息一下
 - 查看：目标 / 线索 / 地图 / 日志 / 状态
 - 系统：帮助 / 存档 / 读档 / 退出
+
+开放世界模式可以直接说自然语言行动，例如：
+- 握住圣徽进行安魂祷告，稳定墓地里的亡者残响
+- 使用开锁工具撬开仓库门锁
+- 撒下仪式粉末，解读深渊符号
+- 进行职业训练升级 / 进行信仰晋升 / 进行神秘晋升仪式
+
+当前 Phase 8 机制：
+- 六属性会参与高风险检定；
+- 职业技能、信仰天赋、祷告和道具都可能提供修正；
+- 祷告会消耗 Favor，部分道具会被消耗；
+- 晋升必须满足资源和等级条件，不能靠叙事白拿。
 """

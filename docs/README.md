@@ -7,14 +7,14 @@ README 负责介绍项目；本文件负责告诉你“要看哪份文档”。
 ## 首先阅读
 
 1. [../AGENTS.md](../AGENTS.md)：工程规则、架构边界、测试命令和协作约束。
-2. [phase1_6_architecture_summary.md](phase1_6_architecture_summary.md)：Phase 1-6 当前架构基线。
+2. [phase1_8_architecture_summary.md](phase1_8_architecture_summary.md)：Phase 1-8 当前架构基线。
 3. [agentic_runtime_architecture.md](agentic_runtime_architecture.md)：长期 Agentic Runtime 设计。
-4. [future_phase_plan.md](future_phase_plan.md)：Phase 7-10 开发路线。
+4. [future_phase_plan.md](future_phase_plan.md)：Phase 9-10 开发路线。
 5. [world_bible.md](world_bible.md)：世界观总览。
 
 ## 架构文档
 
-- [phase1_6_architecture_summary.md](phase1_6_architecture_summary.md)：当前主线、兼容层和历史阶段的边界。
+- [phase1_8_architecture_summary.md](phase1_8_architecture_summary.md)：当前主线、兼容层和历史阶段的边界。
 - [agentic_runtime_architecture.md](agentic_runtime_architecture.md)：Intent、Rule Arbiter、Scene、NPC、Event、Item、Memory、Narrator 等 Agent 的职责。
 - [llm_runtime_design.md](llm_runtime_design.md)：LLM 提案、验证、提交、叙事和防越权规则。
 - [system_design.md](system_design.md)：阶段式系统设计和数据流说明。
@@ -41,10 +41,13 @@ README 负责介绍项目；本文件负责告诉你“要看哪份文档”。
 - [phase6_world_memory_plan.md](phase6_world_memory_plan.md)：Phase 6 世界知识与长期记忆计划。
 - [phase6_completion_summary.md](phase6_completion_summary.md)：Phase 6 完成总结。
 - [phase7_completion_summary.md](phase7_completion_summary.md)：Phase 7 最小可玩体验校准完成总结。
+- [phase8_progression_plan.md](phase8_progression_plan.md)：Phase 8 成长系统与核心机制计划。
+- [phase8_completion_summary.md](phase8_completion_summary.md)：Phase 8 成长系统与核心机制完成总结。
+- [phase9_10_execution_plan.md](phase9_10_execution_plan.md)：Phase 9 Web UI/API 与 Phase 10 工程质量执行计划。
 
 未来开发：
 
-- [future_phase_plan.md](future_phase_plan.md)：Phase 7 最小可玩体验、Phase 8 成长系统、Phase 9 Web/API 体验、Phase 10 工程质量与最终优化。
+- [future_phase_plan.md](future_phase_plan.md)：阶段总路线与当前推荐下一步。
 
 ## 运行与测试
 

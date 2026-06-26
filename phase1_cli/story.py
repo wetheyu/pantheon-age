@@ -1,4 +1,4 @@
-"""Fixed story text for 神座纪元 v5.8.0.
+"""Fixed story text for 神座纪元 v8.7.0.
 
 Later, an LLM can replace or enrich this module, but it should still receive
 rule results from rule_engine instead of deciding core state changes itself.
@@ -17,6 +17,8 @@ from .data import (
     PROJECT_VERSION,
     STAT_NAMES,
 )
+from .items import item_affordances_for
+from .progression import ATTRIBUTE_LABELS, advancement_options_for
 from .scenarios import (
     WORLD_GAME_MODE,
     available_exits_for_state,
@@ -95,6 +97,12 @@ def render_status(state):
     inventory = ", ".join(player.inventory) if player.inventory else "空"
     clues = ", ".join(player.clues) if player.clues else "暂无"
     exits = ", ".join(available_exits_for_state(state)) or "由 Agent 根据当前行动临时生成"
+    attributes = render_attribute_summary(player)
+    class_skills = format_name_list(player.progression_skills)
+    talents = format_name_list(player.talents)
+    prayers = format_name_list(player.prayers)
+    item_affordances = render_item_affordance_summary(player)
+    advancement = render_advancement_summary(player)
 
     return f"""
 ------------------------------------------------------------
@@ -103,9 +111,57 @@ def render_status(state):
 可前往：{exits}
 
 HP {player.hp}/{player.max_hp} | SAN {player.san}/{player.max_san} | Suspicion {player.suspicion} | Corruption {player.corruption}
+职业等级 {player.class_level} | 信仰等级 {player.faith_level} | 神秘阶位 {player.ascension_rank} | Favor {player.favor} | Revelation {player.revelation}
+六属性：{attributes}
+职业技能：{class_skills}
+信仰天赋：{talents}
+祷告：{prayers}
+可用道具：{item_affordances}
+晋升状态：{advancement}
 背包：{inventory}
 线索：{clues}
 ------------------------------------------------------------"""
+
+
+def render_attribute_summary(player):
+    parts = []
+    for key in ("physique", "agility", "insight", "knowledge", "will", "communion"):
+        label = ATTRIBUTE_LABELS.get(key, key)
+        parts.append(f"{label} {player.attributes.get(key, 10)}")
+    return " / ".join(parts)
+
+
+def render_item_affordance_summary(player):
+    affordances = item_affordances_for(player)
+    if not affordances:
+        return "暂无"
+    parts = []
+    for item in affordances[:4]:
+        category = {
+            "ordinary": "普通",
+            "consumable": "消耗",
+            "relic": "遗物",
+            "cursed": "诅咒",
+        }.get(item["category"], item["category"])
+        parts.append(f"{item['name']}[{category}]")
+    if len(affordances) > 4:
+        parts.append(f"另 {len(affordances) - 4} 件")
+    return "，".join(parts)
+
+
+def render_advancement_summary(player):
+    options = advancement_options_for(player)
+    ready = [option["label"] for option in options if option["can_advance"]]
+    if ready:
+        return "可晋升：" + "，".join(ready)
+    blocked = options[0]["denied_reasons"] if options else []
+    if blocked:
+        return "暂不可晋升，主要缺口：" + "，".join(blocked[:2])
+    return "暂不可晋升"
+
+
+def format_name_list(names):
+    return "，".join(names) if names else "暂无"
 
 
 def render_result(result):
@@ -153,6 +209,36 @@ def render_roll_line(roll):
         extras.append(f"风险：{roll['risk_label']}")
     if "margin" in roll:
         extras.append(f"差值：{roll['margin']:+d}")
+    if roll.get("attribute_profile"):
+        profile = roll["attribute_profile"]
+        extras.append(
+            "属性："
+            f"{profile.get('primary_label', profile.get('primary_attribute', '属性'))}"
+            f" {profile.get('primary_value')} "
+            f"{profile.get('modifier', 0):+d}"
+        )
+    if roll.get("skill_bonuses"):
+        skill_text = "，".join(
+            f"{skill['name']} +{skill['bonus']}" for skill in roll["skill_bonuses"]
+        )
+        extras.append(f"技能：{skill_text}")
+    if roll.get("talent_bonuses"):
+        talent_text = "，".join(
+            f"{talent['name']} +{talent['bonus']}" for talent in roll["talent_bonuses"]
+        )
+        extras.append(f"天赋：{talent_text}")
+    if roll.get("prayer_bonuses"):
+        prayer_text = "，".join(
+            f"{prayer['name']} +{prayer['bonus']}" for prayer in roll["prayer_bonuses"]
+        )
+        extras.append(f"祷告：{prayer_text}")
+    if roll.get("item_bonuses"):
+        item_text = "，".join(
+            f"{item['name']} +{item['bonus']}" for item in roll["item_bonuses"]
+        )
+        extras.append(f"道具：{item_text}")
+    if roll.get("consumed_items"):
+        extras.append(f"消耗：{'，'.join(roll['consumed_items'])}")
     extra_text = f"｜{'｜'.join(extras)}" if extras else ""
     return (
         f"检定：d20({roll['d20']}) + {stat_name}({roll['stat_value']}) "

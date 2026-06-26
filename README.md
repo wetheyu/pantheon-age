@@ -7,19 +7,19 @@
 当前版本：
 
 ```text
-v6.0.0 / Phase 6 World Knowledge And Persistent Memory
+v8.7.0 / Phase 8 Progression And Core Mechanics Baseline
 ```
 
 当前主线：
 
 ```text
-Agentic Runtime + Canon Retrieval + Persistent Memory
+Agentic Runtime + Canon Retrieval + Persistent Memory + Progression Mechanics
 ```
 
 下一阶段：
 
 ```text
-Phase 7 Minimum Playable Experience Calibration
+Phase 9 Web UI And API Product Experience
 ```
 
 ## 项目动机
@@ -58,6 +58,13 @@ LLM 负责创造可能性。
 - `rag/canon.py` 支持关键词检索、向量检索、混合检索和 SQLite 向量缓存检索。
 - `phase3_persistence/` 使用 SQLite 保存游戏会话、事件日志和结构化长期记忆。
 - 临时 NPC、地点、传闻、事件、关系和派系压力只有通过验证后才会写入长期记忆。
+
+### 成长与核心机制
+
+- 角色拥有六属性、职业等级、信仰等级、神秘阶位、Favor、Revelation 和 Devotion。
+- 职业技能、信仰天赋、主动祷告和道具会参与 world-mode 检定修正。
+- 晋升需要满足条件并消耗资源；LLM 叙事不能直接授予等级、属性或道具。
+- `状态` 会显示当前技能、天赋、祷告、可用道具和晋升缺口。
 
 ### API 与持久化
 
@@ -241,26 +248,26 @@ PANTHEON_RUN_LIVE_LLM_TESTS=1
 
 建议阅读顺序：
 
-1. [docs/phase1_6_architecture_summary.md](docs/phase1_6_architecture_summary.md)：当前架构基线；
+1. [docs/phase1_8_architecture_summary.md](docs/phase1_8_architecture_summary.md)：当前架构基线；
 2. [docs/agentic_runtime_architecture.md](docs/agentic_runtime_architecture.md)：长期 Agentic Runtime 设计；
 3. [docs/phase6_completion_summary.md](docs/phase6_completion_summary.md)：Phase 6 完成情况；
 4. [docs/phase7_completion_summary.md](docs/phase7_completion_summary.md)：Phase 7 完成情况；
-5. [docs/playtest_checklist.md](docs/playtest_checklist.md)：世界模式试玩清单；
-6. [docs/future_phase_plan.md](docs/future_phase_plan.md)：Phase 8-10 开发路线；
-7. [docs/world_bible.md](docs/world_bible.md)：世界观总览。
+5. [docs/phase8_completion_summary.md](docs/phase8_completion_summary.md)：Phase 8 完成情况；
+6. [docs/playtest_checklist.md](docs/playtest_checklist.md)：世界模式试玩清单；
+7. [docs/future_phase_plan.md](docs/future_phase_plan.md)：Phase 9-10 开发路线；
+8. [docs/phase9_10_execution_plan.md](docs/phase9_10_execution_plan.md)：Phase 9/10 执行计划；
+9. [docs/world_bible.md](docs/world_bible.md)：世界观总览。
 
 ## 当前限制
 
-- 世界模式已经可按 Phase 7 清单试玩；地点连续性、风险反馈和基本安全边界已有回归测试，长期玩法仍需要继续打磨。
-- 成长系统、技能、祷告、仪式晋升和道具机制尚未完整实装。
+- 世界模式已经可试玩；地点连续性、风险反馈、基本安全边界和 Phase 8 核心机制已有回归测试，长期玩法仍需要继续打磨。
+- Phase 8 已完成技能、天赋、祷告、六属性检定、仪式晋升和道具机制的基础基线，完整成长体验仍会继续扩展。
 - 网页界面尚未开始。
 - 真实 LLM 与真实向量接口调用需要用户自行配置 API key，并会产生 API 成本。
 
 ## 后续阶段
 
 ```text
-Phase 7: 最小可玩体验校准
-Phase 8: 成长系统与核心机制
 Phase 9: 网页界面与 API 产品体验
 Phase 10: 工程质量与最终体验优化
 ```

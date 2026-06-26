@@ -8,7 +8,15 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from phase1_cli.character import build_character
 from phase1_cli.game_state import GameState
-from phase1_cli.story import render_clues, render_goal, render_log, render_map
+from phase1_cli.story import (
+    render_clues,
+    render_goal,
+    render_help,
+    render_log,
+    render_map,
+    render_roll_line,
+    render_status,
+)
 
 
 class StoryViewTests(unittest.TestCase):
@@ -69,6 +77,64 @@ class StoryViewTests(unittest.TestCase):
         text = render_log(state)
 
         self.assertIn("行动日志：暂无", text)
+
+    def test_status_shows_phase8_progression_fields(self):
+        state = GameState(build_character("阿洛", "warrior", "死亡之神"))
+
+        text = render_status(state)
+
+        self.assertIn("职业等级 1", text)
+        self.assertIn("信仰等级 1", text)
+        self.assertIn("神秘阶位 0", text)
+        self.assertIn("Favor 1", text)
+        self.assertIn("Revelation 0", text)
+        self.assertIn("六属性：体魄 15", text)
+        self.assertIn("职业技能：正面战斗基础", text)
+        self.assertIn("信仰天赋：临终残响", text)
+        self.assertIn("祷告：安魂", text)
+        self.assertIn("可用道具：制式佩剑[普通]", text)
+        self.assertIn("晋升状态：暂不可晋升", text)
+
+    def test_help_explains_phase8_world_mode_mechanics(self):
+        text = render_help()
+
+        self.assertIn("开放世界模式可以直接说自然语言行动", text)
+        self.assertIn("使用开锁工具撬开仓库门锁", text)
+        self.assertIn("职业技能、信仰天赋、祷告和道具", text)
+        self.assertIn("晋升必须满足资源和等级条件", text)
+
+    def test_roll_line_shows_faith_bonuses(self):
+        roll = {
+            "d20": 10,
+            "stat": "faith",
+            "stat_value": 8,
+            "modifier": 6,
+            "modifier_label": "行动修正",
+            "total": 24,
+            "dc": 17,
+            "success": True,
+            "risk_label": "神秘学",
+            "margin": 7,
+            "outcome_label": "小成功",
+            "attribute_profile": {
+                "primary_label": "共鸣",
+                "primary_attribute": "communion",
+                "primary_value": 14,
+                "modifier": 2,
+            },
+            "talent_bonuses": [{"name": "临终残响", "bonus": 1}],
+            "prayer_bonuses": [{"name": "安魂", "bonus": 3}],
+            "item_bonuses": [{"name": "圣徽", "bonus": 1}],
+            "consumed_items": ["仪式粉末"],
+        }
+
+        text = render_roll_line(roll)
+
+        self.assertIn("属性：共鸣 14 +2", text)
+        self.assertIn("天赋：临终残响 +1", text)
+        self.assertIn("祷告：安魂 +3", text)
+        self.assertIn("道具：圣徽 +1", text)
+        self.assertIn("消耗：仪式粉末", text)
 
 
 if __name__ == "__main__":

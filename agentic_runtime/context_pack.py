@@ -9,6 +9,13 @@ import os
 from pathlib import Path
 import re
 
+from phase1_cli.items import item_affordances_for
+from phase1_cli.progression import (
+    advancement_options_for,
+    prayer_affordances_for,
+    skill_affordances_for,
+    talent_affordances_for,
+)
 from phase1_cli.scenarios import current_scene_focus_for_state
 from rag.canon import retrieve_canon_chunks
 
@@ -55,10 +62,28 @@ def build_player_context(state):
         "class": player.class_name,
         "god": player.god,
         "stats": dict(player.stats),
+        "attributes": dict(player.attributes),
+        "progression": {
+            "class_level": player.class_level,
+            "faith_level": player.faith_level,
+            "ascension_rank": player.ascension_rank,
+            "revelation": player.revelation,
+            "favor": player.favor,
+            "devotion": player.devotion,
+            "progression_skills": list(player.progression_skills),
+            "skill_affordances": skill_affordances_for(player),
+            "talents": list(player.talents),
+            "talent_affordances": talent_affordances_for(player),
+            "prayers": list(player.prayers),
+            "prayer_affordances": prayer_affordances_for(player),
+            "advancement_options": advancement_options_for(player),
+        },
         "hp": {"current": player.hp, "max": player.max_hp},
         "san": {"current": player.san, "max": player.max_san},
         "suspicion": player.suspicion,
         "corruption": player.corruption,
+        "inventory": list(player.inventory),
+        "item_affordances": item_affordances_for(player),
         "origin": {
             "country": origin.get("origin_country_formal_name"),
             "identity": origin.get("origin_identity"),

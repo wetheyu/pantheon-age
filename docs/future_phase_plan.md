@@ -1,6 +1,6 @@
 # Future Phase Plan
 
-This is the execution plan after Phase 6.
+This is the execution plan after the Phase 1-8 baseline.
 
 It is written for small Codex-friendly development tasks: each stage should be
 scoped, testable, and easy to review.
@@ -13,7 +13,7 @@ The program provides memory, consistency, validation, persistence, retrieval, an
 Build foundations first. Polish after the foundations stop moving.
 ```
 
-Consolidated order:
+Completed and remaining order:
 
 ```text
 Phase 7: Minimum Playable Experience Calibration
@@ -25,8 +25,8 @@ Phase 10: Engineering Quality And Final Experience Optimization
 Why this order:
 
 - Phase 6 already added world knowledge and long-term memory.
-- Phase 7 makes the current loop playable enough for repeated testing.
-- Phase 8 adds actual game mechanics after the loop is comfortable.
+- Phase 7 made the current loop playable enough for repeated testing.
+- Phase 8 added the first progression and core mechanics baseline.
 - Phase 9 moves the playable loop into a browser.
 - Phase 10 makes the whole project easier to debug, evaluate, deploy, and
   present.
@@ -359,6 +359,8 @@ Non-goals:
 
 ### Phase 8.1 Character Model Migration
 
+Status: complete.
+
 Scope:
 
 - `phase1_cli/character.py`
@@ -377,66 +379,104 @@ Done when:
 - character serialization round-trips;
 - old minimal character data can still load or fail gracefully.
 
+Implemented baseline:
+
+- added six future-facing attributes while preserving the old four-stat bridge;
+- added class level, faith level, ascension rank, revelation, favor, devotion,
+  progression skills, talents, prayers, burdens, and progression flags;
+- exposed progression through public character state and CLI status;
+- added old-save compatibility defaults.
+
 ### Phase 8.2 Minimal Class Skills
 
-Tasks:
+Status: complete.
 
-- add one signature skill per class;
-- make each skill usable by Agentic Runtime as an action affordance;
-- validate that skills can help checks but not auto-win.
+Implemented baseline:
 
-Done when:
-
-- knight, mage, spy, ranger, priest, and alchemist feel different in play.
+- added one Lv1 signature skill per class;
+- made class skills provide small bonuses to matching world-mode checks;
+- surfaced skill bonuses in roll output and `check_context`;
+- exposed skill affordances in public progression state and LLM context packs;
+- enforced natural 1 / natural 20 outcome handling so bonuses do not remove
+  dice tension.
 
 ### Phase 8.3 Minimal Faith Talents And Prayers
 
-Tasks:
+Status: complete.
 
-- add one talent or prayer per major god;
-- model favor, burden, or risk in a small way;
-- keep hostile/illegal faith context relevant.
+Implemented baseline:
 
-Done when:
-
-- faith choice changes possible actions and risks.
+- added one Lv1 talent and one prayer per major god;
+- talents add small passive bonuses to matching checks;
+- prayers consume `favor` and add active bonuses;
+- hostile/restricted church legality can increase suspicion when prayer is
+  invoked publicly;
+- talent/prayer affordances are available to public state and LLM context packs.
 
 ### Phase 8.4 Generic Check System
 
-Tasks:
+Status: complete.
 
-- route common checks through shared check data;
-- support combat, social, stealth, investigation, occult, travel, and ritual
-  checks;
-- keep the arbiter agent flexible but validator-controlled.
+Implemented baseline:
 
-Done when:
-
-- different actions can use consistent DC/result/consequence handling.
+- world-mode checks now use shared six-attribute profiles on top of the old
+  four-stat compatibility bridge;
+- roll results include `attribute_profile` and `attribute_modifier`;
+- player-facing dice output explains the six-attribute contribution;
+- class skills, faith talents, prayers, and attribute modifiers now share one
+  modifier path.
 
 ### Phase 8.5 Ritual Advancement Slice
 
-Tasks:
+Status: complete.
 
-- add class level and faith level;
-- add ritual requirements for advancement;
-- require cost, evidence, or story milestone before promotion.
+Implemented baseline:
 
-Done when:
-
-- the player can complete one small advancement path in test/demo form.
+- explicit advancement attempts can target class level, faith level, or first
+  ascension;
+- advancement evaluation reports requirements, costs, rewards, and denial
+  reasons;
+- earned class advancement consumes `revelation` and grants one class-related
+  attribute point;
+- earned faith advancement consumes `revelation` and `favor`, then increases
+  devotion;
+- first ascension requires class level 2, faith level 2, enough resources, and
+  adds a burden.
 
 ### Phase 8.6 Items And Relics Slice
 
-Tasks:
+Status: complete.
 
-- define item categories;
-- allow temporary generated items to become real only after validated commit;
-- add simple equipment effects without bloating combat.
+Implemented:
 
-Done when:
+- `phase1_cli/items.py` defines rule-facing item categories and item effects
+  while preserving the old inventory save format;
+- public player state and context packs expose `item_affordances`;
+- world-mode checks can apply explicit carried item bonuses;
+- consumables can be removed from inventory when used in a check;
+- direct consumable use can change HP, SAN, or Corruption through the commit
+  layer;
+- temporary generated item proposals still cannot directly grant inventory or
+  clues.
+
+Done:
 
 - items can matter mechanically without letting LLM hand out free rewards.
+
+### Phase 8.7 Phase 8 Final Integration
+
+Status: complete.
+
+Implemented:
+
+- consolidate Phase 8 documentation;
+- verify skill, talent, prayer, advancement, and item mechanics work together;
+- update player-facing help/status text where needed;
+- decide what belongs in Phase 9 versus later Phase 10 polish.
+
+Done:
+
+- Phase 8 is documented and verified as a single playable mechanical baseline.
 
 ## Phase 9: Web UI And API Product Experience
 
@@ -609,7 +649,13 @@ Done when:
 
 ## Recommended Next Task
 
-Start with Phase 7.1 Runtime Latency Baseline.
+Start with Phase 9.1 API Contract Cleanup.
 
-Reason: speed and debug visibility affect every later playtest, but this task
-does not force major gameplay design decisions.
+Reason: the browser should be built on a stable API contract. If the UI starts
+first, it will either duplicate rules or force response-shape churn later.
+
+Detailed Phase 9/10 execution guidance now lives in:
+
+```text
+docs/phase9_10_execution_plan.md
+```

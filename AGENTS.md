@@ -45,8 +45,8 @@ Current implementation:
 - Phase 5: Agentic Runtime baseline complete.
 - Phase 6: World Knowledge And Persistent Memory complete.
 - Phase 7: Minimum Playable Experience Calibration complete.
-- Current milestone: Phase 7.7 Creative GM Mode complete.
-- Next milestone: Phase 8.1 Character Model Migration.
+- Current milestone: Phase 8 Progression And Core Mechanics complete.
+- Next milestone: Phase 9 Web UI And API Product Experience.
 - Existing reusable core lives in `phase1_cli/`.
 - Existing API layer lives in `phase2_api/`.
 - Existing persistence layer lives in `phase3_persistence/`.
@@ -61,6 +61,7 @@ Current important files:
 - `phase1_cli/story.py`: fixed text rendering.
 - `phase1_cli/game_state.py`: mutable game state.
 - `phase1_cli/character.py`: character model and creation.
+- `phase1_cli/items.py`: structured item categories, effects, and item-use matching.
 - `phase1_cli/save_manager.py`: local JSON save/load.
 - `phase1_cli/scenarios.py`: tutorial/world-mode scenario helpers and game-mode flags.
 - `phase2_api/main.py`: FastAPI app entry point.
@@ -111,6 +112,9 @@ Current important files:
 - `docs/canon/`: Phase 6 split canon corpus for local retrieval and future RAG.
 - `docs/phase6_world_memory_plan.md`: Phase 6 staged implementation plan.
 - `docs/phase6_completion_summary.md`: Phase 6 completion summary.
+- `docs/phase8_progression_plan.md`: Phase 8 staged progression and core mechanics plan.
+- `docs/phase8_completion_summary.md`: Phase 8 completion summary.
+- `docs/phase9_10_execution_plan.md`: Phase 9 Web/API and Phase 10 quality execution plan.
 - `docs/tone_guide.md`: original tone guide for narration and generation.
 - `docs/forbidden_outputs.md`: LLM forbidden outputs and authority boundaries.
 - `docs/inspiration_notes.md`: high-level inspirations and originality boundaries.
@@ -121,8 +125,8 @@ Current important files:
 - `docs/phase4_llm_runtime_plan.md`: Phase 4 LLM runtime implementation plan.
 - `docs/phase5_agentic_runtime_plan.md`: Phase 5 Agentic Runtime staged implementation plan.
 - `docs/phase5_completion_summary.md`: Phase 5 final integration summary.
-- `docs/phase1_6_architecture_summary.md`: consolidated current baseline after Phase 6.
-- `docs/future_phase_plan.md`: execution-oriented Phase 7-10 roadmap.
+- `docs/phase1_8_architecture_summary.md`: consolidated current baseline after Phase 8.
+- `docs/future_phase_plan.md`: execution-oriented Phase 9-10 roadmap.
 - `docs/agentic_runtime_architecture.md`: long-term multi-agent runtime architecture.
 - `docs/system_design.md`: phase-by-phase architecture and data flow.
 - `docs/technical_roadmap.md`: long-term technology stack and adoption order.
@@ -305,7 +309,7 @@ Rules:
 - When LLM, RAG, validation, or memory behavior changes, update `docs/llm_runtime_design.md`.
 - When API design changes, update `docs/phase2_api_plan.md` or the relevant API docs.
 - When architecture, module boundaries, or data flow changes, update `docs/system_design.md`.
-- When completed phase boundaries or the current baseline changes, update `docs/phase1_6_architecture_summary.md` or the relevant phase summary.
+- When completed phase boundaries or the current baseline changes, update `docs/phase1_8_architecture_summary.md` or the relevant phase summary.
 - When long-term technology choices, agent engineering capabilities, performance strategy, or adoption order changes, update `docs/technical_roadmap.md`.
 - Do not mix world canon, implementation notes, and runtime rules in the same document.
 
@@ -447,4 +451,6 @@ Phase 5 Agentic Runtime rules:
 - Do not solve Phase 5 natural-language issues by patching Phase 1 keyword lists unless the task is explicitly about the tutorial parser.
 - Phase 5 stage-gated work is complete as of `v5.8.0`.
 - Phase 6 stage-gated work is complete as of `v6.0.0`.
-- Do not start Phase 7 unless the user explicitly asks for Phase 7 planning or development.
+- Phase 7 stage-gated work is complete.
+- Phase 8 stage-gated work is complete as of `v8.7.0`.
+- Do not start Phase 9 unless the user explicitly asks for Phase 9 planning or development.

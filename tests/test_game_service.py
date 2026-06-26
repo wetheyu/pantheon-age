@@ -113,7 +113,17 @@ class GameServiceTests(unittest.TestCase):
 
     def test_agentic_runtime_can_be_enabled_for_action_flow(self):
         state = self.make_state()
-        with patch.dict("os.environ", {"PANTHEON_USE_AGENTIC_RUNTIME": "1"}, clear=False):
+        with patch.dict(
+            "os.environ",
+            {
+                "PANTHEON_USE_AGENTIC_RUNTIME": "1",
+                "PANTHEON_USE_AGENTIC_LLM": "0",
+                "PANTHEON_CREATIVE_GM_MODE": "0",
+                "PANTHEON_AGENTIC_TURN_DIRECTOR": "0",
+                "PANTHEON_AGENTIC_FULL_LLM": "0",
+            },
+            clear=False,
+        ):
             response = handle_player_input(state, "跳向前厅")
 
         self.assertEqual(response.kind, "action")
@@ -176,7 +186,9 @@ class GameServiceTests(unittest.TestCase):
         self.assertIn("检定：d20(", response.text)
         self.assertIn("/ DC 16 ->", response.text)
         self.assertIn("风险：暴力", response.text)
-        self.assertIn("差值：+2", response.text)
+        self.assertIn("差值：+6", response.text)
+        self.assertIn("属性：体魄 15 +2", response.text)
+        self.assertIn("技能：正面战斗基础 +2", response.text)
         self.assertIn("小成功", response.text)
         self.assertIn("状态变化：", response.text)
         self.assertIsNotNone(response.rule_result["roll"])
@@ -200,6 +212,39 @@ class GameServiceTests(unittest.TestCase):
         self.assertEqual(payload["player"]["origin"]["city"], "维拉尔")
         self.assertEqual(payload["player"]["origin"]["background_name"], "港口书记员")
         self.assertIn("码头账簿", payload["player"]["origin"]["background_description"])
+        self.assertIn("attributes", payload["player"])
+        self.assertEqual(
+            payload["player"]["item_affordances"][0]["name"],
+            "制式佩剑",
+        )
+        self.assertEqual(
+            payload["player"]["item_affordances"][0]["category"],
+            "ordinary",
+        )
+        self.assertEqual(payload["player"]["progression"]["class_level"], 1)
+        self.assertEqual(payload["player"]["progression"]["faith_level"], 1)
+        self.assertEqual(payload["player"]["progression"]["ascension_rank"], 0)
+        self.assertIn("正面战斗基础", payload["player"]["progression"]["progression_skills"])
+        self.assertEqual(
+            payload["player"]["progression"]["skill_affordances"][0]["name"],
+            "正面战斗基础",
+        )
+        self.assertEqual(
+            payload["player"]["progression"]["talent_affordances"][0]["name"],
+            "临终残响",
+        )
+        self.assertEqual(
+            payload["player"]["progression"]["prayer_affordances"][0]["name"],
+            "安魂",
+        )
+        self.assertEqual(
+            payload["player"]["progression"]["advancement_options"][0]["type"],
+            "class_level",
+        )
+        self.assertIn(
+            "revelation_not_enough",
+            payload["player"]["progression"]["advancement_options"][0]["denied_reasons"],
+        )
         self.assertEqual(payload["player"]["origin"]["church_context"]["dominant"], ["白塔院"])
         self.assertIn("密仪会", payload["player"]["origin"]["church_context"]["hostile"])
         opening_profile = payload["player"]["origin"]["opening_profile"]

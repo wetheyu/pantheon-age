@@ -145,7 +145,7 @@ class AgenticRuntimeTests(unittest.TestCase):
     def test_agentic_turn_commits_to_state_and_keeps_trace(self):
         state = self.make_state()
 
-        result = run_agentic_turn(state, "跳向前厅")
+        result = run_agentic_turn(state, "跳向前厅", providers=build_local_agentic_providers())
 
         self.assertEqual(state.current_location, "前厅")
         self.assertEqual(result.open_action.method, "跳向前厅")
@@ -399,6 +399,19 @@ class AgenticRuntimeTests(unittest.TestCase):
         self.assertLessEqual(len(context_pack["relevant_lore_cards"]), 6)
         self.assertTrue(any("卢米埃共和国" in title or "海洋之神" in title for title in titles))
         self.assertIn("generation_directives", context_pack)
+        self.assertIn("attributes", context_pack["player"])
+        self.assertEqual(
+            context_pack["player"]["progression"]["skill_affordances"][0]["name"],
+            "正面战斗基础",
+        )
+        self.assertEqual(
+            context_pack["player"]["progression"]["talent_affordances"][0]["name"],
+            "临终残响",
+        )
+        self.assertEqual(
+            context_pack["player"]["progression"]["prayer_affordances"][0]["name"],
+            "安魂",
+        )
 
     def test_relevant_lore_cards_are_ranked_without_full_document_dump(self):
         cards = retrieve_relevant_lore_cards("萨莱姆 密仪会 深渊 金门海峡", limit=3)
@@ -1662,9 +1675,19 @@ class AgenticRuntimeTests(unittest.TestCase):
 
         self.assertEqual(roll["risk_type"], "violence")
         self.assertEqual(roll["risk_label"], "暴力")
-        self.assertEqual(roll["margin"], 8)
+        self.assertEqual(roll["margin"], 12)
         self.assertEqual(roll["outcome_level"], "full_success")
         self.assertEqual(roll["outcome_label"], "完全成功")
+        self.assertEqual(roll["attribute_profile"]["primary_attribute"], "physique")
+        self.assertEqual(roll["attribute_profile"]["primary_label"], "体魄")
+        self.assertEqual(roll["attribute_profile"]["primary_value"], 15)
+        self.assertEqual(roll["attribute_modifier"], 2)
+        self.assertEqual(roll["skill_bonuses"][0]["name"], "正面战斗基础")
+        self.assertEqual(roll["skill_bonuses"][0]["bonus"], 2)
+        self.assertEqual(
+            result.commit.rule_result["check_context"]["attribute_profile"],
+            roll["attribute_profile"],
+        )
         self.assertIn("world_check_full_success", result.commit.committed_effects)
         self.assertIn("这不是击杀确认", result.narration.text)
 
@@ -1704,6 +1727,279 @@ class AgenticRuntimeTests(unittest.TestCase):
         self.assertIn("occult_backlash_severe", occult_result.commit.committed_effects)
         self.assertTrue(any("SAN" in change for change in occult_result.commit.rule_result["state_changes"]))
         self.assertTrue(any("Corruption" in change for change in occult_result.commit.rule_result["state_changes"]))
+
+    def test_world_check_applies_matching_class_skill_bonus(self):
+        character = build_character("伊芙", "rogue", "隐秘之神")
+        configure_character_for_game_mode(character, "world")
+        state = GameState(character)
+
+        with patch("phase1_cli.rule_engine.random.randint", return_value=9):
+            result = run_agentic_turn(state, "我潜入仓库偷走账簿")
+
+        roll = result.commit.rule_result["roll"]
+
+        self.assertEqual(result.adjudication.bridge_action["risk_type"], "theft")
+        self.assertEqual(roll["attribute_profile"]["primary_attribute"], "agility")
+        self.assertEqual(roll["attribute_profile"]["primary_value"], 15)
+        self.assertEqual(roll["attribute_modifier"], 2)
+        self.assertEqual(roll["skill_bonuses"][0]["name"], "潜行开锁基础")
+        self.assertEqual(roll["skill_bonuses"][0]["bonus"], 2)
+        self.assertEqual(result.commit.rule_result["check_context"]["skill_bonuses"], roll["skill_bonuses"])
+
+    def test_class_skill_bonus_does_not_guarantee_success(self):
+        character = build_character("伊芙", "rogue", "隐秘之神")
+        configure_character_for_game_mode(character, "world")
+        state = GameState(character)
+
+        with patch("phase1_cli.rule_engine.random.randint", return_value=1):
+            result = run_agentic_turn(state, "我潜入仓库偷走账簿")
+
+        roll = result.commit.rule_result["roll"]
+
+        self.assertEqual(roll["skill_bonuses"][0]["name"], "潜行开锁基础")
+        self.assertFalse(roll["success"])
+        self.assertIn("world_check_failed", result.commit.committed_effects)
+
+    def test_world_check_applies_matching_item_bonus(self):
+        character = build_character("伊芙", "rogue", "隐秘之神")
+        configure_character_for_game_mode(character, "world")
+        state = GameState(character)
+
+        with patch("phase1_cli.rule_engine.random.randint", return_value=5):
+            result = run_agentic_turn(state, "使用开锁工具撬开仓库门锁")
+
+        roll = result.commit.rule_result["roll"]
+
+        self.assertEqual(result.adjudication.bridge_action["risk_type"], "theft")
+        self.assertEqual(roll["item_bonuses"][0]["name"], "开锁工具")
+        self.assertEqual(roll["item_bonuses"][0]["bonus"], 2)
+        self.assertIn("item_effect_applied", result.commit.committed_effects)
+        self.assertEqual(result.commit.rule_result["check_context"]["item_bonuses"], roll["item_bonuses"])
+        self.assertIn("开锁工具", state.player.inventory)
+
+    def test_world_check_consumes_matching_consumable_item(self):
+        character = build_character("伊芙", "mage", "真理之神")
+        configure_character_for_game_mode(character, "world")
+        state = GameState(character)
+
+        with patch("phase1_cli.rule_engine.random.randint", return_value=8):
+            result = run_agentic_turn(state, "撒下仪式粉末，解读深渊符号")
+
+        roll = result.commit.rule_result["roll"]
+
+        self.assertEqual(result.adjudication.bridge_action["risk_type"], "occult")
+        self.assertEqual(roll["item_bonuses"][0]["name"], "仪式粉末")
+        self.assertEqual(roll["item_bonuses"][0]["bonus"], 2)
+        self.assertEqual(roll["consumed_items"], ["仪式粉末"])
+        self.assertNotIn("仪式粉末", state.player.inventory)
+        self.assertIn("item_consumed", result.commit.committed_effects)
+        self.assertTrue(any("消耗道具：仪式粉末" in change for change in result.commit.rule_result["state_changes"]))
+
+    def test_world_direct_consumable_item_use_changes_state(self):
+        character = build_character("伊芙", "alchemist", "真理之神")
+        configure_character_for_game_mode(character, "world")
+        state = GameState(character)
+        state.player.san = 5
+
+        result = run_agentic_turn(
+            state,
+            "喝下镇静药剂，让自己冷静下来",
+            providers=build_local_agentic_providers(),
+        )
+
+        self.assertEqual(state.player.san, 8)
+        self.assertNotIn("镇静药剂", state.player.inventory)
+        self.assertIn("item_use_committed", result.commit.committed_effects)
+        self.assertIn("item_consumed", result.commit.committed_effects)
+        self.assertEqual(result.commit.rule_result["item_use"]["name"], "镇静药剂")
+        self.assertTrue(any("SAN +3" in change for change in result.commit.rule_result["state_changes"]))
+
+    def test_phase8_combined_skill_prayer_item_and_advancement_flow(self):
+        character = build_character("阿洛", "priest", "死亡之神")
+        configure_character_for_game_mode(character, "world", "rosvia", "维亚洛夫")
+        state = GameState(character)
+
+        with patch("phase1_cli.rule_engine.random.randint", return_value=6):
+            check_result = run_agentic_turn(
+                state,
+                "握住圣徽进行安魂祷告，稳定墓地里的亡者残响",
+                providers=build_local_agentic_providers(),
+            )
+
+        roll = check_result.commit.rule_result["roll"]
+
+        self.assertEqual(roll["skill_bonuses"][0]["name"], "祷告仪式基础")
+        self.assertEqual(roll["talent_bonuses"][0]["name"], "临终残响")
+        self.assertEqual(roll["prayer_bonuses"][0]["name"], "安魂")
+        self.assertEqual(roll["item_bonuses"][0]["name"], "圣徽")
+        self.assertIn("favor_spent", check_result.commit.committed_effects)
+        self.assertIn("item_effect_applied", check_result.commit.committed_effects)
+        self.assertEqual(state.player.favor, 0)
+
+        state.player.revelation = 1
+        state.player.favor = 1
+        advancement_result = run_agentic_turn(
+            state,
+            "进行信仰晋升，向死亡之神献上安魂誓言",
+            providers=build_local_agentic_providers(),
+        )
+
+        self.assertEqual(state.player.faith_level, 2)
+        self.assertEqual(state.player.devotion, 1)
+        self.assertIn("advancement_faith_level", advancement_result.commit.committed_effects)
+        self.assertTrue(advancement_result.commit.rule_result["advancement"]["can_advance"])
+
+    def test_world_check_applies_matching_faith_talent_bonus(self):
+        character = build_character("阿洛", "warrior", "死亡之神")
+        configure_character_for_game_mode(character, "world", "rosvia", "维亚洛夫")
+        state = GameState(character)
+
+        with patch("phase1_cli.rule_engine.random.randint", return_value=9):
+            result = run_agentic_turn(state, "解读死亡符号")
+
+        roll = result.commit.rule_result["roll"]
+
+        self.assertEqual(result.adjudication.bridge_action["risk_type"], "occult")
+        self.assertEqual(roll["talent_bonuses"][0]["name"], "临终残响")
+        self.assertEqual(roll["talent_bonuses"][0]["bonus"], 1)
+        self.assertEqual(result.commit.rule_result["check_context"]["talent_bonuses"], roll["talent_bonuses"])
+
+    def test_world_prayer_consumes_favor_and_adds_bonus(self):
+        character = build_character("阿洛", "priest", "死亡之神")
+        configure_character_for_game_mode(character, "world", "rosvia", "维亚洛夫")
+        state = GameState(character)
+
+        with patch("phase1_cli.rule_engine.random.randint", return_value=6):
+            result = run_agentic_turn(state, "进行安魂祷告，稳定墓地里的亡者残响")
+
+        roll = result.commit.rule_result["roll"]
+
+        self.assertEqual(state.player.favor, 0)
+        self.assertEqual(roll["prayer_bonuses"][0]["name"], "安魂")
+        self.assertEqual(roll["prayer_bonuses"][0]["favor_cost"], 1)
+        self.assertIn("favor_spent", result.commit.committed_effects)
+        self.assertIn("prayer_invoked", result.commit.committed_effects)
+        self.assertIn("local_faith_context_support", result.commit.committed_effects)
+        self.assertTrue(any("Favor -1" in change for change in result.commit.rule_result["state_changes"]))
+
+    def test_world_prayer_requires_favor(self):
+        character = build_character("阿洛", "priest", "死亡之神")
+        configure_character_for_game_mode(character, "world", "rosvia", "维亚洛夫")
+        character.favor = 0
+        state = GameState(character)
+
+        with patch("phase1_cli.rule_engine.random.randint", return_value=10):
+            result = run_agentic_turn(state, "进行安魂祷告，稳定墓地里的亡者残响")
+
+        roll = result.commit.rule_result["roll"]
+
+        self.assertEqual(state.player.favor, 0)
+        self.assertEqual(roll["prayer_bonuses"], [])
+        self.assertEqual(roll["blocked_prayers"][0]["name"], "安魂")
+        self.assertIn("prayer_unavailable", result.commit.committed_effects)
+        self.assertNotIn("favor_spent", result.commit.committed_effects)
+
+    def test_hostile_faith_prayer_increases_suspicion(self):
+        character = build_character("伊萨", "mage", "深渊之神")
+        configure_character_for_game_mode(character, "world", "albion", "格兰威克")
+        state = GameState(character)
+
+        with patch("phase1_cli.rule_engine.random.randint", return_value=12):
+            result = run_agentic_turn(state, "向深渊之神进行深渊低语祷告")
+
+        roll = result.commit.rule_result["roll"]
+
+        self.assertEqual(roll["prayer_bonuses"][0]["name"], "深渊低语")
+        self.assertIn("hostile_faith_pressure", result.commit.committed_effects)
+        self.assertGreaterEqual(state.player.suspicion, 2)
+
+    def test_advancement_denies_unearned_class_level(self):
+        state = self.make_world_state()
+
+        result = run_agentic_turn(
+            state,
+            "进行职业训练升级",
+            providers=build_local_agentic_providers(),
+        )
+
+        advancement = result.commit.rule_result["advancement"]
+
+        self.assertFalse(advancement["can_advance"])
+        self.assertEqual(state.player.class_level, 1)
+        self.assertIn("advancement_denied", result.commit.committed_effects)
+        self.assertIn("revelation_not_enough", advancement["denied_reasons"])
+        self.assertIn("unearned_advancement", result.commit.rejected_effects)
+
+    def test_breakthrough_action_is_not_misread_as_advancement(self):
+        state = self.make_world_state()
+
+        result = run_agentic_turn(
+            state,
+            "尝试突破封锁，离开街区",
+            providers=build_local_agentic_providers(),
+        )
+
+        self.assertNotIn("advancement", result.commit.rule_result)
+        self.assertNotIn("advancement_denied", result.commit.committed_effects)
+        self.assertEqual(state.player.class_level, 1)
+
+    def test_advancement_commits_class_level_when_requirements_met(self):
+        state = self.make_world_state()
+        state.player.revelation = 1
+
+        result = run_agentic_turn(
+            state,
+            "进行职业训练升级",
+            providers=build_local_agentic_providers(),
+        )
+
+        advancement = result.commit.rule_result["advancement"]
+
+        self.assertTrue(advancement["can_advance"])
+        self.assertEqual(state.player.class_level, 2)
+        self.assertEqual(state.player.revelation, 0)
+        self.assertEqual(state.player.attributes["physique"], 16)
+        self.assertIn("advancement_committed", result.commit.committed_effects)
+        self.assertIn("advancement_class_level", result.commit.committed_effects)
+        self.assertTrue(any("职业等级 1 -> 2" in change for change in result.commit.rule_result["state_changes"]))
+
+    def test_advancement_commits_faith_level_with_favor_cost(self):
+        state = self.make_rosvia_world_state()
+        state.player.revelation = 1
+        state.player.favor = 1
+
+        result = run_agentic_turn(
+            state,
+            "进行信仰晋升，向死亡之神献上安魂誓言",
+            providers=build_local_agentic_providers(),
+        )
+
+        self.assertEqual(state.player.faith_level, 2)
+        self.assertEqual(state.player.revelation, 0)
+        self.assertEqual(state.player.favor, 0)
+        self.assertEqual(state.player.devotion, 1)
+        self.assertIn("advancement_faith_level", result.commit.committed_effects)
+        self.assertTrue(any("Favor -1" in change for change in result.commit.rule_result["state_changes"]))
+
+    def test_advancement_commits_first_ascension_with_burden(self):
+        state = self.make_rosvia_world_state()
+        state.player.class_level = 2
+        state.player.faith_level = 2
+        state.player.revelation = 3
+        state.player.favor = 1
+
+        result = run_agentic_turn(
+            state,
+            "进行神秘晋升仪式，突破阶位成为见证者",
+            providers=build_local_agentic_providers(),
+        )
+
+        self.assertEqual(state.player.ascension_rank, 1)
+        self.assertEqual(state.player.revelation, 0)
+        self.assertEqual(state.player.favor, 0)
+        self.assertTrue(any("见证者烙印" in burden for burden in state.player.burdens))
+        self.assertIn("advancement_ascension_rank", result.commit.committed_effects)
+        self.assertTrue(any("神秘阶位 0 -> 1" in change for change in result.commit.rule_result["state_changes"]))
 
     def test_narration_validator_rejects_uncommitted_death_claims(self):
         state = self.make_world_state()

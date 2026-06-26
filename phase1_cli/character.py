@@ -1,8 +1,16 @@
-"""Character creation for 神座纪元 v5.8.0."""
+"""Character creation for 神座纪元 v8.7.0."""
 
 from dataclasses import dataclass, field
 
 from .data import BASE_HP, BASE_SAN, BASE_STATS, CLASSES
+from .items import item_affordances_for
+from .progression import (
+    initial_attributes_for,
+    initial_progression_for,
+    normalize_attributes_payload,
+    normalize_progression_payload,
+    progression_to_dict,
+)
 
 
 @dataclass
@@ -12,6 +20,7 @@ class Character:
     class_name: str
     god: str
     stats: dict
+    attributes: dict
     hp: int
     max_hp: int
     san: int
@@ -24,6 +33,17 @@ class Character:
     current_location: str = "修道院门口"
     clues: list = field(default_factory=list)
     flags: dict = field(default_factory=dict)
+    class_level: int = 1
+    faith_level: int = 1
+    ascension_rank: int = 0
+    revelation: int = 0
+    favor: int = 0
+    devotion: int = 0
+    progression_skills: list = field(default_factory=list)
+    talents: list = field(default_factory=list)
+    prayers: list = field(default_factory=list)
+    burdens: list = field(default_factory=list)
+    progression_flags: dict = field(default_factory=dict)
 
     def has_item(self, item_name):
         return item_name in self.inventory
@@ -51,6 +71,7 @@ class Character:
             "class_name": self.class_name,
             "god": self.god,
             "stats": self.stats,
+            "attributes": self.attributes,
             "hp": self.hp,
             "max_hp": self.max_hp,
             "san": self.san,
@@ -63,6 +84,7 @@ class Character:
             "current_location": self.current_location,
             "clues": self.clues,
             "flags": self.flags,
+            "progression": progression_to_dict(self),
         }
 
     def to_public_dict(self):
@@ -73,6 +95,7 @@ class Character:
             "class_name": self.class_name,
             "god": self.god,
             "stats": dict(self.stats),
+            "attributes": dict(self.attributes),
             "hp": self.hp,
             "max_hp": self.max_hp,
             "san": self.san,
@@ -80,6 +103,7 @@ class Character:
             "suspicion": self.suspicion,
             "corruption": self.corruption,
             "inventory": list(self.inventory),
+            "item_affordances": item_affordances_for(self),
             "skills": list(self.skills),
             "current_location": self.current_location,
             "clues": list(self.clues),
@@ -101,17 +125,28 @@ class Character:
                 "current_scene_focus": self.flags.get("current_scene_focus"),
                 "opening_profile": self.flags.get("opening_profile"),
             },
+            "progression": progression_to_dict(self),
         }
 
     @classmethod
     def from_dict(cls, data):
         """Rebuild a Character from saved JSON-like data."""
+        progression = normalize_progression_payload(
+            data.get("progression"),
+            data["class_id"],
+            data["god"],
+        )
+        attributes = normalize_attributes_payload(
+            data.get("attributes"),
+            data["class_id"],
+        )
         return cls(
             name=data["name"],
             class_id=data["class_id"],
             class_name=data["class_name"],
             god=data["god"],
             stats=dict(data["stats"]),
+            attributes=attributes,
             hp=data["hp"],
             max_hp=data["max_hp"],
             san=data["san"],
@@ -124,11 +159,24 @@ class Character:
             current_location=data.get("current_location", "修道院门口"),
             clues=list(data.get("clues", [])),
             flags=dict(data.get("flags", {})),
+            class_level=progression["class_level"],
+            faith_level=progression["faith_level"],
+            ascension_rank=progression["ascension_rank"],
+            revelation=progression["revelation"],
+            favor=progression["favor"],
+            devotion=progression["devotion"],
+            progression_skills=progression["progression_skills"],
+            talents=progression["talents"],
+            prayers=progression["prayers"],
+            burdens=progression["burdens"],
+            progression_flags=progression["progression_flags"],
         )
 
 
 def build_character(name, class_id, god):
     class_config = CLASSES[class_id]
+    progression = initial_progression_for(class_id, god)
+    attributes = initial_attributes_for(class_id)
 
     stats = BASE_STATS.copy()
     for stat_name, bonus in class_config["stat_bonus"].items():
@@ -143,6 +191,7 @@ def build_character(name, class_id, god):
         class_name=class_config["name"],
         god=god,
         stats=stats,
+        attributes=attributes,
         hp=max_hp,
         max_hp=max_hp,
         san=max_san,
@@ -150,4 +199,15 @@ def build_character(name, class_id, god):
         inventory=list(class_config["starting_items"]),
         skills=list(class_config["skill_tags"]),
         rule_modifiers=dict(class_config["rule_modifiers"]),
+        class_level=progression["class_level"],
+        faith_level=progression["faith_level"],
+        ascension_rank=progression["ascension_rank"],
+        revelation=progression["revelation"],
+        favor=progression["favor"],
+        devotion=progression["devotion"],
+        progression_skills=progression["progression_skills"],
+        talents=progression["talents"],
+        prayers=progression["prayers"],
+        burdens=progression["burdens"],
+        progression_flags=progression["progression_flags"],
     )

@@ -5,8 +5,23 @@ from phase1_cli.rule_engine import (
     change_corruption,
     change_san,
     change_suspicion,
+    change_hp,
     roll_check,
     sum_modifiers,
+)
+from phase1_cli.items import (
+    activate_items_for_check,
+    detect_direct_item_use,
+    item_definition_for,
+)
+from phase1_cli.progression import (
+    apply_advancement,
+    detect_advancement_request,
+    evaluate_advancement,
+    matching_class_skill_bonuses,
+    matching_faith_talent_bonuses,
+    matching_prayer_bonuses,
+    world_attribute_profile_for,
 )
 from phase1_cli.scenarios import (
     current_scene_focus_for_state,
@@ -40,6 +55,14 @@ def commit_adjudication(state, adjudication):
 
 def commit_world_action(state, rule_action, adjudication):
     state.record_turn()
+    advancement_type = detect_advancement_request(rule_action)
+    if advancement_type:
+        return commit_world_advancement_action(state, rule_action, adjudication, advancement_type)
+
+    direct_item_name = detect_direct_item_use(rule_action, state.player)
+    if direct_item_name:
+        return commit_world_direct_item_use_action(state, rule_action, adjudication, direct_item_name)
+
     feasibility = evaluate_world_feasibility(state, rule_action)
     if feasibility["blocked"]:
         return commit_world_feasibility_block(state, rule_action, adjudication, feasibility)
@@ -99,6 +122,192 @@ def commit_world_action(state, rule_action, adjudication):
             )
         ),
     )
+
+
+def commit_world_direct_item_use_action(state, rule_action, adjudication, item_name):
+    scene_focus = current_scene_focus_for_state(state)
+    definition = item_definition_for(item_name)
+    rule_result = {
+        "turn": state.turn,
+        "intent": "world_action",
+        "raw_text": rule_action["raw_text"],
+        "location_before": state.current_location,
+        "location_after": state.current_location,
+        "scene_focus_before": scene_focus,
+        "scene_focus_after": scene_focus,
+        "messages": [f"你使用了「{item_name}」。"],
+        "state_changes": [],
+        "new_clues": [],
+        "roll": None,
+        "success": True,
+        "ending": None,
+        "location_intent": "stay",
+        "travel_destination": None,
+        "item_use": {
+            "name": item_name,
+            "category": definition["category"],
+            "direct_use": dict(definition.get("direct_use", {})),
+        },
+    }
+    apply_direct_item_effects(state, rule_result, item_name, definition)
+    if definition["consumable"] and state.player.remove_item(item_name):
+        rule_result["state_changes"].append(f"消耗道具：{item_name}")
+
+    state.add_event("; ".join([*rule_result["messages"], *rule_result["state_changes"]]))
+    effects = ["world_attempt_recorded", "item_use_committed"]
+    if definition["consumable"]:
+        effects.append("item_consumed")
+    if rule_result["state_changes"]:
+        effects.append("state_changed_by_item")
+
+    return StateCommitProposal(
+        committed=True,
+        rule_action=rule_action,
+        rule_result=rule_result,
+        committed_effects=tuple(effects),
+        rejected_effects=adjudication.denied_effects,
+    )
+
+
+def apply_direct_item_effects(state, result, item_name, definition):
+    direct_use = definition.get("direct_use", {})
+    if not direct_use:
+        result["messages"].append("这个道具暂时没有可直接提交的效果。")
+        return
+
+    alchemist_bonus = 1 if state.player.class_id == "alchemist" else 0
+    if direct_use.get("hp"):
+        amount = direct_use["hp"] + (direct_use.get("alchemist_hp_bonus", 0) * alchemist_bonus)
+        change_hp(state, amount, result, f"使用{item_name}")
+    if direct_use.get("san"):
+        amount = direct_use["san"] + (direct_use.get("alchemist_san_bonus", 0) * alchemist_bonus)
+        change_san(state, amount, result, f"使用{item_name}")
+    if direct_use.get("corruption"):
+        change_corruption(state, direct_use["corruption"], result, f"使用{item_name}")
+
+
+def commit_world_advancement_action(state, rule_action, adjudication, advancement_type):
+    evaluation = evaluate_advancement(state.player, advancement_type)
+    if not evaluation["can_advance"]:
+        message = build_world_advancement_denied_message(rule_action, evaluation)
+        rule_result = {
+            "turn": state.turn,
+            "intent": "world_action",
+            "raw_text": rule_action["raw_text"],
+            "location_before": state.current_location,
+            "location_after": state.current_location,
+            "scene_focus_before": current_scene_focus_for_state(state),
+            "scene_focus_after": current_scene_focus_for_state(state),
+            "messages": [message],
+            "state_changes": [],
+            "new_clues": [],
+            "roll": None,
+            "success": False,
+            "ending": None,
+            "location_intent": "stay",
+            "travel_destination": None,
+            "advancement": evaluation,
+        }
+        state.add_event(message)
+        return StateCommitProposal(
+            committed=True,
+            rule_action=rule_action,
+            rule_result=rule_result,
+            committed_effects=("world_attempt_recorded", "advancement_denied"),
+            rejected_effects=(
+                *adjudication.denied_effects,
+                "unearned_advancement",
+                "unearned_level_change",
+                "unearned_attribute_change",
+            ),
+        )
+
+    evaluation = apply_advancement(state.player, advancement_type)
+    message = build_world_advancement_success_message(rule_action, evaluation)
+    rule_result = {
+        "turn": state.turn,
+        "intent": "world_action",
+        "raw_text": rule_action["raw_text"],
+        "location_before": state.current_location,
+        "location_after": state.current_location,
+        "scene_focus_before": current_scene_focus_for_state(state),
+        "scene_focus_after": current_scene_focus_for_state(state),
+        "messages": [message],
+        "state_changes": list(evaluation.get("state_changes", [])),
+        "new_clues": [],
+        "roll": None,
+        "success": True,
+        "ending": None,
+        "location_intent": "stay",
+        "travel_destination": None,
+        "advancement": evaluation,
+    }
+    state.add_event("; ".join([message, *rule_result["state_changes"]]))
+    return StateCommitProposal(
+        committed=True,
+        rule_action=rule_action,
+        rule_result=rule_result,
+        committed_effects=(
+            "world_attempt_recorded",
+            "advancement_committed",
+            f"advancement_{advancement_type}",
+        ),
+        rejected_effects=adjudication.denied_effects,
+    )
+
+
+def build_world_advancement_denied_message(rule_action, evaluation):
+    missing = [
+        format_advancement_requirement(requirement)
+        for requirement in evaluation["requirements"]
+        if not requirement["ok"]
+    ]
+    missing_text = "；".join(missing) if missing else "条件尚未满足"
+    return (
+        f"你尝试推进「{evaluation['label']}」，但这不是一句愿望就能完成的成长。"
+        f"当前缺少：{missing_text}。"
+    )
+
+
+def build_world_advancement_success_message(rule_action, evaluation):
+    costs = format_advancement_costs(evaluation.get("costs", {}))
+    rewards = format_advancement_rewards(evaluation.get("rewards", []))
+    cost_text = f"代价：{costs}。" if costs else ""
+    reward_text = f"结果：{rewards}。" if rewards else ""
+    return (
+        f"你完成了「{evaluation['label']}」。"
+        f"{cost_text}{reward_text}"
+        "这次成长已经写入你的结构化状态。"
+    )
+
+
+def format_advancement_requirement(requirement):
+    return (
+        f"{requirement['field']} {requirement['current']}/"
+        f"{requirement['required']}"
+    )
+
+
+def format_advancement_costs(costs):
+    labels = {
+        "revelation": "Revelation",
+        "favor": "Favor",
+    }
+    return "，".join(f"{labels.get(key, key)} -{value}" for key, value in costs.items())
+
+
+def format_advancement_rewards(rewards):
+    parts = []
+    for reward in rewards:
+        if reward["type"] == "level":
+            parts.append(f"{reward['field']} -> {reward['value']}")
+        elif reward["type"] == "attribute":
+            parts.append(f"{reward['label']} +{reward['value']}")
+        elif reward["type"] == "resource":
+            parts.append(f"{reward['field']} +{reward['value']}")
+        elif reward["type"] == "burden":
+            parts.append(f"新增代价：{reward['value']}")
+    return "，".join(parts)
 
 
 def commit_world_feasibility_block(state, rule_action, adjudication, feasibility):
@@ -164,7 +373,7 @@ def commit_world_checked_action(
     risk_type = rule_action.get("risk_type") or "high_risk"
     stat = rule_action.get("check_stat") or "agility"
     dc = rule_action.get("difficulty") or 14
-    modifier = world_check_modifier(state, stat, risk_type)
+    modifier = world_check_modifier(state, stat, risk_type, rule_action)
     check = annotate_world_check(
         roll_check(state, stat, dc, modifier, "行动修正"),
         risk_type,
@@ -201,6 +410,8 @@ def commit_world_checked_action(
         "travel_destination": location_decision.get("travel_destination"),
         "check_context": build_check_context(check, risk_type, rule_action),
     }
+    apply_favor_spend_result(result, rule_action, effects)
+    apply_item_spend_result(result, rule_action, effects)
 
     if risk_type == "violence":
         commit_world_violence_result(state, result, check, effects)
@@ -212,6 +423,8 @@ def commit_world_checked_action(
         commit_world_occult_result(state, result, check, effects)
     else:
         commit_generic_world_check_result(state, result, check, effects)
+
+    apply_faith_context_pressure(state, result, rule_action, effects)
 
     state.add_event("; ".join(result["messages"]))
     return StateCommitProposal(
@@ -228,20 +441,158 @@ def commit_world_checked_action(
     )
 
 
-def world_check_modifier(state, stat, risk_type):
+def world_check_modifier(state, stat, risk_type, rule_action=None):
     if risk_type == "violence":
-        return sum_modifiers(state.player, ["attack_bonus", "direct_combat_penalty", "combat_penalty"])
-    if risk_type == "social":
-        return sum_modifiers(state.player, ["deceive_bonus", "lore_bonus"])
-    if risk_type == "theft":
-        return sum_modifiers(state.player, ["stealth_bonus", "lockpick_bonus", "deceive_bonus"])
-    if risk_type == "occult":
+        base_modifier = sum_modifiers(state.player, ["attack_bonus", "direct_combat_penalty", "combat_penalty"])
+    elif risk_type == "social":
+        base_modifier = sum_modifiers(state.player, ["deceive_bonus", "lore_bonus"])
+    elif risk_type == "theft":
+        base_modifier = sum_modifiers(state.player, ["stealth_bonus", "lockpick_bonus", "deceive_bonus"])
+    elif risk_type == "occult":
         if stat == "faith":
-            return sum_modifiers(state.player, ["pray_bonus", "purify_bonus"])
-        return sum_modifiers(state.player, ["analyze_bonus", "ritual_bonus", "lore_bonus", "identify_bonus"])
-    if stat == "agility":
-        return sum_modifiers(state.player, ["stealth_bonus", "escape_bonus"])
-    return 0
+            base_modifier = sum_modifiers(state.player, ["pray_bonus", "purify_bonus"])
+        else:
+            base_modifier = sum_modifiers(state.player, ["analyze_bonus", "ritual_bonus", "lore_bonus", "identify_bonus"])
+    elif stat == "agility":
+        base_modifier = sum_modifiers(state.player, ["stealth_bonus", "escape_bonus"])
+    else:
+        base_modifier = 0
+
+    attribute_profile = world_attribute_profile_for(state.player, risk_type, stat)
+    attribute_modifier = attribute_profile["modifier"]
+    skill_bonuses = matching_class_skill_bonuses(state.player, risk_type, stat, rule_action)
+    talent_bonuses = matching_faith_talent_bonuses(state.player, risk_type, stat, rule_action)
+    prayer_bonuses, blocked_prayers = activate_prayers_for_check(
+        state.player,
+        risk_type,
+        stat,
+        rule_action,
+    )
+    item_bonuses, consumed_items = activate_items_for_check(
+        state.player,
+        risk_type,
+        stat,
+        rule_action,
+    )
+    if rule_action is not None:
+        rule_action["attribute_profile"] = attribute_profile
+        rule_action["attribute_modifier"] = attribute_modifier
+        rule_action["skill_bonuses"] = skill_bonuses
+        rule_action["talent_bonuses"] = talent_bonuses
+        rule_action["prayer_bonuses"] = prayer_bonuses
+        rule_action["blocked_prayers"] = blocked_prayers
+        rule_action["item_bonuses"] = item_bonuses
+        rule_action["consumed_items"] = consumed_items
+    return (
+        base_modifier
+        + attribute_modifier
+        + sum(item["bonus"] for item in skill_bonuses)
+        + sum(item["bonus"] for item in talent_bonuses)
+        + sum(item["bonus"] for item in prayer_bonuses)
+        + sum(item["bonus"] for item in item_bonuses)
+    )
+
+
+def activate_prayers_for_check(player, risk_type, stat, rule_action=None):
+    prayer_candidates = matching_prayer_bonuses(player, risk_type, stat, rule_action)
+    if not prayer_candidates:
+        return [], []
+
+    active_prayers = []
+    blocked_prayers = []
+    favor_available = player.favor
+    for prayer in prayer_candidates:
+        cost = prayer["favor_cost"]
+        if favor_available >= cost:
+            favor_available -= cost
+            active_prayers.append(prayer)
+        else:
+            blocked_prayers.append(
+                {
+                    "name": prayer["name"],
+                    "favor_cost": cost,
+                    "reason": "favor_not_enough",
+                }
+            )
+
+    spent = player.favor - favor_available
+    if spent:
+        player.favor = favor_available
+        if rule_action is not None:
+            rule_action["favor_spent"] = spent
+            rule_action["favor_spent_for"] = [prayer["name"] for prayer in active_prayers]
+
+    return active_prayers, blocked_prayers
+
+
+def apply_favor_spend_result(result, rule_action, effects):
+    spent = rule_action.get("favor_spent", 0)
+    if spent:
+        prayers = "、".join(rule_action.get("favor_spent_for", [])) or "祷告"
+        result["state_changes"].append(f"Favor -{spent}（祷告：{prayers}）")
+        effects.append("favor_spent")
+        effects.append("prayer_invoked")
+
+    blocked_prayers = rule_action.get("blocked_prayers", [])
+    if blocked_prayers:
+        names = "、".join(prayer["name"] for prayer in blocked_prayers)
+        result["messages"].append(f"你试图回应「{names}」，但当前神眷不足，祷词没有形成稳定力量。")
+        effects.append("prayer_unavailable")
+
+
+def apply_item_spend_result(result, rule_action, effects):
+    item_bonuses = rule_action.get("item_bonuses", [])
+    if item_bonuses:
+        effects.append("item_effect_applied")
+
+    consumed_items = rule_action.get("consumed_items", [])
+    for item_name in consumed_items:
+        result["state_changes"].append(f"消耗道具：{item_name}")
+    if consumed_items:
+        effects.append("item_consumed")
+
+
+def apply_faith_context_pressure(state, result, rule_action, effects):
+    if not rule_action.get("prayer_bonuses"):
+        return
+
+    faith_status = faith_status_for_player(state.player)
+    if faith_status == "hostile":
+        change_suspicion(state, 2, result, "敌对信仰祷告暴露风险")
+        effects.append("hostile_faith_pressure")
+    elif faith_status == "restricted":
+        change_suspicion(state, 1, result, "受限信仰公开祷告风险")
+        effects.append("restricted_faith_pressure")
+    elif faith_status in {"dominant", "friendly"}:
+        effects.append("local_faith_context_support")
+
+
+def faith_status_for_player(player):
+    context = player.flags.get("origin_church_context") or {}
+    church_name = god_church_for_player(player)
+    if church_name in context.get("dominant", []):
+        return "dominant"
+    if church_name in context.get("friendly", []):
+        return "friendly"
+    if church_name in context.get("restricted", []):
+        return "restricted"
+    if church_name in context.get("hostile", []):
+        return "hostile"
+    return "unknown"
+
+
+def god_church_for_player(player):
+    church_map = {
+        "海洋之神": "潮汐圣会",
+        "真理之神": "白塔院",
+        "战争之神": "铁血教团",
+        "审判之神": "审判庭",
+        "丰饶之神": "蔷薇圣庭",
+        "死亡之神": "安魂教团",
+        "隐秘之神": "夜幕修会",
+        "深渊之神": "密仪会",
+    }
+    return church_map.get(player.god, "")
 
 
 def commit_world_violence_result(state, result, check, effects):
@@ -399,11 +750,17 @@ OUTCOME_LABELS = {
 
 def annotate_world_check(check, risk_type, rule_action):
     margin = check["total"] - check["dc"]
-    if check["d20"] == 20 or margin >= 8:
+    if check["d20"] == 1:
+        check["success"] = False
+        outcome_level = "hard_failure"
+    elif check["d20"] == 20:
+        check["success"] = True
+        outcome_level = "full_success"
+    elif margin >= 8:
         outcome_level = "full_success"
     elif check["success"]:
         outcome_level = "partial_success"
-    elif check["d20"] == 1 or margin <= -8:
+    elif margin <= -8:
         outcome_level = "hard_failure"
     else:
         outcome_level = "costly_failure"
@@ -414,6 +771,14 @@ def annotate_world_check(check, risk_type, rule_action):
     check["outcome_level"] = outcome_level
     check["outcome_label"] = OUTCOME_LABELS[outcome_level]
     check["reason"] = rule_action.get("open_primary_goal") or rule_action.get("raw_text", "")
+    check["attribute_profile"] = dict(rule_action.get("attribute_profile", {}))
+    check["attribute_modifier"] = rule_action.get("attribute_modifier", 0)
+    check["skill_bonuses"] = list(rule_action.get("skill_bonuses", []))
+    check["talent_bonuses"] = list(rule_action.get("talent_bonuses", []))
+    check["prayer_bonuses"] = list(rule_action.get("prayer_bonuses", []))
+    check["blocked_prayers"] = list(rule_action.get("blocked_prayers", []))
+    check["item_bonuses"] = list(rule_action.get("item_bonuses", []))
+    check["consumed_items"] = list(rule_action.get("consumed_items", []))
     return check
 
 
@@ -427,6 +792,14 @@ def build_check_context(check, risk_type, rule_action):
         "target_profile": rule_action.get("target_profile", ""),
         "possible_blockers": list(rule_action.get("possible_blockers", [])),
         "reason": check.get("reason", ""),
+        "attribute_profile": dict(check.get("attribute_profile", {})),
+        "attribute_modifier": check.get("attribute_modifier", 0),
+        "skill_bonuses": list(check.get("skill_bonuses", [])),
+        "talent_bonuses": list(check.get("talent_bonuses", [])),
+        "prayer_bonuses": list(check.get("prayer_bonuses", [])),
+        "blocked_prayers": list(check.get("blocked_prayers", [])),
+        "item_bonuses": list(check.get("item_bonuses", [])),
+        "consumed_items": list(check.get("consumed_items", [])),
     }
 
 

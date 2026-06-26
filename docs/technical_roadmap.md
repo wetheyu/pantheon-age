@@ -579,14 +579,21 @@ Validators should check:
 - player speculation is not stored as confirmed fact;
 - memory visibility is correct.
 
-## Phase 6: RAG And World Canon
+## Current Execution Status
 
-Current status: `v6.0.0` completes the consolidated Phase 6 world knowledge and
-persistent memory foundation. See:
+Current status: `v8.7.0` completes the Phase 1-8 baseline. The project now has
+CLI/API foundations, SQLite persistence, Agentic Runtime, canon retrieval,
+persistent memory, playability calibration, and the first progression/core
+mechanics baseline.
+
+See:
 
 ```text
+docs/phase1_8_architecture_summary.md
 docs/phase6_world_memory_plan.md
 docs/phase6_completion_summary.md
+docs/phase7_completion_summary.md
+docs/phase8_completion_summary.md
 ```
 
 Note:
@@ -600,18 +607,17 @@ docs/future_phase_plan.md
 That plan intentionally uses a consolidated execution order:
 
 ```text
-Phase 6: World Knowledge And Persistent Memory
-Phase 7: Minimum Playable Experience Calibration
-Phase 8: Progression And Core Mechanics
 Phase 9: Web UI And API Product Experience
 Phase 10: Engineering Quality And Final Experience Optimization
 ```
 
 The RAG section below remains the technical design direction for the knowledge
-retrieval part of the consolidated Phase 6.
+retrieval part of the consolidated Phase 6/10 quality track.
 
 Older sections later in this technical roadmap are technical categories, not the
-execution order. For concrete Phase 7-10 tasks, follow `docs/future_phase_plan.md`.
+execution order. For concrete Phase 9-10 tasks, follow `docs/future_phase_plan.md`.
+
+## Phase 6: RAG And World Canon
 
 Goal: retrieve only the relevant world canon for each LLM call.
 
