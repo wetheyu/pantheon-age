@@ -26,6 +26,7 @@ from agentic_runtime.relationship_memory import (
 from agentic_runtime.providers import (
     AgenticProviders,
     OpenAIEventAgentProvider,
+    OpenAICreativeGMProvider,
     OpenAIIntentAgentProvider,
     OpenAIItemAgentProvider,
     OpenAINarratorAgentProvider,
@@ -35,6 +36,7 @@ from agentic_runtime.providers import (
     OpenAIWorldBundleProvider,
     build_agentic_providers_from_env,
     build_local_agentic_providers,
+    normalize_rule_adjudication_payload,
 )
 from agentic_runtime.rule_arbiter_agent import propose_rule_adjudication
 from agentic_runtime.contracts import (
@@ -158,6 +160,10 @@ class AgenticRuntimeTests(unittest.TestCase):
         self.assertEqual(len(result.memory_records), 1)
         self.assertEqual(result.memory_records[0].bucket, "quest")
         self.assertIn("无名见证者", result.narration.text)
+        self.assertEqual(result.runtime_trace.branch, "local")
+        self.assertGreaterEqual(result.runtime_trace.total_ms, 0)
+        self.assertTrue(any(step.name == "memory_retrieval" for step in result.runtime_trace.steps))
+        self.assertEqual(result.to_dict()["runtime_trace"]["branch"], "local")
 
     def test_world_mode_uses_world_action_without_tutorial_map_commit(self):
         state = self.make_world_state()
@@ -176,13 +182,15 @@ class AgenticRuntimeTests(unittest.TestCase):
         self.assertEqual(len(result.events), 1)
         self.assertEqual(len(result.items), 1)
         self.assertNotIn("【格兰威克】", result.narration.text)
-        self.assertIn("城市的声响、人群和本地势力", result.narration.text)
-        self.assertIn("被你注意到的人", result.narration.text)
+        self.assertIn("街面上的脚步声", result.narration.text)
+        self.assertIn("谨慎的当地人", result.narration.text)
         self.assertIn("你注意到", result.narration.text)
-        self.assertIn("下一步追查的起点", result.narration.text)
-        self.assertIn("被你注意到的人", result.npcs[0].name)
+        self.assertIn("下一次追问", result.narration.text)
+        self.assertIn("谨慎的当地人", result.npcs[0].name)
         self.assertEqual(result.items[0].claimed_inventory_changes, ())
         self.assertNotIn("雾吞掉了你的声音", result.narration.text)
+        for forbidden in ("临时", "切片", "系统没有确认", "世界事实", "validator", "commit"):
+            self.assertNotIn(forbidden, result.narration.text)
 
     def test_world_mode_initializes_scene_focus(self):
         state = self.make_world_state()
@@ -220,6 +228,105 @@ class AgenticRuntimeTests(unittest.TestCase):
         self.assertEqual(result.commit.rule_result["scene_focus_before"], "格兰威克的开放街区")
         self.assertEqual(result.commit.rule_result["scene_focus_after"], "码头")
         self.assertIn("scene_focus_change", result.commit.committed_effects)
+        self.assertEqual(result.commit.rule_result["location_intent"], "local_move")
+        self.assertIn("码头", result.npcs[0].description)
+        self.assertIn("场景转到码头", result.narration.text)
+
+    def test_world_mode_scene_stays_stable_across_non_movement_turns(self):
+        state = self.make_world_state()
+        actions = (
+            "观察周围，寻找一个可以交谈的人",
+            "继续询问刚才的人",
+            "检查脚边的可疑凭证",
+            "追问异常钟声的来源",
+            "等待对方把话说完",
+        )
+
+        for action in actions:
+            result = run_agentic_turn(state, action, providers=build_local_agentic_providers())
+            self.assertEqual(state.current_location, "格兰威克")
+            self.assertEqual(current_scene_focus_for_state(state), "格兰威克的开放街区")
+            self.assertEqual(result.commit.rule_result["location_intent"], "stay")
+            self.assertNotIn("scene_focus_change", result.commit.committed_effects)
+
+    def test_world_mode_blocks_obviously_unaffordable_major_purchase(self):
+        state = self.make_world_state()
+
+        result = run_agentic_turn(
+            state,
+            "去买一栋庄园别墅",
+            providers=build_local_agentic_providers(),
+        )
+
+        self.assertEqual(state.current_location, "格兰威克")
+        self.assertEqual(result.commit.rule_result["location_intent"], "stay")
+        self.assertIn("feasibility_blocked", result.commit.committed_effects)
+        self.assertIn("insufficient_resources", result.commit.rejected_effects)
+        self.assertIn("unconfirmed_property_acquisition", result.commit.rejected_effects)
+        self.assertEqual(result.commit.rule_result["feasibility"]["asset"], "庄园别墅")
+        self.assertIn("不能直接变成成交", result.narration.text)
+        self.assertIn("打听庄园别墅的价格", result.narration.text)
+        self.assertNotIn("拿到钥匙", result.narration.text)
+
+    def test_narration_validator_rejects_blocked_major_purchase_success_claim(self):
+        state = self.make_world_state()
+        result = run_agentic_turn(
+            state,
+            "买一栋庄园别墅",
+            providers=build_local_agentic_providers(),
+        )
+        bad_narration = NarrationProposal(
+            text="交易完成，你买下了庄园别墅，并拿到了钥匙。",
+            claimed_effects=("world_attempt_recorded", "feasibility_blocked"),
+            source="test",
+        )
+
+        validation = validate_narration_proposal(bad_narration, result.commit)
+
+        self.assertFalse(validation.is_valid)
+        self.assertIn(
+            "Narration confirmed blocked acquisition despite feasibility gate.",
+            validation.errors,
+        )
+
+    def test_world_mode_leave_scene_returns_to_default_focus(self):
+        state = self.make_world_state()
+        run_agentic_turn(
+            state,
+            "我前往码头，询问愿意开口的水手",
+            providers=build_local_agentic_providers(),
+        )
+
+        result = run_agentic_turn(
+            state,
+            "离开码头，回到街面观察有没有人跟踪",
+            providers=build_local_agentic_providers(),
+        )
+
+        self.assertEqual(state.current_location, "格兰威克")
+        self.assertEqual(current_scene_focus_for_state(state), "格兰威克的开放街区")
+        self.assertEqual(result.commit.rule_result["location_intent"], "leave_scene")
+        self.assertEqual(result.commit.rule_result["scene_focus_before"], "码头")
+        self.assertEqual(result.commit.rule_result["scene_focus_after"], "格兰威克的开放街区")
+        self.assertIn("scene_focus_change", result.commit.committed_effects)
+        self.assertIn("离开码头", result.narration.text)
+
+    def test_world_mode_cross_city_travel_request_does_not_teleport_player(self):
+        state = self.make_world_state()
+
+        result = run_agentic_turn(
+            state,
+            "我乘船去维拉尔，寻找蔚蓝海岸的异常传闻",
+            providers=build_local_agentic_providers(),
+        )
+
+        self.assertEqual(state.current_location, "格兰威克")
+        self.assertEqual(current_scene_focus_for_state(state), "前往维拉尔的出行准备")
+        self.assertEqual(result.commit.rule_result["location_intent"], "travel_request")
+        self.assertEqual(result.commit.rule_result["travel_destination"], "维拉尔")
+        self.assertIn("travel_request_recorded", result.commit.committed_effects)
+        self.assertIn("unconfirmed_city_travel", result.commit.rejected_effects)
+        self.assertIn("你仍在格兰威克", result.narration.text)
 
     def test_world_slice_uses_visible_memory_without_confirming_rewards(self):
         state = self.make_world_state()
@@ -449,11 +556,12 @@ class AgenticRuntimeTests(unittest.TestCase):
         self.assertEqual(result.adjudication.action_type, "move")
         self.assertEqual(state.current_location, "前厅")
 
-    def test_default_agentic_llm_uses_turn_director_for_fast_creative_path(self):
+    def test_default_agentic_llm_uses_creative_gm_for_high_freedom_play(self):
         with patch.dict(
             "os.environ",
             {
                 "PANTHEON_USE_AGENTIC_LLM": "1",
+                "PANTHEON_CREATIVE_GM_MODE": "1",
                 "PANTHEON_AGENTIC_FULL_LLM": "0",
                 "OPENAI_API_KEY": "test-key",
             },
@@ -461,13 +569,14 @@ class AgenticRuntimeTests(unittest.TestCase):
         ):
             providers = build_agentic_providers_from_env()
 
-        self.assertEqual(providers.turn_director.provider_name, "openai-turn-director-agent")
+        self.assertEqual(providers.turn_director.provider_name, "openai-creative-gm-agent")
         self.assertIsNone(providers.world_bundle)
         self.assertEqual(providers.intent_agent.provider_name, "local-intent-agent")
         self.assertEqual(providers.rule_arbiter.provider_name, "local-rule-arbiter")
         self.assertEqual(providers.npc_agent.provider_name, "local-npc-agent")
         self.assertEqual(providers.event_agent.provider_name, "local-event-agent")
         self.assertEqual(providers.item_agent.provider_name, "local-item-agent")
+        self.assertIn("Creative GM", providers.reason)
 
     def test_turn_director_can_be_disabled_for_legacy_multi_call_path(self):
         with patch.dict(
@@ -476,6 +585,7 @@ class AgenticRuntimeTests(unittest.TestCase):
                 "PANTHEON_USE_AGENTIC_LLM": "1",
                 "PANTHEON_AGENTIC_FULL_LLM": "0",
                 "PANTHEON_AGENTIC_TURN_DIRECTOR": "0",
+                "PANTHEON_CREATIVE_GM_MODE": "0",
                 "OPENAI_API_KEY": "test-key",
             },
             clear=False,
@@ -896,6 +1006,198 @@ class AgenticRuntimeTests(unittest.TestCase):
         self.assertEqual(result.errors, ())
         self.assertEqual(client.responses.last_kwargs["text_format"].__name__, "TurnDirectorOutput")
         self.assertIn("context_pack", client.responses.last_kwargs["input"])
+        self.assertEqual(result.runtime_trace.branch, "turn_director")
+        self.assertTrue(
+            any(step.name == "turn_director_provider" for step in result.runtime_trace.steps)
+        )
+
+    def test_openai_creative_gm_provider_prioritizes_free_narration_with_sidecar(self):
+        state = self.make_lumiere_world_state()
+        client = FakeOpenAIClient(
+            {
+                "narration_text": (
+                    "雨水把卢塞恩的白石街面洗得发亮，报童的铃铛声在拱廊下跳了两下。\n\n"
+                    "你刚问出口，那个抱着湿报纸的孩子就把声音压低了。他没有立刻回答，"
+                    "只是用下巴指了指街对面那扇挂着黑纱的窗。\n\n"
+                    "窗后似乎有人站着，却又像只是一块被风吹动的帘布。"
+                    "你可以继续追问报童，也可以先观察那扇窗。"
+                ),
+                "success_narration_text": None,
+                "failure_narration_text": None,
+                "intent_summary": "玩家向报童打听昨夜异常钟声。",
+                "primary_goal": "获得可继续追问的传闻入口",
+                "method": "低声询问报童",
+                "targets": ["报童", "异常钟声"],
+                "player_assumptions": [],
+                "requested_effects": ["rumor_lead"],
+                "requires_check": False,
+                "risk_type": None,
+                "check_stat": None,
+                "difficulty": None,
+                "target_profile": "street_child",
+                "possible_blockers": [],
+                "success_consequence": "",
+                "failure_consequence": "",
+                "location_intent": "stay",
+                "scene_focus": None,
+                "travel_destination": None,
+                "scene_note": "卢塞恩拱廊附近的雨后街面。",
+                "npc_notes": ["抱着湿报纸的报童对异常钟声有所回避。"],
+                "event_notes": ["街对面挂黑纱的窗吸引注意。"],
+                "item_notes": ["湿报纸边缘沾着黑色油墨。"],
+                "denied_effects": ["unearned_clue"],
+            }
+        )
+        local = build_local_agentic_providers()
+        providers = AgenticProviders(
+            memory_retriever=local.memory_retriever,
+            intent_agent=local.intent_agent,
+            scene_agent=local.scene_agent,
+            npc_agent=local.npc_agent,
+            event_agent=local.event_agent,
+            item_agent=local.item_agent,
+            rule_arbiter=local.rule_arbiter,
+            memory_curator=local.memory_curator,
+            narrator_agent=local.narrator_agent,
+            turn_director=OpenAICreativeGMProvider(model="test-model", client=client),
+            llm_enabled=True,
+            model="test-model",
+            reason="test creative gm",
+        )
+
+        result = run_agentic_turn(state, "询问报童昨夜异常钟声", providers=providers)
+
+        self.assertEqual(result.runtime_trace.branch, "creative_gm")
+        self.assertTrue(
+            any(step.name == "creative_gm_provider" for step in result.runtime_trace.steps)
+        )
+        self.assertEqual(result.open_action.source, "openai-creative-gm-intent")
+        self.assertEqual(result.adjudication.source, "openai-creative-gm-rule-arbiter")
+        self.assertEqual(result.narration.source, "openai-creative-gm-narrator")
+        self.assertIn("雨水把卢塞恩的白石街面洗得发亮", result.narration.text)
+        self.assertIn("报童", result.narration.text)
+        self.assertEqual(result.errors, ())
+
+    def test_creative_gm_invalid_narration_uses_player_facing_safety_fallback(self):
+        state = self.make_world_state()
+        client = FakeOpenAIClient(
+            {
+                "narration_text": "你刚走进报社，对方就死了。",
+                "success_narration_text": None,
+                "failure_narration_text": None,
+                "intent_summary": "玩家前往自己的报社工作场景。",
+                "primary_goal": "开始当天的调查记者工作",
+                "method": "去工作",
+                "targets": ["报社"],
+                "player_assumptions": [],
+                "requested_effects": ["scene_focus_change"],
+                "requires_check": False,
+                "risk_type": None,
+                "check_stat": None,
+                "difficulty": None,
+                "target_profile": "",
+                "possible_blockers": [],
+                "success_consequence": "",
+                "failure_consequence": "",
+                "location_intent": "local_move",
+                "scene_focus": "报社",
+                "travel_destination": None,
+                "scene_note": "玩家从开放街区转入调查记者的报社工作场景；保持城市为格兰威克。",
+                "npc_notes": [
+                    "门房老贝尔：年长、谨慎，似乎知道匿名来访者和一封便笺。",
+                    "报社主编：可能因潮汐圣会或政治压力犹豫是否刊登海难相关稿件。",
+                ],
+                "event_notes": ["报社内有人争论一篇不能登的稿子。"],
+                "item_notes": ["未拆便笺：压在门房账簿下，但尚未进入玩家物品。"],
+                "denied_effects": ["unconfirmed_death"],
+            }
+        )
+        local = build_local_agentic_providers()
+        providers = AgenticProviders(
+            memory_retriever=local.memory_retriever,
+            intent_agent=local.intent_agent,
+            scene_agent=local.scene_agent,
+            npc_agent=local.npc_agent,
+            event_agent=local.event_agent,
+            item_agent=local.item_agent,
+            rule_arbiter=local.rule_arbiter,
+            memory_curator=local.memory_curator,
+            narrator_agent=local.narrator_agent,
+            turn_director=OpenAICreativeGMProvider(model="test-model", client=client),
+            llm_enabled=True,
+            model="test-model",
+            reason="test creative gm fallback",
+        )
+
+        result = run_agentic_turn(state, "去工作", providers=providers)
+
+        self.assertEqual(result.runtime_trace.branch, "creative_gm")
+        self.assertEqual(result.npcs[0].name, "门房老贝尔")
+        self.assertEqual(result.items[0].name, "未拆便笺")
+        self.assertEqual(result.narration.source, "creative-gm-safety-fallback")
+        self.assertIn("报社", result.narration.text)
+        self.assertIn("门房老贝尔", result.narration.text)
+        for forbidden in (
+            "叙事人物",
+            "可疑物件",
+            "你的行动很明确",
+            "这还谈不上结论",
+            "压进心里",
+            "系统",
+            "validator",
+            "commit",
+        ):
+            self.assertNotIn(forbidden, result.narration.text)
+
+    def test_turn_director_payload_normalizes_missing_risk_type_for_required_check(self):
+        state = self.make_world_state()
+        open_action = propose_open_action("威胁守卫说出异常传闻", state)
+        fallback = propose_rule_adjudication(state, open_action)
+        payload = {
+            "action_type": "world_action",
+            "main_goal": "逼迫守卫开口",
+            "secondary_goals": [],
+            "required_checks": [
+                {
+                    "check_type": "social",
+                    "stat": "intelligence",
+                    "dc": 14,
+                    "reason": "威胁守卫会引发社交风险。",
+                }
+            ],
+            "allowed_effects": ["attempt_recorded", "world_check"],
+            "conditional_effects": [],
+            "denied_effects": ["unearned_clue", "unconfirmed_death"],
+            "bridge_action": {
+                "intent": "world_action",
+                "target": "守卫",
+                "item": None,
+                "requires_check": True,
+                "check_stat": "intelligence",
+                "difficulty": 14,
+                "risk_type": None,
+                "target_profile": "guard",
+                "possible_blockers": ["public_attention"],
+                "success_consequence": "守卫态度出现裂缝。",
+                "failure_consequence": "守卫开始戒备。",
+                "raw_text": "威胁守卫说出异常传闻",
+                "open_method": "威胁守卫",
+                "open_primary_goal": "逼迫守卫开口",
+                "open_requested_effects": [],
+                "player_assumptions": [],
+            },
+            "reasoning_summary": "需要社交风险检定。",
+        }
+
+        normalized = normalize_rule_adjudication_payload(payload, fallback=fallback)
+        normalized["required_checks"] = tuple(
+            RuleCheckProposal(**check) for check in normalized["required_checks"]
+        )
+        adjudication = RuleAdjudicationProposal(**normalized)
+        validation = validate_rule_adjudication(adjudication)
+
+        self.assertEqual(adjudication.bridge_action["risk_type"], "social")
+        self.assertTrue(validation.is_valid)
 
     def test_world_agent_openai_failure_falls_back_per_agent(self):
         class FailingNPCAgent:
@@ -1010,6 +1312,34 @@ class AgenticRuntimeTests(unittest.TestCase):
         self.assertEqual(result.adjudication.source, "local-rule-arbiter")
         self.assertEqual(result.commit.rule_result["roll"]["dc"], 16)
         self.assertIn("Rule arbiter proposal failed validation", result.errors[0])
+
+    def test_world_adjudication_rejects_direct_location_change_effect(self):
+        adjudication = RuleAdjudicationProposal(
+            action_type="world_action",
+            main_goal="跨城旅行",
+            allowed_effects=("attempt_recorded", "location_change"),
+            denied_effects=(),
+            bridge_action={
+                "intent": "world_action",
+                "target": "维拉尔",
+                "requires_check": False,
+                "check_stat": None,
+                "difficulty": None,
+                "risk_type": None,
+                "target_profile": "",
+                "possible_blockers": [],
+                "success_consequence": "",
+                "failure_consequence": "",
+                "raw_text": "去维拉尔",
+                "open_method": "去维拉尔",
+                "open_primary_goal": "跨城旅行",
+            },
+        )
+
+        validation = validate_rule_adjudication(adjudication)
+
+        self.assertFalse(validation.is_valid)
+        self.assertTrue(any("city/location changes" in error for error in validation.errors))
 
     def test_memory_store_persists_only_validated_persistent_candidates(self):
         state = self.make_world_state()
@@ -1322,6 +1652,59 @@ class AgenticRuntimeTests(unittest.TestCase):
         self.assertNotIn("target_death", result.commit.committed_effects)
         self.assertGreater(state.player.suspicion, 0)
 
+    def test_world_check_records_outcome_level_and_margin(self):
+        state = self.make_world_state()
+
+        with patch("phase1_cli.rule_engine.random.randint", return_value=14):
+            result = run_agentic_turn(state, "出手杀了他")
+
+        roll = result.commit.rule_result["roll"]
+
+        self.assertEqual(roll["risk_type"], "violence")
+        self.assertEqual(roll["risk_label"], "暴力")
+        self.assertEqual(roll["margin"], 8)
+        self.assertEqual(roll["outcome_level"], "full_success")
+        self.assertEqual(roll["outcome_label"], "完全成功")
+        self.assertIn("world_check_full_success", result.commit.committed_effects)
+        self.assertIn("这不是击杀确认", result.narration.text)
+
+    def test_world_check_distinguishes_partial_success_and_hard_failure(self):
+        partial_state = self.make_world_state()
+        with patch("phase1_cli.rule_engine.random.randint", return_value=8):
+            partial_result = run_agentic_turn(partial_state, "出手杀了他")
+
+        hard_fail_state = self.make_world_state()
+        with patch("phase1_cli.rule_engine.random.randint", return_value=1):
+            hard_fail_result = run_agentic_turn(hard_fail_state, "出手杀了他")
+
+        self.assertEqual(partial_result.commit.rule_result["roll"]["outcome_level"], "partial_success")
+        self.assertIn("world_check_partial_success", partial_result.commit.committed_effects)
+        self.assertEqual(hard_fail_result.commit.rule_result["roll"]["outcome_level"], "hard_failure")
+        self.assertIn("world_check_hard_failure", hard_fail_result.commit.committed_effects)
+        self.assertIn("violent_attempt_escalated", hard_fail_result.commit.committed_effects)
+
+    def test_world_mode_social_stealth_and_occult_risks_have_distinct_consequences(self):
+        social_state = self.make_world_state()
+        with patch("phase1_cli.rule_engine.random.randint", return_value=10):
+            social_result = run_agentic_turn(social_state, "威胁守卫交出通行证")
+
+        theft_state = self.make_world_state()
+        with patch("phase1_cli.rule_engine.random.randint", return_value=9):
+            theft_result = run_agentic_turn(theft_state, "我潜入仓库偷走账簿")
+
+        occult_state = self.make_world_state()
+        with patch("phase1_cli.rule_engine.random.randint", return_value=1):
+            occult_result = run_agentic_turn(occult_state, "解读深渊符号")
+
+        self.assertEqual(social_result.adjudication.bridge_action["risk_type"], "social")
+        self.assertIn("social_", " ".join(social_result.commit.committed_effects))
+        self.assertEqual(theft_result.adjudication.bridge_action["risk_type"], "theft")
+        self.assertIn("theft_", " ".join(theft_result.commit.committed_effects))
+        self.assertEqual(occult_result.adjudication.bridge_action["risk_type"], "occult")
+        self.assertIn("occult_backlash_severe", occult_result.commit.committed_effects)
+        self.assertTrue(any("SAN" in change for change in occult_result.commit.rule_result["state_changes"]))
+        self.assertTrue(any("Corruption" in change for change in occult_result.commit.rule_result["state_changes"]))
+
     def test_narration_validator_rejects_uncommitted_death_claims(self):
         state = self.make_world_state()
         result = run_agentic_turn(state, "出手杀了他")
@@ -1351,6 +1734,32 @@ class AgenticRuntimeTests(unittest.TestCase):
         validation = validate_narration_proposal(safe_narration, result.commit)
 
         self.assertTrue(validation.is_valid)
+
+    def test_narration_validator_rejects_unexpected_script_and_excessive_blank_lines(self):
+        state = self.make_world_state()
+        result = run_agentic_turn(state, "寻找异常传闻")
+        odd_script = NarrationProposal(
+            text="你听见街角传来低语。\nخرمتك\n你继续向前。",
+            claimed_effects=("world_attempt_recorded",),
+        )
+        excessive_blank_lines = NarrationProposal(
+            text="你停在街口。\n\n\n\n有人看向你。",
+            claimed_effects=("world_attempt_recorded",),
+        )
+
+        odd_validation = validate_narration_proposal(odd_script, result.commit)
+        blank_validation = validate_narration_proposal(excessive_blank_lines, result.commit)
+
+        self.assertFalse(odd_validation.is_valid)
+        self.assertIn(
+            "Narration contains unexpected non-Chinese script characters.",
+            odd_validation.errors,
+        )
+        self.assertFalse(blank_validation.is_valid)
+        self.assertIn(
+            "Narration contains excessive blank lines.",
+            blank_validation.errors,
+        )
 
 
 if __name__ == "__main__":

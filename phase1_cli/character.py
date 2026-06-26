@@ -94,8 +94,12 @@ class Character:
                 "background_id": self.flags.get("background_id"),
                 "background_name": self.flags.get("background_name"),
                 "background_description": self.flags.get("background_description"),
+                "wealth_level": self.flags.get("wealth_level"),
+                "wealth_label": self.flags.get("wealth_label"),
+                "resource_note": self.flags.get("resource_note"),
                 "church_context": self.flags.get("origin_church_context"),
                 "current_scene_focus": self.flags.get("current_scene_focus"),
+                "opening_profile": self.flags.get("opening_profile"),
             },
         }
 

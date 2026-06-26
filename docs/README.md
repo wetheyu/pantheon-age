@@ -40,6 +40,7 @@ README 负责介绍项目；本文件负责告诉你“要看哪份文档”。
 - [phase5_completion_summary.md](phase5_completion_summary.md)：Phase 5 完成总结。
 - [phase6_world_memory_plan.md](phase6_world_memory_plan.md)：Phase 6 世界知识与长期记忆计划。
 - [phase6_completion_summary.md](phase6_completion_summary.md)：Phase 6 完成总结。
+- [phase7_completion_summary.md](phase7_completion_summary.md)：Phase 7 最小可玩体验校准完成总结。
 
 未来开发：
 
@@ -48,6 +49,7 @@ README 负责介绍项目；本文件负责告诉你“要看哪份文档”。
 ## 运行与测试
 
 - [live_llm_testing.md](live_llm_testing.md)：真实 LLM、`.env`、smoke test 和 live test 的安全配置方式。
+- [playtest_checklist.md](playtest_checklist.md)：Phase 7 世界模式 20 分钟人工试玩清单和本地 fixture 运行方式。
 
 默认自动化测试必须保持本地、离线、零 API 成本。真实 LLM 和真实 embedding 测试必须通过环境变量显式开启。
 

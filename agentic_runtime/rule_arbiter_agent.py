@@ -136,6 +136,8 @@ def allowed_effects_for(intent):
             "attempt_recorded",
             "world_check",
             "suspicion_change",
+            "scene_focus_change",
+            "travel_request",
         ),
         "unknown": ("attempt_recorded",),
     }
@@ -185,6 +187,152 @@ def infer_world_risk_check(open_action):
             "possible_blockers": ("witnesses", "local_authorities"),
             "success_consequence": "你取得短暂优势，但现场会出现目击、阻拦或警报压力。",
             "failure_consequence": "行动失控，目标或旁观者可能反抗，附近秩序力量会更快介入。",
+        }
+
+    if contains_any(
+        text,
+        (
+            "偷",
+            "偷走",
+            "偷取",
+            "盗",
+            "扒",
+            "开锁",
+            "撬锁",
+            "撬开",
+            "pickpocket",
+            "steal",
+            "lockpick",
+            "theft",
+        ),
+    ):
+        return {
+            "requires_check": True,
+            "check_stat": "agility",
+            "difficulty": 16,
+            "risk_type": "theft",
+            "target_profile": "guarded_property",
+            "possible_blockers": ("owner_notice", "nearby_witnesses", "local_patrol"),
+            "success_consequence": "你拿到一个短暂窗口，可以接近目标物或制造转移注意的机会。",
+            "failure_consequence": "目标物没有顺利到手，周围视线和本地治安压力开始向你集中。",
+        }
+
+    if contains_any(
+        text,
+        (
+            "潜入",
+            "潜行",
+            "躲",
+            "隐藏",
+            "尾随",
+            "跟踪",
+            "翻墙",
+            "溜进",
+            "避开",
+            "stealth",
+            "sneak",
+            "hide",
+            "shadow",
+        ),
+    ):
+        return {
+            "requires_check": True,
+            "check_stat": "agility",
+            "difficulty": 15,
+            "risk_type": "stealth",
+            "target_profile": "watched_area",
+            "possible_blockers": ("suspicious_bystander", "locked_route", "patrol_route"),
+            "success_consequence": "你避开了最明显的目光，获得继续接近或观察的机会。",
+            "failure_consequence": "你的动作留下了痕迹，有人开始意识到这里多了一个不该出现的人。",
+        }
+
+    if contains_any(
+        text,
+        (
+            "威胁",
+            "逼问",
+            "恐吓",
+            "胁迫",
+            "贿赂",
+            "说服",
+            "套话",
+            "欺骗",
+            "撒谎",
+            "交涉",
+            "persuade",
+            "threaten",
+            "coerce",
+            "bribe",
+            "deceive",
+        ),
+    ):
+        return {
+            "requires_check": True,
+            "check_stat": "intelligence",
+            "difficulty": 14,
+            "risk_type": "social",
+            "target_profile": "social_target",
+            "possible_blockers": ("public_attention", "target_resistance", "reputation_risk"),
+            "success_consequence": "对方的态度出现裂缝，你获得继续施压、套话或转入交易的余地。",
+            "failure_consequence": "对方没有被你推动，反而开始戒备你的身份和目的。",
+        }
+
+    if contains_any(
+        text,
+        (
+            "仪式",
+            "祈祷",
+            "祷告",
+            "咒文",
+            "魔法",
+            "符号",
+            "污染",
+            "深渊",
+            "梦境",
+            "占卜",
+            "召唤",
+            "净化",
+            "ritual",
+            "occult",
+            "magic",
+            "abyss",
+            "dream",
+        ),
+    ):
+        stat = "faith" if contains_any(text, ("祈祷", "祷告", "净化", "pray", "purify")) else "intelligence"
+        return {
+            "requires_check": True,
+            "check_stat": stat,
+            "difficulty": 17,
+            "risk_type": "occult",
+            "target_profile": "occult_pressure",
+            "possible_blockers": ("mental_backlash", "ritual_contamination", "unverified_symbol"),
+            "success_consequence": "你短暂稳住了异常压力，能够继续观察它的边界而不立刻被吞没。",
+            "failure_consequence": "异常反向压迫你的感知，理智、信仰或身体都可能付出代价。",
+        }
+
+    if contains_any(
+        text,
+        (
+            "逃跑",
+            "逃离",
+            "摆脱",
+            "甩开",
+            "躲开追捕",
+            "逃出",
+            "escape",
+            "flee",
+        ),
+    ):
+        return {
+            "requires_check": True,
+            "check_stat": "agility",
+            "difficulty": 15,
+            "risk_type": "escape",
+            "target_profile": "active_pressure",
+            "possible_blockers": ("blocked_exit", "pursuer", "crowded_route"),
+            "success_consequence": "你抓住一条可用路线，暂时拉开距离。",
+            "failure_consequence": "退路变得更窄，追逐者或现场压力逼近了你。",
         }
 
     return {

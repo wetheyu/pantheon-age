@@ -55,6 +55,8 @@ Done when:
 
 ## Phase 7: Minimum Playable Experience Calibration
 
+Status: complete.
+
 Goal: make world-mode comfortable enough to test for 20-30 minutes without
 fighting the CLI, debug text, location drift, or unclear consequences.
 
@@ -67,6 +69,8 @@ Non-goals:
 - replacing the current Agentic Runtime architecture.
 
 ### Phase 7.1 Runtime Latency Baseline
+
+Status: complete.
 
 Goal: understand and reduce obvious turn latency without changing game design.
 
@@ -93,7 +97,18 @@ Done when:
 - unit tests do not call network;
 - user can compare fast and full paths deliberately.
 
+Implemented baseline:
+
+- `AgenticTurnResult.runtime_trace` records branch, total elapsed time, and
+  per-step timings;
+- CLI debug mode prints compact trace information only when
+  `PANTHEON_SHOW_RUNTIME=1`;
+- `agentic_runtime.smoke_test` provides a manual branch/latency check for local
+  and opt-in live LLM paths.
+
 ### Phase 7.2 Story Output Calibration
+
+Status: complete.
 
 Goal: make the CLI feel like a tabletop host, not a runtime report.
 
@@ -118,7 +133,20 @@ Done when:
 - no “临时切片 / 本次不会自动授予” style engineering text appears in normal mode;
 - validator tests still reject unauthorized death/reward/location claims.
 
+Implemented baseline:
+
+- local world-mode narrator now uses player-facing tabletop prose instead of
+  system-report wording;
+- local Scene/NPC/Event/Item fallback text avoids engineering words such as
+  temporary slice, validator, commit, and world fact;
+- high-risk violence messages use in-world pressure and unresolved consequence
+  language instead of "system did not confirm" phrasing;
+- Turn Director and Agentic Narrator prompts explicitly forbid debug-shaped
+  player-facing terms.
+
 ### Phase 7.3 Opening And First Hook
+
+Status: complete.
 
 Goal: make a new game start with enough identity, situation, and direction.
 
@@ -143,7 +171,21 @@ Done when:
 - starting in different countries produces visibly different openings;
 - tests cover public character origin fields.
 
+Implemented baseline:
+
+- world-mode character setup now builds a structured `opening_profile` from
+  origin country, city, class, faith, ethnicity, and background;
+- `Character.to_public_dict()` exposes opening profile data for future API/UI
+  rendering;
+- CLI opening text now presents identity, faith legality context, city context,
+  a first incident, a background-specific hook, and 2-4 natural action
+  suggestions;
+- openings differ by origin country/city and background without forcing fixed
+  buttons or hard-coded quest rails.
+
 ### Phase 7.4 Location And Scene Continuity Pass
+
+Status: complete.
 
 Goal: stop the game from moving the player unless the player actually moves.
 
@@ -170,7 +212,23 @@ Done when:
 - “问水手/观察墙壁/检查桌子” does not teleport the player;
 - “去前厅/离开码头/乘船去维拉尔” produces distinct local/travel handling.
 
+Implemented baseline:
+
+- `current_location` remains city-level truth; `current_scene_focus` handles
+  concrete street/building/scene continuity;
+- non-movement world actions preserve scene focus across repeated turns;
+- explicit in-city movement updates only `current_scene_focus`;
+- leaving a scene returns to the city default focus without changing city;
+- cross-city travel requests create a travel-preparation scene and a
+  `travel_request_recorded` effect, but do not teleport the player;
+- local manual Agentic Runtime now generates Scene/NPC/Event/Item material after
+  state commit, so local content follows the committed scene focus;
+- prompts and validators now forbid direct city/location changes in world-mode
+  baseline unless a future phase adds explicit travel authority.
+
 ### Phase 7.5 Dice And Consequence UX
+
+Status: complete.
 
 Goal: make risk feel fair and visible.
 
@@ -195,7 +253,22 @@ Done when:
 - high-risk actions show why they succeeded or failed;
 - player can understand consequences without reading debug payloads.
 
+Implemented baseline:
+
+- world-mode checks now record `risk_type`, readable risk label, roll margin,
+  and an outcome tier: full success, partial success, costly failure, or hard
+  failure;
+- player-facing roll text shows d20, stat, action modifier, DC, outcome label,
+  risk label, and margin only when a check happens;
+- violence, social pressure, mobility risks, theft, escape, and occult pressure
+  now commit different consequence shapes instead of sharing one generic result;
+- lethal or permanent outcomes remain gated by explicit committed authority;
+- tests cover full success, partial success, hard failure, visible dice math,
+  and distinct social/theft/occult consequences.
+
 ### Phase 7.6 Playtest Checklist And Fixtures
+
+Status: complete.
 
 Goal: make manual playtesting repeatable.
 
@@ -216,6 +289,62 @@ Done when:
 
 - every future phase can be checked against the same basic playtest path;
 - regressions are easier to notice.
+
+Implemented baseline:
+
+- added `docs/playtest_checklist.md` as the 20-minute manual world-mode
+  checklist covering opening, social pressure, investigation, prayer, travel,
+  violence, and memory feel;
+- added `agentic_runtime/playtest_fixtures.py` as a local-only executable
+  fixture that runs the same experience path without real LLM calls;
+- added fixture tests that assert safety properties instead of exact prose:
+  no debug terms in player-facing text, no uncommitted death, no accidental
+  city teleport, visible rolls for risky actions, and memory growth across play;
+- Phase 7 has a repeatable local safety net for future playtest regressions.
+
+### Phase 7.7 Creative GM Mode
+
+Status: complete.
+
+Goal: restore the intended project direction: LLM owns imagination; Python owns
+authority, memory, dice, validation, and persistence.
+
+Scope:
+
+- `agentic_runtime/providers.py`
+- `agentic_runtime/orchestrator.py`
+- `prompts/creative_gm.md`
+- `.env.example`
+- live LLM smoke test
+
+Tasks:
+
+- add a GM-first live LLM path where player-facing narration is primary;
+- keep only a minimal sidecar for risk checks, location intent, blockers, and
+  denied effects;
+- preserve Python validation, dice, memory, and state commit authority;
+- make this the default live world-mode path for actual playtesting.
+
+Done when:
+
+- live play no longer feels like the LLM is filling rigid Scene/NPC/Event/Item
+  forms first;
+- runtime trace clearly shows `creative_gm`;
+- local tests still prove the safety boundary;
+- existing Turn Director path remains available as a fallback/compatibility path.
+
+Implemented baseline:
+
+- added `OpenAICreativeGMProvider`, which calls a dedicated Creative GM prompt
+  and converts the result into the existing validated runtime contract;
+- added `CreativeGMOutput`, where `narration_text` is the primary output and
+  check/location/risk fields are only sidecar data for Python;
+- `orchestrator` now reports the branch as `creative_gm`;
+- `.env` live play defaults now enable `PANTHEON_CREATIVE_GM_MODE=1`;
+- `.env.example` documents the Creative GM switch;
+- Turn Director and older multi-agent paths remain available when Creative GM
+  mode is disabled.
+- Phase 7 is now ready to hand off into Phase 8 progression/core mechanics.
 
 ## Phase 8: Progression And Core Mechanics
 

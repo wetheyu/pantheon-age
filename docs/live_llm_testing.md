@@ -36,7 +36,7 @@ PANTHEON_OPENAI_MODEL=gpt-5.5
 
 ## Smoke Test
 
-Run this first:
+Run the older Phase 4 provider smoke test first:
 
 ```bash
 ./.venv/bin/python -m llm_runtime.smoke_test
@@ -50,6 +50,41 @@ Result: OpenAI action provider returned a candidate.
 
 If it says fallback, missing key, model not found, timeout, or provider failed,
 the real model path is not working yet.
+
+If the Agentic Runtime smoke test reports invalid JSON or EOF while parsing a
+structured response, increase `PANTHEON_OPENAI_MAX_OUTPUT_TOKENS`. The Turn
+Director returns intent, adjudication, scene, NPC, event, item, and narration in
+one structured payload, so live play needs more output budget than a single
+short answer.
+
+For the current Agentic Runtime path, use:
+
+```bash
+./.venv/bin/python -m agentic_runtime.smoke_test
+```
+
+This prints:
+
+- runtime branch: `local`, `creative_gm`, `turn_director`, `turn_director_fallback_local`,
+  `legacy_world_bundle`, or `full_multi_agent`;
+- total elapsed time;
+- per-step timings;
+- provider reason;
+- narration preview.
+
+It only calls OpenAI when `.env` enables `PANTHEON_USE_AGENTIC_LLM=1` and a real
+`OPENAI_API_KEY` is configured.
+
+For the recommended high-freedom live play path, set:
+
+```text
+PANTHEON_CREATIVE_GM_MODE=1
+PANTHEON_AGENTIC_TURN_DIRECTOR=1
+PANTHEON_AGENTIC_FULL_LLM=0
+```
+
+In this mode, the LLM acts as the player-facing GM first. Python still owns
+memory, validation, dice, and state commit.
 
 ## Live Unit Test
 
@@ -84,6 +119,12 @@ changes, Codex can run:
 
 ```bash
 ./.venv/bin/python -m llm_runtime.smoke_test
+```
+
+For Agentic Runtime latency or branch checks, Codex can run:
+
+```bash
+./.venv/bin/python -m agentic_runtime.smoke_test
 ```
 
 and, when live unit tests are explicitly enabled:

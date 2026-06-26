@@ -15,8 +15,8 @@ def propose_items(state, open_action, memory_retrieval=None):
             ),
             possible_uses=(
                 "作为调查对象",
-                "作为询问临时 NPC 的话题",
-                "作为后续行动的临时对象",
+                "作为询问本地人的话题",
+                "作为后续行动的对象",
             ),
             risk_tags=("social", "unknown"),
         )
@@ -28,11 +28,11 @@ def propose_items(state, open_action, memory_retrieval=None):
             f"在靠近「{target}」的位置，有一个值得留意的小物件。"
             "它安静地躺在那里，像是在等待有人把它和当前的异常联系起来。"
         ),
-        possible_uses=(
-            "作为调查对象",
-            "作为对话话题",
-            "作为后续行动的临时工具候选",
-        ),
+            possible_uses=(
+                "作为调查对象",
+                "作为对话话题",
+                "作为后续行动的工具候选",
+            ),
         risk_tags=("unknown",),
     )
     return (item,)

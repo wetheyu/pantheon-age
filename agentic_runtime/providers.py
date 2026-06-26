@@ -42,6 +42,10 @@ from .scene_agent import propose_temporary_scene
 AGENTIC_LLM_ENABLED_ENV_VAR = "PANTHEON_USE_AGENTIC_LLM"
 AGENTIC_FULL_LLM_ENABLED_ENV_VAR = "PANTHEON_AGENTIC_FULL_LLM"
 AGENTIC_TURN_DIRECTOR_ENV_VAR = "PANTHEON_AGENTIC_TURN_DIRECTOR"
+CREATIVE_GM_ENABLED_ENV_VAR = "PANTHEON_CREATIVE_GM_MODE"
+WORLD_RISK_TYPES = frozenset(
+    ("violence", "social", "stealth", "theft", "escape", "occult", "travel", "high_risk")
+)
 
 
 class OpenActionOutput(BaseModel):
@@ -146,6 +150,9 @@ class RuleBridgeActionOutput(BaseModel):
     open_primary_goal: str = ""
     open_requested_effects: list[str] = Field(default_factory=list)
     player_assumptions: list[str] = Field(default_factory=list)
+    location_intent: Optional[Literal["stay", "local_move", "leave_scene", "travel_request"]] = None
+    scene_focus: Optional[str] = None
+    travel_destination: Optional[str] = None
 
 
 class RuleAdjudicationOutput(BaseModel):
@@ -169,6 +176,36 @@ class TurnDirectorOutput(BaseModel):
     event: EventOutput
     item: ItemOutput
     narration: AgenticNarrationOutput
+
+
+class CreativeGMOutput(BaseModel):
+    narration_text: str
+    success_narration_text: Optional[str] = None
+    failure_narration_text: Optional[str] = None
+    intent_summary: str
+    primary_goal: str
+    method: str = ""
+    targets: list[str] = Field(default_factory=list)
+    player_assumptions: list[str] = Field(default_factory=list)
+    requested_effects: list[str] = Field(default_factory=list)
+    requires_check: bool = False
+    risk_type: Optional[
+        Literal["violence", "social", "stealth", "theft", "escape", "occult", "travel", "high_risk"]
+    ] = None
+    check_stat: Optional[Literal["strength", "agility", "intelligence", "faith"]] = None
+    difficulty: Optional[int] = None
+    target_profile: str = ""
+    possible_blockers: list[str] = Field(default_factory=list)
+    success_consequence: str = ""
+    failure_consequence: str = ""
+    location_intent: Optional[Literal["stay", "local_move", "leave_scene", "travel_request"]] = None
+    scene_focus: Optional[str] = None
+    travel_destination: Optional[str] = None
+    scene_note: str = ""
+    npc_notes: list[str] = Field(default_factory=list)
+    event_notes: list[str] = Field(default_factory=list)
+    item_notes: list[str] = Field(default_factory=list)
+    denied_effects: list[str] = Field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -535,6 +572,7 @@ class OpenAIRuleArbiterProvider(RuleArbiterProvider):
         )
         data["source"] = self.provider_name
         try:
+            data = normalize_rule_adjudication_payload(data, fallback=local_baseline)
             data["required_checks"] = tuple(
                 RuleCheckProposal(**check) for check in data.get("required_checks", [])
             )
@@ -758,6 +796,10 @@ class OpenAITurnDirectorProvider(TurnDirectorProvider):
             item_payload["source"] = "openai-turn-director-item"
             narration_payload["source"] = "openai-turn-director-narrator"
 
+            adjudication_payload = normalize_rule_adjudication_payload(
+                adjudication_payload,
+                fallback=local_adjudication,
+            )
             adjudication_payload["required_checks"] = tuple(
                 RuleCheckProposal(**check)
                 for check in adjudication_payload.get("required_checks", [])
@@ -777,6 +819,312 @@ class OpenAITurnDirectorProvider(TurnDirectorProvider):
             raise OpenAIProviderError(f"OpenAI turn director payload was invalid: {exc}") from exc
 
 
+class OpenAICreativeGMProvider(TurnDirectorProvider):
+    provider_name = "openai-creative-gm-agent"
+
+    def __init__(self, model=None, client=None, api_key=None):
+        load_local_env()
+        self.model = model or os.getenv(OPENAI_MODEL_ENV_VAR, DEFAULT_OPENAI_MODEL)
+        self.client = client
+        self.api_key = api_key
+
+    def propose_turn(self, state, user_text, memory_retrieval=None):
+        local_open_action = propose_open_action(user_text, state, memory_retrieval)
+        local_adjudication = propose_rule_adjudication(state, local_open_action)
+        payload = {
+            "user_text": user_text,
+            "public_state": state.to_public_dict(),
+            "local_baseline": {
+                "open_action": local_open_action.to_dict(),
+                "adjudication": local_adjudication.to_dict(),
+            },
+            "context_pack": build_context_pack(
+                state,
+                user_text=user_text,
+                memory_retrieval=memory_retrieval,
+                open_action=local_open_action,
+                adjudication=local_adjudication,
+                lore_card_limit=5,
+            ),
+            "runtime_notes": load_runtime_notes(limit=1600),
+        }
+        data = call_openai_structured(
+            client=self.client,
+            api_key=self.api_key,
+            model=self.model,
+            prompt_name="creative_gm",
+            payload=payload,
+            output_model=CreativeGMOutput,
+        )
+        try:
+            return build_creative_gm_turn(
+                data,
+                user_text=user_text,
+                local_open_action=local_open_action,
+                local_adjudication=local_adjudication,
+            )
+        except (KeyError, TypeError) as exc:
+            raise OpenAIProviderError(f"OpenAI creative GM payload was invalid: {exc}") from exc
+
+
+def build_creative_gm_turn(data, user_text, local_open_action, local_adjudication):
+    open_action = OpenActionProposal(
+        raw_text=user_text,
+        action_summary=data.get("intent_summary") or local_open_action.action_summary,
+        primary_goal=data.get("primary_goal") or local_open_action.primary_goal,
+        method=data.get("method") or local_open_action.method,
+        targets=tuple(data.get("targets", []) or local_open_action.targets),
+        player_assumptions=tuple(data.get("player_assumptions", [])),
+        requested_effects=tuple(data.get("requested_effects", [])),
+        confidence=0.85,
+        source="openai-creative-gm-intent",
+    )
+    adjudication_payload = build_creative_gm_adjudication_payload(
+        data,
+        user_text,
+        local_adjudication,
+    )
+    adjudication_payload = normalize_rule_adjudication_payload(
+        adjudication_payload,
+        fallback=local_adjudication,
+    )
+    adjudication_payload["required_checks"] = tuple(
+        RuleCheckProposal(**check)
+        for check in adjudication_payload.get("required_checks", [])
+    )
+
+    scene_note = data.get("scene_note") or "主持人根据当前地点、行动和记忆生成这一回合的自由场景。"
+    temporary_content = (
+        TemporaryContentProposal(
+            content_type="creative_gm_scene",
+            title="本回合场景",
+            description=scene_note,
+            authority_level="temporary",
+            related_targets=tuple(data.get("targets", [])),
+            source="openai-creative-gm-scene",
+        ),
+    )
+    npcs = tuple(
+        NPCProposal(
+            name=split_sidecar_note(note, f"现场人物 {index}")[0],
+            role="creative_gm_npc",
+            description=split_sidecar_note(note, f"现场人物 {index}")[1],
+            authority_level="temporary",
+            source="openai-creative-gm-npc",
+        )
+        for index, note in enumerate(data.get("npc_notes", [])[:2], start=1)
+        if note.strip()
+    )
+    events = tuple(
+        EventProposal(
+            event_type="creative_gm_event",
+            summary=note,
+            authority_level="temporary",
+            source="openai-creative-gm-event",
+        )
+        for note in data.get("event_notes", [])[:2]
+        if note.strip()
+    )
+    items = tuple(
+        ItemProposal(
+            name=split_sidecar_note(note, f"现场物件 {index}")[0],
+            description=split_sidecar_note(note, f"现场物件 {index}")[1],
+            authority_level="temporary",
+            source="openai-creative-gm-item",
+        )
+        for index, note in enumerate(data.get("item_notes", [])[:2], start=1)
+        if note.strip()
+    )
+    narration = NarrationProposal(
+        text=data["narration_text"],
+        claimed_effects=(),
+        source="openai-creative-gm-narrator",
+    )
+
+    return TurnDirectorProposal(
+        open_action=open_action,
+        adjudication=RuleAdjudicationProposal(**adjudication_payload),
+        temporary_content=temporary_content,
+        npcs=npcs,
+        events=events,
+        items=items,
+        narration=narration,
+        success_narration=optional_creative_narration(
+            data.get("success_narration_text"),
+            "openai-creative-gm-success-narrator",
+        ),
+        failure_narration=optional_creative_narration(
+            data.get("failure_narration_text"),
+            "openai-creative-gm-failure-narrator",
+        ),
+        source="openai-creative-gm-agent",
+    )
+
+
+def split_sidecar_note(note, fallback_name):
+    """Extract a readable label from compact LLM sidecar notes.
+
+    The label is for internal structured proposals only. It must not force
+    player-facing narration into numbered system-ish names.
+    """
+    clean_note = " ".join(str(note).strip().split())
+    if not clean_note:
+        return fallback_name, ""
+    for separator in ("：", ":"):
+        if separator in clean_note:
+            raw_name, raw_description = clean_note.split(separator, 1)
+            name = raw_name.strip(" ；;，,。")
+            description = raw_description.strip()
+            if name and len(name) <= 24 and description:
+                return name, description
+    return fallback_name, clean_note
+
+
+def build_creative_gm_adjudication_payload(data, user_text, local_adjudication):
+    requires_check = bool(data.get("requires_check"))
+    risk_type = data.get("risk_type")
+    check_stat = data.get("check_stat")
+    difficulty = data.get("difficulty")
+    allowed_effects = [
+        "temporary_scene",
+        "temporary_npc",
+        "temporary_event",
+        "temporary_item",
+        "attempt_recorded",
+    ]
+    if requires_check:
+        allowed_effects.extend(("world_check", "suspicion_change"))
+
+    denied_effects = list(
+        dict.fromkeys(
+            [
+                "unearned_reward",
+                "unearned_secret",
+                "unearned_clue",
+                "unconfirmed_death",
+                "unconfirmed_permanent_injury",
+                *(data.get("denied_effects") or []),
+            ]
+        )
+    )
+    checks = []
+    if requires_check and check_stat and difficulty is not None:
+        checks.append(
+            {
+                "check_type": risk_type or "high_risk",
+                "stat": check_stat,
+                "dc": difficulty,
+                "reason": data.get("failure_consequence")
+                or data.get("success_consequence")
+                or "Creative GM marked this action as risky.",
+            }
+        )
+
+    return {
+        "action_type": "world_action",
+        "main_goal": data.get("primary_goal") or local_adjudication.main_goal,
+        "secondary_goals": [],
+        "required_checks": checks,
+        "allowed_effects": allowed_effects,
+        "conditional_effects": [],
+        "denied_effects": denied_effects,
+        "bridge_action": {
+            "intent": "world_action",
+            "target": first_present(*(data.get("targets") or [])),
+            "item": None,
+            "requires_check": requires_check,
+            "check_stat": check_stat,
+            "difficulty": difficulty,
+            "risk_type": risk_type,
+            "target_profile": data.get("target_profile", ""),
+            "possible_blockers": data.get("possible_blockers", []),
+            "success_consequence": data.get("success_consequence", ""),
+            "failure_consequence": data.get("failure_consequence", ""),
+            "raw_text": user_text,
+            "open_method": data.get("method", ""),
+            "open_primary_goal": data.get("primary_goal", ""),
+            "open_requested_effects": data.get("requested_effects", []),
+            "player_assumptions": data.get("player_assumptions", []),
+            "location_intent": data.get("location_intent"),
+            "scene_focus": data.get("scene_focus"),
+            "travel_destination": data.get("travel_destination"),
+        },
+        "reasoning_summary": "Creative GM sidecar adjudication.",
+        "source": "openai-creative-gm-rule-arbiter",
+    }
+
+
+def optional_creative_narration(text, source):
+    if not text or not text.strip():
+        return None
+    return NarrationProposal(text=text, claimed_effects=(), source=source)
+
+
+def normalize_rule_adjudication_payload(payload, fallback=None):
+    payload = dict(payload)
+    bridge = dict(payload.get("bridge_action") or {})
+    checks = [dict(check) for check in payload.get("required_checks", [])]
+    fallback_bridge = dict(getattr(fallback, "bridge_action", {}) or {})
+    fallback_checks = tuple(getattr(fallback, "required_checks", ()) or ())
+    fallback_check = fallback_checks[0] if fallback_checks else None
+
+    if bridge.get("requires_check"):
+        if not bridge.get("risk_type"):
+            bridge["risk_type"] = normalize_world_risk_type(
+                first_present(
+                    first_check_value(checks, "check_type"),
+                    getattr(fallback_check, "check_type", None),
+                    fallback_bridge.get("risk_type"),
+                )
+            )
+        if not bridge.get("check_stat"):
+            bridge["check_stat"] = first_present(
+                first_check_value(checks, "stat"),
+                getattr(fallback_check, "stat", None),
+                fallback_bridge.get("check_stat"),
+            )
+        if bridge.get("difficulty") is None:
+            bridge["difficulty"] = first_present(
+                first_check_value(checks, "dc"),
+                getattr(fallback_check, "dc", None),
+                fallback_bridge.get("difficulty"),
+            )
+        if not checks and bridge.get("check_stat") and bridge.get("difficulty") is not None:
+            checks.append(
+                {
+                    "check_type": bridge["risk_type"],
+                    "stat": bridge["check_stat"],
+                    "dc": bridge["difficulty"],
+                    "reason": bridge.get("failure_consequence")
+                    or bridge.get("success_consequence")
+                    or "LLM proposed a risky action but omitted the explicit check entry.",
+                }
+            )
+
+    payload["bridge_action"] = bridge
+    payload["required_checks"] = checks
+    return payload
+
+
+def normalize_world_risk_type(value):
+    if value in WORLD_RISK_TYPES:
+        return value
+    return "high_risk"
+
+
+def first_check_value(checks, key):
+    if not checks:
+        return None
+    return checks[0].get(key)
+
+
+def first_present(*values):
+    for value in values:
+        if value is not None and value != "":
+            return value
+    return None
+
+
 def build_agentic_providers_from_env():
     load_local_env()
     local_providers = build_local_agentic_providers()
@@ -793,7 +1141,26 @@ def build_agentic_providers_from_env():
 
     model = os.getenv(OPENAI_MODEL_ENV_VAR, DEFAULT_OPENAI_MODEL)
     full_llm = is_agentic_full_llm_enabled()
+    creative_gm = is_creative_gm_enabled()
     use_turn_director = is_agentic_turn_director_enabled()
+    if creative_gm and not full_llm:
+        return AgenticProviders(
+            memory_retriever=local_providers.memory_retriever,
+            intent_agent=local_providers.intent_agent,
+            scene_agent=local_providers.scene_agent,
+            npc_agent=local_providers.npc_agent,
+            event_agent=local_providers.event_agent,
+            item_agent=local_providers.item_agent,
+            rule_arbiter=local_providers.rule_arbiter,
+            memory_curator=local_providers.memory_curator,
+            narrator_agent=local_providers.narrator_agent,
+            turn_director=OpenAICreativeGMProvider(model=model),
+            world_bundle=None,
+            llm_enabled=True,
+            model=model,
+            reason=agentic_llm_reason(full_llm, use_turn_director, creative_gm),
+        )
+
     if use_turn_director and not full_llm:
         return AgenticProviders(
             memory_retriever=local_providers.memory_retriever,
@@ -891,7 +1258,18 @@ def is_agentic_turn_director_enabled():
     return raw_value not in {"0", "false", "no", "off"}
 
 
-def agentic_llm_reason(full_llm, use_turn_director=False):
+def is_creative_gm_enabled():
+    load_local_env()
+    raw_value = os.getenv(CREATIVE_GM_ENABLED_ENV_VAR, "0").strip().lower()
+    return raw_value in {"1", "true", "yes", "on"}
+
+
+def agentic_llm_reason(full_llm, use_turn_director=False, creative_gm=False):
+    if creative_gm and not full_llm:
+        return (
+            "OpenAI Creative GM mode enabled: one LLM call owns the player-facing "
+            "imagination while local memory, validation, dice, and state commit stay authoritative."
+        )
     if use_turn_director and not full_llm:
         return (
             "OpenAI Turn Director agent enabled for low-latency live play; "

@@ -79,6 +79,8 @@ def build_location_context(state, memory_retrieval):
             "current_location is the city-level location. current_scene_focus is the concrete scene. "
             "If the player does not explicitly move, keep narration inside current_scene_focus. "
             "Nearby places may be mentioned as options, but do not narrate that the player went there."
+            " Explicit in-city movement may propose a scene focus change. "
+            "Cross-city travel is only a travel request until Python commits a city-level location change."
         ),
         "location_context": location_context[:4],
     }
@@ -98,7 +100,8 @@ def build_generation_directives():
         "style": "Atmospheric tabletop GM prose in Chinese; no debug labels or system reports.",
         "authority": (
             "Do not grant clues, items, deaths, faction changes, permanent facts, upgrades, or endings "
-            "unless commit.committed_effects explicitly allows them."
+            "unless commit.committed_effects explicitly allows them. Do not claim cross-city travel completed "
+            "unless commit.committed_effects includes an explicit location/city change."
         ),
         "uncertainty": "Use rumors, pressure, hesitation, partial observations, and next hooks for unconfirmed content.",
     }

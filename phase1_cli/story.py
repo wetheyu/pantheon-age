@@ -38,43 +38,43 @@ CLI Tutorial + Agentic World Mode
 def render_opening(character, game_mode=None):
     mode = game_mode or character.flags.get("game_mode")
     if mode == WORLD_GAME_MODE:
-        origin_country = character.flags.get("origin_country_formal_name", "未知国家")
-        origin_identity = character.flags.get("origin_identity", "未知身份")
-        origin_ethnicity = character.flags.get("origin_ethnicity", origin_identity)
-        ethnicity_text = "" if origin_ethnicity == origin_identity else f"（{origin_ethnicity}）"
         origin_city = character.flags.get("origin_city", character.current_location)
         city_title = character.flags.get("origin_city_title", "")
         city_title_text = f"，“{city_title}”" if city_title else ""
-        city_description = describe_origin_city(character.flags.get("origin_country_id"), origin_city)
-        scene_focus = character.flags.get("current_scene_focus") or f"{origin_city}的开放街区"
-        background_name = character.flags.get("background_name", "无名旅人")
-        background_description = character.flags.get("background_description", "")
-        background_hook = character.flags.get("background_opening_hook", "")
+        profile = character.flags.get("opening_profile") or {}
+        suggested_actions = profile.get("suggested_actions") or (
+            "观察附近人群，寻找第一个异常反应",
+            "找一个愿意开口的人打听传闻",
+            "前往本地教会或公共机构询问消息",
+        )
+        action_lines = "\n".join(f"- {action}" for action in suggested_actions[:4])
         return f"""
 【开场】
 
-这个世界被虚无之壁包围。现有文明无法越过边界，壁外是无尽虚空，也是外神低语传来的方向。
+世界尽头立着虚无之壁。现有文明无法越过边界，壁外是无尽虚空，也是外神低语传来的方向。
 
-北大陆的蒸汽、铁路、报纸、教会、银行和大学撑起了现代秩序；而在秩序的阴影里，八神教会、隐秘结社、旧贵族、商会寡头、军方和黑市都在争夺解释世界的权力。
+北大陆的蒸汽、铁路、报纸、银行和大学把现代秩序撑得很亮；八神教会、隐秘结社、旧贵族、商会寡头、军方和黑市则在阴影里争夺解释世界的权力。
 
-汽笛声从雾和煤烟之间穿过，报童的叫卖、马车的轮声、教堂远处的钟声一层层压进清晨。
+汽笛声从雾和煤烟之间穿过，报童的叫卖、马车的轮声、教堂远处的钟声一层层压进清晨。你不是旁观者，你已经被卷到了第一处缝隙旁边。
 
-你是 {character.name}，一名信仰{character.god}的{character.class_name}。
-你的国籍是 {origin_country} 的{origin_identity}{ethnicity_text}。
-你的开局身份是：{background_name}。{background_description}
-{background_hook}
+你是{profile.get("identity_summary", character.name)}
+职业：{character.class_name}。{profile.get("class_context", "")}
+{profile.get("faith_context", f"你信仰{character.god}。")}
+{profile.get("faith_sign", "")}
+{profile.get("resource_context", "")}
 
-此刻，你站在 {origin_city}{city_title_text}。
-{city_description}
+此刻，你站在{origin_city}{city_title_text}。
+{profile.get("city_context", describe_origin_city(character.flags.get("origin_country_id"), origin_city))}
 
-你的当前具体场景是：{scene_focus}。除非你明确前往别处，否则主持人会默认把后续行动放在这个场景里。
+【第一幕】
+当前具体场景：{profile.get("scene_focus", character.flags.get("current_scene_focus") or f"{origin_city}的开放街区")}。
+{profile.get("opening_incident", "一条没有来源的传闻穿过人群，像火星落进干草。")}
+{profile.get("first_hook", "你来到这里并非偶然。某个细节正在等待你先开口。")}
 
-你还没有被卷入某个确定的案件。主持人会根据你的行动展开场景：你可以去教会、码头、报社、市场、大学、车站或任何你觉得合理的地方；也可以直接找人、调查传闻、追踪异常、祈祷、交易或制造一点麻烦。
+你没有被固定剧情推着走。你可以顺着眼前的异常追下去，也可以绕开它，去找教会、码头、报社、市场、大学、车站或任何你觉得合理的入口。
 
-可以试着输入：
-- 我去附近的报社打听最近的异常传闻
-- 我前往码头，寻找愿意开口的水手
-- 我去本地教会，询问最近是否有异常祷告
+可以直接对主持人说你要做什么，例如：
+{action_lines}
 
 输入“状态”查看角色状态，输入“帮助”查看基础命令。
 """
@@ -146,10 +146,18 @@ def render_mechanical_summary(result):
 
 def render_roll_line(roll):
     stat_name = STAT_NAMES.get(roll["stat"], roll["stat"])
-    outcome = "成功" if roll["success"] else "失败"
+    outcome = roll.get("outcome_label") or ("成功" if roll["success"] else "失败")
+    modifier_label = roll.get("modifier_label", "修正")
+    extras = []
+    if roll.get("risk_label"):
+        extras.append(f"风险：{roll['risk_label']}")
+    if "margin" in roll:
+        extras.append(f"差值：{roll['margin']:+d}")
+    extra_text = f"｜{'｜'.join(extras)}" if extras else ""
     return (
         f"检定：d20({roll['d20']}) + {stat_name}({roll['stat_value']}) "
-        f"+ 修正({roll['modifier']:+d}) = {roll['total']} / DC {roll['dc']} -> {outcome}"
+        f"+ {modifier_label}({roll['modifier']:+d}) = {roll['total']} / DC {roll['dc']} -> {outcome}"
+        f"{extra_text}"
     )
 
 

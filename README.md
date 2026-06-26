@@ -42,7 +42,7 @@ LLM 负责创造可能性。
 ### 游戏闭环
 
 - CLI 教程模式：固定场景、角色创建、职业与神明选择、d20 检定、状态变化、线索、背包、地图、日志、存档和多结局。
-- 世界模式：支持八个重要国家出身、开局城市、身份背景、本地宗教合法性、开放自然语言行动和玩家可读叙事。
+- 世界模式：支持八个重要国家出身、开局城市、身份背景、本地宗教合法性、结构化开场导入、开放自然语言行动和玩家可读叙事。
 - 场景连续性：`current_location` 表示城市级位置，`current_scene_focus` 表示具体场景，避免非移动行动导致地点漂移。
 
 ### Agentic Runtime
@@ -223,6 +223,16 @@ env PANTHEON_USE_AGENTIC_LLM=0 PANTHEON_USE_LLM=0 PANTHEON_EMBEDDING_PROVIDER=lo
 PANTHEON_RUN_LIVE_LLM_TESTS=1
 ```
 
+手动检查 Agentic Runtime 分支与耗时：
+
+```bash
+./.venv/bin/python -m agentic_runtime.smoke_test
+```
+
+手动试玩清单：
+
+- [docs/playtest_checklist.md](docs/playtest_checklist.md)
+
 ## 文档
 
 完整文档入口：
@@ -234,12 +244,14 @@ PANTHEON_RUN_LIVE_LLM_TESTS=1
 1. [docs/phase1_6_architecture_summary.md](docs/phase1_6_architecture_summary.md)：当前架构基线；
 2. [docs/agentic_runtime_architecture.md](docs/agentic_runtime_architecture.md)：长期 Agentic Runtime 设计；
 3. [docs/phase6_completion_summary.md](docs/phase6_completion_summary.md)：Phase 6 完成情况；
-4. [docs/future_phase_plan.md](docs/future_phase_plan.md)：Phase 7-10 开发路线；
-5. [docs/world_bible.md](docs/world_bible.md)：世界观总览。
+4. [docs/phase7_completion_summary.md](docs/phase7_completion_summary.md)：Phase 7 完成情况；
+5. [docs/playtest_checklist.md](docs/playtest_checklist.md)：世界模式试玩清单；
+6. [docs/future_phase_plan.md](docs/future_phase_plan.md)：Phase 8-10 开发路线；
+7. [docs/world_bible.md](docs/world_bible.md)：世界观总览。
 
 ## 当前限制
 
-- 世界模式已经可试玩，但仍处于 Phase 7 前的校准阶段，叙事质量、速度、开局引导和风险反馈还需要继续打磨。
+- 世界模式已经可按 Phase 7 清单试玩；地点连续性、风险反馈和基本安全边界已有回归测试，长期玩法仍需要继续打磨。
 - 成长系统、技能、祷告、仪式晋升和道具机制尚未完整实装。
 - 网页界面尚未开始。
 - 真实 LLM 与真实向量接口调用需要用户自行配置 API key，并会产生 API 成本。

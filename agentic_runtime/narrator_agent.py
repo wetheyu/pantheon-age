@@ -58,6 +58,10 @@ def narrate_world_slice(
 ):
     sections = []
 
+    feasibility = commit.rule_result.get("feasibility")
+    if feasibility and feasibility.get("blocked"):
+        return narrate_feasibility_block(open_action, commit, feasibility)
+
     if temporary_content:
         sections.append(" ".join(content.description for content in temporary_content))
     else:
@@ -75,33 +79,70 @@ def narrate_world_slice(
     if item_proposals:
         item_lines = []
         for item in item_proposals:
-            use_text = "你可以继续观察它，也可以把它带入下一次询问。"
+            use_text = "它可以成为继续观察、追问或误导他人的话题。"
             item_lines.append(f"你注意到{item.name}。{item.description}{use_text}")
         sections.append(" ".join(item_lines))
 
-    sections.append(f"你选择：{open_action.raw_text}")
+    sections.append(f"你的行动很明确：{open_action.raw_text}")
 
     if commit.rule_result.get("risk_type") == "violence":
         blockers = commit.rule_result.get("possible_blockers") or ()
         if blockers:
-            sections.append("可能介入的压力：" + "、".join(blockers) + "。")
+            sections.append("你能感觉到周围的压力正在靠近：" + "、".join(blockers) + "。")
         if commit.rule_result.get("messages"):
             sections.append(" ".join(commit.rule_result["messages"]))
         if commit.rule_result.get("success"):
-            sections.append("你的动作抢到了短暂优势，但这只确认了危险冲突升级和现场压力。")
+            sections.append("你抢到了一瞬间的主动权，足以改变对峙的姿态，却还不足以把一切写成定局。")
         else:
-            sections.append("你的动作没能达成预期，现场压力立刻反扑回来。")
-        sections.append("目标退场、永久伤害和更深后果都还需要后续裁定。")
+            sections.append("你的动作没能达成预期，场面立刻反压回来，目光、脚步和喊声都开始聚向你。")
     elif commit.committed_effects:
-        sections.append("这不是确凿线索，但已经足够成为下一步追查的起点。")
+        location_note = render_location_continuity_note(commit.rule_result)
+        if location_note:
+            sections.append(location_note)
+        sections.append("这还谈不上结论，却已经足够把你推向下一次追问。")
     else:
-        sections.append("这次行动暂时没有形成可靠记录。")
+        sections.append("眼下还没有决定性的发现，但现场的沉默本身也值得记住。")
 
     persisted = [candidate.content for candidate in memory_candidates if candidate.should_persist]
     if persisted:
-        sections.append("你记住了此刻的细节。")
+        sections.append("你把几个关键细节压进心里，准备在合适的时候再拿出来对照。")
 
     return NarrationProposal(
-        text="\n".join(part for part in sections if part),
+        text="\n\n".join(part for part in sections if part),
         claimed_effects=commit.committed_effects,
     )
+
+
+def narrate_feasibility_block(open_action, commit, feasibility):
+    resource = feasibility.get("player_resource", {})
+    paths = feasibility.get("suggested_paths", ())
+    path_text = "\n".join(f"- {path}" for path in paths[:3])
+    text = (
+        f"你可以提出这个打算：{open_action.raw_text}。\n\n"
+        f"但现实没有因为一句话让路。{feasibility.get('reason', '')}"
+        f"以你现在的资源处境（{resource.get('wealth_label', '未知')}）来说，"
+        "这一步不能直接变成成交、产权、钥匙或资产。\n\n"
+        "它可以变成一条可玩的路线：\n"
+        f"{path_text}\n\n"
+        "如果你愿意，下一步可以从打听价格、找担保人、调查产权纠纷或伪装成买家开始。"
+    )
+    return NarrationProposal(
+        text=text,
+        claimed_effects=commit.committed_effects,
+        source="local-narrator-agent",
+    )
+
+
+def render_location_continuity_note(rule_result):
+    location_intent = rule_result.get("location_intent")
+    if location_intent == "local_move":
+        return f"场景转到{rule_result.get('scene_focus_after')}，但你仍在{rule_result.get('location_after')}。"
+    if location_intent == "leave_scene":
+        return f"你离开{rule_result.get('scene_focus_before')}，回到{rule_result.get('scene_focus_after')}附近。"
+    if location_intent == "travel_request":
+        destination = rule_result.get("travel_destination") or "远方"
+        return (
+            f"{destination}已经成为明确目的地，但这一步只是筹备路线和交通；"
+            f"你仍在{rule_result.get('location_after')}。"
+        )
+    return ""

@@ -45,6 +45,35 @@ class ValidationResult:
 
 
 @dataclass(frozen=True)
+class RuntimeStep:
+    name: str
+    elapsed_ms: float
+
+    def to_dict(self):
+        return {
+            "name": self.name,
+            "elapsed_ms": self.elapsed_ms,
+        }
+
+
+@dataclass(frozen=True)
+class RuntimeTrace:
+    branch: str
+    total_ms: float
+    steps: tuple[RuntimeStep, ...] = field(default_factory=tuple)
+
+    def __post_init__(self):
+        object.__setattr__(self, "steps", tuple(self.steps))
+
+    def to_dict(self):
+        return {
+            "branch": self.branch,
+            "total_ms": self.total_ms,
+            "steps": [step.to_dict() for step in self.steps],
+        }
+
+
+@dataclass(frozen=True)
 class MemoryRetrievalResult:
     player_known: tuple[str, ...] = field(default_factory=tuple)
     location_context: tuple[str, ...] = field(default_factory=tuple)
@@ -489,6 +518,9 @@ class AgenticTurnResult:
     memory_candidates: tuple[MemoryCandidate, ...]
     memory_records: tuple[MemoryRecord, ...]
     narration: NarrationProposal
+    runtime_trace: RuntimeTrace = field(
+        default_factory=lambda: RuntimeTrace(branch="unknown", total_ms=0.0)
+    )
 
     def __post_init__(self):
         object.__setattr__(self, "errors", tuple(self.errors))
@@ -517,4 +549,5 @@ class AgenticTurnResult:
             "memory_candidates": [candidate.to_dict() for candidate in self.memory_candidates],
             "memory_records": [record.to_dict() for record in self.memory_records],
             "narration": self.narration.to_dict(),
+            "runtime_trace": self.runtime_trace.to_dict(),
         }

@@ -1,5 +1,7 @@
 """Validators for Phase 5 Agentic Runtime proposals."""
 
+import re
+
 from phase1_cli.data import BASE_STATS
 from phase1_cli.intent_parser import INTENT_PRIORITY
 
@@ -23,16 +25,50 @@ UNCOMMITTED_DEATH_PATTERNS = (
     "杀了",
     "被你击杀",
     "被你杀",
-    "死亡",
-    "死去",
-    "死了",
+    "当场死亡",
+    "确认死亡",
+    "已经死亡",
+    "目标死亡",
+    "对方死亡",
+    "他死亡",
+    "她死亡",
+    "目标死了",
+    "对方死了",
+    "目标就死了",
+    "对方就死了",
+    "他死了",
+    "她死了",
     "毙命",
     "断气",
-    "尸体",
     "当场身亡",
     "一命呜呼",
     "倒在血泊",
     "重重倒下",
+)
+UNEXPECTED_NARRATION_SCRIPT_RE = re.compile(r"[\u0590-\u05ff\u0600-\u06ff\u0750-\u077f\u08a0-\u08ff]")
+EXCESSIVE_BLANK_LINES_RE = re.compile(r"\n\s*\n\s*\n\s*\n")
+CONFIRMED_ACQUISITION_PATTERNS = (
+    "买下了",
+    "购买了",
+    "购得",
+    "成交了",
+    "交易完成",
+    "拿到钥匙",
+    "拿到了钥匙",
+    "获得钥匙",
+    "拿到房契",
+    "签下房契",
+    "获得房契",
+    "拿到地契",
+    "签下地契",
+    "获得地契",
+    "获得产权",
+    "产权归你",
+    "产权属于你",
+    "归你所有",
+    "属于你",
+    "成为你的",
+    "成了你的",
 )
 
 
@@ -151,6 +187,8 @@ def validate_world_adjudication(adjudication):
     for effect in adjudication.allowed_effects:
         if effect in {"target_death", "target_killed"} or effect.startswith(("death:", "killed:")):
             errors.append("Rule adjudication cannot allow death effects in world-mode baseline.")
+        if effect in {"location_change", "city_change"} or effect.startswith(("travel_to:", "city:")):
+            errors.append("Rule adjudication cannot directly allow city/location changes in world-mode baseline.")
 
     consequence_text = " ".join(
         str(bridge.get(key, ""))
@@ -236,6 +274,10 @@ def validate_narration_proposal(narration, commit):
     errors = []
     if not narration.text.strip():
         errors.append("Narration text is empty.")
+    if contains_unexpected_narration_script(narration.text):
+        errors.append("Narration contains unexpected non-Chinese script characters.")
+    if has_excessive_blank_lines(narration.text):
+        errors.append("Narration contains excessive blank lines.")
     committed = set(commit.committed_effects)
     claimed = set(narration.claimed_effects)
     extra = sorted(claimed - committed)
@@ -243,7 +285,17 @@ def validate_narration_proposal(narration, commit):
         errors.append("Narration claimed uncommitted effects: " + ", ".join(extra))
     if claims_uncommitted_death(narration.text, commit):
         errors.append("Narration confirmed death or killing without committed death authority.")
+    if claims_blocked_acquisition(narration.text, commit):
+        errors.append("Narration confirmed blocked acquisition despite feasibility gate.")
     return ValidationResult(is_valid=not errors, errors=tuple(errors))
+
+
+def contains_unexpected_narration_script(text):
+    return bool(UNEXPECTED_NARRATION_SCRIPT_RE.search(text))
+
+
+def has_excessive_blank_lines(text):
+    return bool(EXCESSIVE_BLANK_LINES_RE.search(text))
 
 
 def claims_uncommitted_death(text, commit):
@@ -262,4 +314,40 @@ def claims_uncommitted_death(text, commit):
 
 
 def contains_uncommitted_death_text(text):
-    return any(pattern in text for pattern in UNCOMMITTED_DEATH_PATTERNS)
+    normalized_text = str(text)
+    for harmless_phrase in (
+        "没有尸体",
+        "无尸体",
+        "不见尸体",
+        "找不到尸体",
+        "没有遗体",
+        "无遗体",
+        "死亡之神",
+        "死亡教会",
+    ):
+        normalized_text = normalized_text.replace(harmless_phrase, "")
+    return any(pattern in normalized_text for pattern in UNCOMMITTED_DEATH_PATTERNS)
+
+
+def claims_blocked_acquisition(text, commit):
+    feasibility = commit.rule_result.get("feasibility") or {}
+    if not feasibility.get("blocked"):
+        return False
+    if "unconfirmed_property_acquisition" not in set(commit.rejected_effects):
+        return False
+    return any(
+        contains_non_negated_pattern(text, pattern)
+        for pattern in CONFIRMED_ACQUISITION_PATTERNS
+    )
+
+
+def contains_non_negated_pattern(text, pattern):
+    start = 0
+    while True:
+        index = text.find(pattern, start)
+        if index < 0:
+            return False
+        prefix = text[max(0, index - 10):index]
+        if not any(marker in prefix for marker in ("不", "不能", "无法", "没有", "尚未", "不会", "不可能")):
+            return True
+        start = index + len(pattern)

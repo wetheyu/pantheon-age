@@ -6,10 +6,37 @@
 - 删除已被合并吸收的 `docs/refactor_plan.md`，避免旧方向文档与当前 Agentic Runtime 主线重复；
 - 重写 `docs/future_phase_plan.md`，将 Phase 7-10 拆成 Codex-friendly 小任务：最小可玩体验校准、成长系统与核心机制、Web UI/API 产品体验、工程质量与最终体验优化；
 - 新增 `docs/README.md` 中文文档总入口，并将 README 从长开发日志精简为 GitHub 首页式项目概览；
+- Phase 7.1 开始并完成 Runtime Latency Baseline：Agentic Runtime 结果新增 `runtime_trace`，记录运行分支、总耗时和分步耗时；
+- CLI 在 `PANTHEON_SHOW_RUNTIME=1` 时会显示紧凑 trace 信息，正常试玩输出保持干净；
+- 新增 `agentic_runtime.smoke_test`，用于手动检查 Agentic Runtime 当前走本地、Turn Director、fallback、旧 WorldBundle 或 full multi-agent 分支以及每步耗时；
+- Phase 7.2 完成 Story Output Calibration：本地 world-mode 叙事、Scene/NPC/Event/Item fallback 文案和高风险行动提示改为玩家可读的主持人叙事，减少“临时/切片/系统没有确认”等工程感表达；
+- Turn Director 与 Agentic Narrator prompt 增加玩家可见文本禁用词，避免真实 LLM 路径输出 validator、commit、rule_result、临时内容、世界事实等后台概念；
+- Phase 7.3 完成 Opening And First Hook：world-mode 创建角色后会生成结构化 `opening_profile`，根据出身国家、开局城市、职业、信仰、民族和身份生成开场处境、第一异常、身份钩子和自然行动建议；
+- `Character.to_public_dict()` 的 origin 现在包含 `opening_profile`，方便后续 API 和 Web UI 复用开局导入信息；
+- Phase 7.4 完成 Location And Scene Continuity Pass：world-mode 明确区分城市级 `current_location` 和具体场景 `current_scene_focus`，非移动行动不会让玩家被叙事带到其他地点；
+- 城内移动、离开当前场景和跨城旅行请求现在有不同裁定：城内移动只更新具体场景，离开场景回到城市默认街区，跨城旅行只记录出行准备并拒绝直接瞬移；
+- Agentic Runtime 本地路径现在先提交场景锚点，再生成 Scene/NPC/Event/Item 素材，避免“前往码头”后仍按旧街区生成内容；
+- Turn Director / Rule Arbiter / WorldBundle / Agentic Narrator prompt 与 validator 增加地点权限边界，禁止 world-mode baseline 直接授予 `location_change` / `city_change`；
 - world-mode 新增 `current_scene_focus` 具体场景锚点：`current_location` 继续表示城市级位置，`current_scene_focus` 表示玩家当前所在的具体街区、建筑或场景；
 - 非移动行动默认保留在当前具体场景中，避免 LLM 叙事把玩家无端写到市场、旅店、码头等新地点；
 - 明确“前往/进入/走向/去”等本城移动时，只更新具体场景锚点，不自动改变城市级位置；
 - Turn Director / WorldBundle / Agentic Narrator prompt 增加 location continuity 规则，要求主持人尊重当前场景连续性。
+- Phase 7.5 完成 Dice And Consequence UX：world-mode 检定现在记录风险类型、风险标签、掷骰差值和分层结果（完全成功 / 小成功 / 代价失败 / 严重失败）；
+- 高风险行动的玩家可见检定文本现在显示 d20、属性、行动修正、DC、结果标签、风险标签和差值，只有发生检定时才展示；
+- 暴力、社交压迫、潜行/偷窃/逃离和神秘学压力拥有不同后果提交逻辑，避免所有高风险行动都变成同一种“成功/失败”；
+- 暴力成功仍只代表优势、压迫或短暂控制，不会自动确认击杀、永久伤害或奖励；神秘学严重失败可能造成 SAN 与 Corruption 压力；
+- Phase 7.6 完成 Playtest Checklist And Fixtures：新增 `docs/playtest_checklist.md`，固定 20 分钟世界模式人工试玩路线；
+- 新增 `agentic_runtime/playtest_fixtures.py` 和 `tests/test_playtest_fixtures.py`，用本地 Agentic Runtime 自动跑开场、社交、调查、祈祷、旅行和暴力门槛 fixture；
+- Playtest fixture 只断言体验安全性质，不绑定具体 LLM 文案：禁止调试词泄露、禁止未提交死亡、禁止误传送、要求高风险行动有掷骰、要求长期记忆随试玩增长；
+- 新增 `docs/phase7_completion_summary.md`，正式收束 Phase 7 最小可玩体验校准的目标、完成阶段、可玩基线、剩余粗糙点和 Phase 8 交接边界；
+- Phase 7 收口验证已通过本地全量测试、本地 Agentic Runtime smoke test，并通过真实 LLM `turn_director` 分支 smoke test；
+- Phase 7.7 完成 Creative GM Mode：新增 `prompts/creative_gm.md` 和 `OpenAICreativeGMProvider`，把真实试玩主路径调整为“LLM 先作为主持人生成玩家可见叙事，程序只用 sidecar 做验证、掷骰、记忆和状态提交”；
+- `PANTHEON_CREATIVE_GM_MODE=1` 成为真实 LLM 世界模式推荐开关，runtime trace 会显示 `creative_gm` 分支；
+- Creative GM 保留现有安全边界：未授权死亡、物品、线索、城市旅行、阵营变化和成长奖励仍由 Python 拦截；
+- 修复 Creative GM 叙事校验失败时掉回后台报告式文本的问题，安全 fallback 不再暴露“叙事人物 1 / 可疑物件 1 / 你的行动很明确”等系统腔标签；死亡校验也不再误伤“没有尸体的海难”“死亡之神”等正常世界观表达；
+- 优化 world-mode 新建角色开场：加入第一幕、资源处境和更自然的行动入口，减少设定说明书感；
+- 新增 world feasibility guard：调查记者、教会见习等开局身份会带有资源等级；明显超出资源/身份边界的大额购买（如直接买庄园别墅）会被程序拦截为 `feasibility_blocked`，并转化为询价、找担保人、贷款、调查产权纠纷等可玩路线；
+- Phase 7 最小可玩体验校准收口，下一阶段进入 Phase 8 成长系统与核心机制；
 
 ## v6.0.0 - Phase 6 World Knowledge And Persistent Memory
 

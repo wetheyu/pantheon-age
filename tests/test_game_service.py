@@ -15,6 +15,7 @@ from phase1_cli.scenarios import (
     configure_character_for_game_mode,
     origin_country_ids,
 )
+from phase1_cli.story import render_opening
 
 
 class GameServiceTests(unittest.TestCase):
@@ -121,6 +122,8 @@ class GameServiceTests(unittest.TestCase):
         agentic = response.llm_runtime["agentic_runtime"]
         self.assertIn("跳向前厅", agentic["open_action"]["method"])
         self.assertEqual(agentic["adjudication"]["action_type"], "move")
+        self.assertEqual(agentic["runtime_trace"]["branch"], "local")
+        self.assertIn("total_ms", agentic["runtime_trace"])
 
     def test_world_mode_uses_agentic_runtime_without_env_flag(self):
         state = self.make_world_state()
@@ -145,10 +148,12 @@ class GameServiceTests(unittest.TestCase):
         first_payload = first.to_dict()
 
         self.assertNotIn("【格兰威克】", first.text)
-        self.assertIn("城市的声响、人群和本地势力", first.text)
-        self.assertIn("被你注意到的人", first.text)
+        self.assertIn("街面上的脚步声", first.text)
+        self.assertIn("谨慎的当地人", first.text)
         self.assertIn("你注意到", first.text)
-        self.assertIn("下一步追查的起点", first.text)
+        self.assertIn("下一次追问", first.text)
+        for forbidden in ("临时", "切片", "系统没有确认", "世界事实", "validator", "commit"):
+            self.assertNotIn(forbidden, first.text)
         self.assertEqual(first_agentic["adjudication"]["action_type"], "world_action")
         self.assertEqual(first_agentic["commit"]["rule_result"]["new_clues"], [])
         self.assertEqual(first_agentic["commit"]["rule_result"]["state_changes"], [])
@@ -164,13 +169,18 @@ class GameServiceTests(unittest.TestCase):
     def test_world_mode_violent_action_shows_roll_calculation(self):
         state = self.make_world_state()
 
-        response = handle_player_input(state, "出手杀了他")
+        with patch("phase1_cli.rule_engine.random.randint", return_value=8):
+            response = handle_player_input(state, "出手杀了他")
 
         self.assertEqual(response.kind, "action")
         self.assertIn("检定：d20(", response.text)
         self.assertIn("/ DC 16 ->", response.text)
+        self.assertIn("风险：暴力", response.text)
+        self.assertIn("差值：+2", response.text)
+        self.assertIn("小成功", response.text)
         self.assertIn("状态变化：", response.text)
         self.assertIsNotNone(response.rule_result["roll"])
+        self.assertEqual(response.rule_result["roll"]["outcome_level"], "partial_success")
         self.assertGreater(state.player.suspicion, 0)
 
     def test_world_mode_origin_selection_sets_country_and_start_city(self):
@@ -192,6 +202,17 @@ class GameServiceTests(unittest.TestCase):
         self.assertIn("码头账簿", payload["player"]["origin"]["background_description"])
         self.assertEqual(payload["player"]["origin"]["church_context"]["dominant"], ["白塔院"])
         self.assertIn("密仪会", payload["player"]["origin"]["church_context"]["hostile"])
+        opening_profile = payload["player"]["origin"]["opening_profile"]
+        self.assertIn("维拉尔", opening_profile["city_context"])
+        self.assertIn("资源处境", opening_profile["resource_context"])
+        self.assertIn("工薪", opening_profile["resource_context"])
+        self.assertIn("水手", " ".join(opening_profile["suggested_actions"]))
+        self.assertIn("海关", " ".join(opening_profile["suggested_actions"]))
+
+        opening = render_opening(character, "world")
+        self.assertIn("【第一幕】", opening)
+        self.assertIn("资源处境", opening)
+        self.assertIn("可以直接对主持人说你要做什么", opening)
 
     def test_world_mode_origin_selection_supports_eight_countries(self):
         self.assertEqual(
@@ -276,6 +297,38 @@ class GameServiceTests(unittest.TestCase):
         self.assertEqual(payload["player"]["origin"]["ethnicity"], "波西恩人")
         self.assertEqual(payload["player"]["origin"]["church_context"]["dominant"], ["审判庭"])
         self.assertIn("密仪会", payload["player"]["origin"]["church_context"]["hostile"])
+
+    def test_world_opening_profile_differs_by_origin_and_background(self):
+        reporter = build_character("阿洛", "mage", "真理之神")
+        configure_character_for_game_mode(reporter, "world", "lumiere", "卢塞恩", None, "调查记者")
+
+        broker = build_character("薇拉", "rogue", "隐秘之神")
+        configure_character_for_game_mode(broker, "world", "noctia", "诺克提亚城", None, "黑市掮客")
+
+        reporter_profile = reporter.flags["opening_profile"]
+        broker_profile = broker.flags["opening_profile"]
+
+        self.assertIn("被大学和博物馆同时否认", reporter_profile["opening_incident"])
+        self.assertIn("不存在的档案编号", broker_profile["opening_incident"])
+        self.assertIn("报社", " ".join(reporter_profile["suggested_actions"]))
+        self.assertIn("黑市", " ".join(broker_profile["suggested_actions"]))
+        self.assertNotEqual(reporter_profile["first_hook"], broker_profile["first_hook"])
+
+    def test_render_world_opening_contains_first_hook_and_actions(self):
+        character = build_character("阿洛", "priest", "审判之神")
+        configure_character_for_game_mode(character, "world", "ost", "维伦纳", "奥斯特人", "教会见习")
+
+        opening = render_opening(character, "world")
+
+        self.assertIn("你是阿洛", opening)
+        self.assertIn("奥斯特帝国", opening)
+        self.assertIn("审判庭在这里拥有公开权威", opening)
+        self.assertIn("资源处境：清贫", opening)
+        self.assertIn("【第一幕】", opening)
+        self.assertIn("一名宫廷乐师的死讯", opening)
+        self.assertIn("异常最先污染的不是街道，而是祷词", opening)
+        self.assertIn("可以直接对主持人说你要做什么", opening)
+        self.assertIn("前往本地教会据点", opening)
 
 
 if __name__ == "__main__":

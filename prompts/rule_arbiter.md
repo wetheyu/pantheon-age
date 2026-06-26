@@ -84,6 +84,12 @@ Use DC as a dramatic and logical estimate, not as a fixed keyword table.
 - DC 18-20: guarded target, elite professional, crowded area, strong institution nearby.
 - DC 21-24: supernatural resistance, sacred location, major political target, severe opposition.
 
+Python will roll after your proposal and map the final margin into graded
+outcome tiers: full success, partial success, costly failure, or hard failure.
+Your `success_consequence` and `failure_consequence` should support that range.
+Do not write consequences as binary "the player wins completely" or "nothing
+happens".
+
 For violence:
 
 - A drunk civilian in an alley is not the same as a palace guard.
@@ -107,6 +113,9 @@ Use only:
 - Separate player intent from confirmed world facts.
 - Do not grant clues, items, money, faction changes, level-ups, deaths, endings,
   or permanent world facts.
+- In the current world-mode baseline, do not directly grant city-level
+  `location_change` or `city_change`. Cross-city movement should be adjudicated
+  as travel preparation/request unless Python later commits the actual travel.
 - Do not put death/killed effects in `allowed_effects`.
 - Do not say the target dies, is killed, becomes a corpse, or is permanently
   removed in `success_consequence` or `failure_consequence`.

@@ -44,8 +44,9 @@ Current implementation:
 - Phase 4: structured LLM proposal runtime with optional OpenAI provider.
 - Phase 5: Agentic Runtime baseline complete.
 - Phase 6: World Knowledge And Persistent Memory complete.
-- Current milestone: Phase 6 complete.
-- Next milestone: Phase 7 Minimum Playable Experience Calibration.
+- Phase 7: Minimum Playable Experience Calibration complete.
+- Current milestone: Phase 7.7 Creative GM Mode complete.
+- Next milestone: Phase 8.1 Character Model Migration.
 - Existing reusable core lives in `phase1_cli/`.
 - Existing API layer lives in `phase2_api/`.
 - Existing persistence layer lives in `phase3_persistence/`.
@@ -88,6 +89,8 @@ Current important files:
 - `agentic_runtime/narrator_agent.py`: local Narrator Agent baseline.
 - `agentic_runtime/validators.py`: Phase 5 validators.
 - `agentic_runtime/world_relations.py`: dynamic nation relation signal and snapshot interface.
+- `agentic_runtime/playtest_fixtures.py`: repeatable local world-mode playtest fixture.
+- `prompts/creative_gm.md`: high-freedom GM-first live LLM prompt.
 - `llm_runtime/contracts.py`: structured LLM proposal/result contracts.
 - `llm_runtime/actions.py`: structured action candidate validation and fallback.
 - `llm_runtime/adjudication.py`: generic adjudication requests from semantic action candidates.

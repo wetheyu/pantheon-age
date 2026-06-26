@@ -8,8 +8,8 @@ def propose_npcs(state, open_action, memory_retrieval=None):
     target = target_text(state, open_action)
     if is_world_slice(state):
         npc = NPCProposal(
-            name="被你注意到的人",
-            role="当地线索入口",
+            name="谨慎的当地人",
+            role="本地见闻者",
             description=(
                 f"这个人属于{city_label(state)}的日常秩序，凭口音和衣着大概看出你来自{origin_line(state)}。"
                 "他注意到你的靠近，目光里有警惕，也有一点愿意开口的犹豫。"
@@ -25,7 +25,7 @@ def propose_npcs(state, open_action, memory_retrieval=None):
 
     npc = NPCProposal(
         name="无名见证者",
-        role="临时路人",
+        role="谨慎路人",
         description=(
             f"一个停留在{state.current_location}边缘的人影注意到了你围绕「{target}」的行动。"
             "他的神情谨慎，像是既害怕被卷入麻烦，又不愿错过正在发生的异常。"

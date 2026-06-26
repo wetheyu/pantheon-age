@@ -30,48 +30,72 @@ COMMON_BACKGROUNDS = (
         "name": "调查记者",
         "description": "为报社或独立刊物追查异常传闻，擅长采访、观察和记录。",
         "opening_hook": "你随身带着笔记本和一张尚未写完的采访提纲。",
+        "wealth_level": 1,
+        "wealth_label": "拮据",
+        "resource_note": "稿费、线人费和房租总在互相追赶；你能支付小额交通、酒钱和誊抄费，但买不起昂贵资产。",
     },
     {
         "background_id": "church_novice",
         "name": "教会见习",
         "description": "曾在教区、修会或小礼拜堂受训，熟悉仪式、祷告和教会规矩。",
         "opening_hook": "你知道正式神职人员说出口的话通常只是一半，另一半藏在规章里。",
+        "wealth_level": 1,
+        "wealth_label": "清贫",
+        "resource_note": "你能借用少量教会物资，但个人财产有限；大额交易必须依赖教会许可或赞助人。",
     },
     {
         "background_id": "retired_officer",
         "name": "退役军官",
         "description": "离开军队或治安部队后卷入城市阴影，擅长判断危险和命令结构。",
         "opening_hook": "你仍保留着旧部队的站姿，也保留着对异常沉默的警觉。",
+        "wealth_level": 2,
+        "wealth_label": "体面但不宽裕",
+        "resource_note": "退役津贴和旧人脉让你能维持体面，也能承担普通装备和短途旅行；地产、船只和大型投资仍远超能力。",
     },
     {
         "background_id": "railway_clerk",
         "name": "铁路职员",
         "description": "熟悉车站、货单、时刻表和人员流动，适合追查跨城线索。",
         "opening_hook": "你能从一张车票、一封行李标签和一段晚点记录里看出很多东西。",
+        "wealth_level": 1,
+        "wealth_label": "工薪",
+        "resource_note": "你有稳定薪水和铁路便利，但现金有限；你能负担票据和小额打点，无法直接承担奢侈购买。",
     },
     {
         "background_id": "dock_scribe",
         "name": "港口书记员",
         "description": "接触码头账簿、船员传闻和海关手续，适合港口、走私和远洋案件。",
         "opening_hook": "你听过太多水手酒后的胡话，也知道其中少数并不是胡话。",
+        "wealth_level": 1,
+        "wealth_label": "工薪",
+        "resource_note": "你熟悉账簿和人情债，但真正属于你的钱不多；码头消息比现金更值钱。",
     },
     {
         "background_id": "fallen_noble",
         "name": "落魄贵族",
         "description": "出身旧家族但处境衰落，仍能进入某些宴会、沙龙和私人俱乐部。",
         "opening_hook": "你的姓氏还能打开一些门，也会让另一些人立刻戒备。",
+        "wealth_level": 2,
+        "wealth_label": "有名无钱",
+        "resource_note": "你的姓氏和信用还能敲开上流社会的门，但现金紧张；你可以谈抵押、借贷或婚约，不能随手买下庄园。",
     },
     {
         "background_id": "university_auditor",
         "name": "大学旁听生",
         "description": "游走在大学、图书馆和实验室边缘，擅长学术传闻和异常研究。",
         "opening_hook": "你没有所有证件，但你知道哪扇侧门不会在黄昏前上锁。",
+        "wealth_level": 1,
+        "wealth_label": "清贫",
+        "resource_note": "你有知识入口和学生圈关系，但钱包很薄；大额资源只能通过导师、赞助或偷借设备获得。",
     },
     {
         "background_id": "black_market_broker",
         "name": "黑市掮客",
         "description": "熟悉地下交易、假名、违禁品和消息买卖，适合灰色调查。",
         "opening_hook": "你明白很多秘密不是被发现的，而是被估价之后卖出来的。",
+        "wealth_level": 2,
+        "wealth_label": "现金流不稳定",
+        "resource_note": "你能调动小额黑钱、人情和赊账渠道，但大额资产会立刻引来债主、警察和帮派注意。",
     },
 )
 
@@ -297,6 +321,83 @@ ORIGIN_CHURCH_RELATIONS = {
     },
 }
 
+GOD_CHURCHES = {
+    "海洋之神": "潮汐圣会",
+    "真理之神": "白塔院",
+    "战争之神": "铁血教团",
+    "审判之神": "审判庭",
+    "丰饶之神": "蔷薇圣庭",
+    "死亡之神": "安魂教团",
+    "隐秘之神": "夜幕修会",
+    "深渊之神": "密仪会",
+}
+
+GOD_OPENING_SIGNS = {
+    "海洋之神": "远处像有潮声越过屋脊，提醒你所有航线都会留下回声。",
+    "真理之神": "你下意识留意证词、印章和措辞，因为谎言通常先在细节上露出裂缝。",
+    "战争之神": "街角的脚步和队列让你想起军令，秩序背后往往藏着真正的恐惧。",
+    "审判之神": "你能感觉到契约、誓言和判决的阴影正在这座城里缓慢合拢。",
+    "丰饶之神": "花香、药味和面包香混在一起，越是丰盛的地方，越可能藏着过度生长的东西。",
+    "死亡之神": "蜡烛、墓碑和遗嘱的气味隔着人群传来，亡者的秩序从不真正沉默。",
+    "隐秘之神": "窗帘后的视线、擦肩而过的暗号和空白档案提醒你：秘密也有自己的道路。",
+    "深渊之神": "你听见梦境边缘传来几乎不可察觉的水声，像现实底部有黑暗正在翻身。",
+}
+
+CLASS_OPENING_LINES = {
+    "warrior": "你习惯先确认出口、守卫和可用掩体，这让你在混乱开始前总能快半步。",
+    "mage": "你会把异常当成结构来读：符号、材质、温度和重复出现的词，都可能是入口。",
+    "rogue": "你知道正门通常是给别人看的，真正有用的信息藏在侧门、账本和低声交易里。",
+    "hunter": "你先看足迹、气味和人群流向。城市也是荒野，只是猎物会穿礼服。",
+    "priest": "你熟悉祷告、忏悔和禁忌仪式，也知道神职人员的沉默有时比布道更诚实。",
+    "alchemist": "你会留意药味、金属粉尘、变色液体和不合常理的伤口，因为物质从不撒谎。",
+}
+
+COUNTRY_OPENING_PRESSURES = {
+    "albion": "一份远洋保险赔付单被人匆匆藏进外套，旁边的报童正在叫卖一桩没有尸体的海难。",
+    "lumiere": "新一期报纸被雨水打湿，标题提到一场被大学和博物馆同时否认的异常展览。",
+    "wald": "军靴声从街口压过来，工厂烟囱却在同一时刻吐出不该有的苍白火星。",
+    "ost": "一名宫廷乐师的死讯在低声传播，审判庭的马车已经先于讣告抵达街区。",
+    "isteria": "一场慈善宴会的请柬被撕成两半，背面仍残留蔷薇香水和金融寡头的暗记。",
+    "noctia": "假名登记处提前关门，山路信使留下的密封信却指向一个不存在的档案编号。",
+    "selemia": "金门海峡的关税钟敲错了时辰，香料商和密仪会祭司同时停下了交谈。",
+    "rosvia": "冻河上的送葬队伍没有棺木，安魂钟响过之后，秘密警察封住了一条小巷。",
+}
+
+BACKGROUND_ACTION_SUGGESTIONS = {
+    "investigative_reporter": (
+        "去本地报社、印刷所或咖啡馆核对这条传闻的来源",
+        "采访第一个愿意开口的目击者",
+    ),
+    "church_novice": (
+        "前往本地教会据点，询问最近是否有异常祷告或禁忌仪式",
+        "观察神职人员是否在回避某个名字",
+    ),
+    "retired_officer": (
+        "观察巡警、军人或守卫的调动，判断谁在控制现场",
+        "用旧部队经验判断这里是否发生过暴力冲突",
+    ),
+    "railway_clerk": (
+        "去车站、货运处或行李房查看最近的异常出入记录",
+        "检查票据、货单或晚点记录里是否有重复出现的名字",
+    ),
+    "dock_scribe": (
+        "前往码头或海关账房，寻找愿意低声说话的水手",
+        "核对船名、货单和港口传闻是否互相矛盾",
+    ),
+    "fallen_noble": (
+        "借姓氏进入沙龙、俱乐部或私人宴会，听听贵族们不敢公开说的话",
+        "寻找一个认识旧家族纹章的人",
+    ),
+    "university_auditor": (
+        "去大学、图书馆或博物馆寻找被撤下的讲义和展品记录",
+        "找一名愿意冒险的学生或助教交换消息",
+    ),
+    "black_market_broker": (
+        "联系黑市中间人，询问最近谁在高价收购异常物件",
+        "用假名打听这条消息在地下渠道值多少钱",
+    ),
+}
+
 WORLD_START_LOCATION = PLAYABLE_ORIGINS[DEFAULT_ORIGIN_COUNTRY_ID]["cities"][0]["name"]
 CURRENT_SCENE_FOCUS_FLAG = "current_scene_focus"
 SCENE_FOCUS_HISTORY_FLAG = "scene_focus_history"
@@ -349,6 +450,7 @@ def configure_character_for_game_mode(
         character.current_location = origin["origin_city"]
         character.flags[CURRENT_SCENE_FOCUS_FLAG] = default_scene_focus(origin["origin_city"])
         character.flags[SCENE_FOCUS_HISTORY_FLAG] = [character.flags[CURRENT_SCENE_FOCUS_FLAG]]
+        character.flags["opening_profile"] = build_world_opening_profile(character)
     else:
         character.current_location = character.current_location or TUTORIAL_START_LOCATION
     return character
@@ -382,6 +484,26 @@ def get_origin_country(country_id):
 
 def city_names_for_origin(country_id):
     return [city["name"] for city in get_origin_country(country_id)["cities"]]
+
+
+def world_city_names():
+    names = []
+    for country in PLAYABLE_ORIGINS.values():
+        names.extend(city["name"] for city in country["cities"])
+    return names
+
+
+def find_world_city_in_text(text):
+    source = str(text or "")
+    for city_name in world_city_names():
+        if city_name and city_name in source:
+            return city_name
+    return None
+
+
+def is_world_city_name(value):
+    candidate = str(value or "").strip()
+    return candidate in set(world_city_names())
 
 
 def ethnicity_options_for_origin(country_id):
@@ -430,7 +552,100 @@ def resolve_background(background_id=None):
         "background_name": background["name"],
         "background_description": background["description"],
         "background_opening_hook": background["opening_hook"],
+        "wealth_level": background["wealth_level"],
+        "wealth_label": background["wealth_label"],
+        "resource_note": background["resource_note"],
     }
+
+
+def build_world_opening_profile(character):
+    flags = character.flags
+    country_id = normalize_origin_country_id(flags.get("origin_country_id"))
+    city_name = flags.get("origin_city") or WORLD_START_LOCATION
+    background_id = flags.get("background_id")
+    scene_focus = flags.get(CURRENT_SCENE_FOCUS_FLAG) or default_scene_focus(city_name)
+    church_name = GOD_CHURCHES.get(character.god, "未知教会")
+    faith_status = faith_status_for_origin(country_id, church_name)
+    background_actions = BACKGROUND_ACTION_SUGGESTIONS.get(background_id, ())
+    suggested_actions = list(background_actions[:2])
+    suggested_actions.append(f"留在{scene_focus}，观察谁最先对异常作出反应")
+    suggested_actions.append(faith_action_suggestion(church_name, faith_status))
+
+    return {
+        "scene_focus": scene_focus,
+        "identity_summary": (
+            f"{character.name}，{flags.get('origin_country_formal_name', '未知国家')}的"
+            f"{flags.get('origin_identity', '未知身份')}，"
+            f"{flags.get('origin_ethnicity', flags.get('origin_identity', '未知民族'))}，"
+            f"{flags.get('background_name', '无名旅人')}。"
+        ),
+        "class_context": CLASS_OPENING_LINES.get(
+            character.class_id,
+            "你没有显赫的头衔，但足够清醒，知道异常从不会自己解释自己。",
+        ),
+        "faith_context": faith_context_line(character.god, church_name, faith_status),
+        "faith_sign": GOD_OPENING_SIGNS.get(character.god, ""),
+        "city_context": describe_origin_city(country_id, city_name),
+        "resource_context": (
+            f"资源处境：{flags.get('wealth_label', '普通')}。"
+            f"{flags.get('resource_note', '你能承担日常开销，但大额行动需要额外来源。')}"
+        ),
+        "opening_incident": COUNTRY_OPENING_PRESSURES.get(
+            country_id,
+            "一条没有来源的传闻穿过人群，像火星落进干草。",
+        ),
+        "first_hook": first_hook_for_background(background_id),
+        "suggested_actions": suggested_actions[:4],
+    }
+
+
+def faith_status_for_origin(country_id, church_name):
+    context = church_context_for_origin(country_id)
+    if church_name in context["dominant"]:
+        return "dominant"
+    if church_name in context["friendly"]:
+        return "friendly"
+    if church_name in context["restricted"]:
+        return "restricted"
+    if church_name in context["hostile"]:
+        return "hostile"
+    return "unknown"
+
+
+def faith_context_line(god_name, church_name, faith_status):
+    if faith_status == "dominant":
+        return f"你信仰{god_name}。{church_name}在这里拥有公开权威，你的信仰会带来入口，也会带来责任。"
+    if faith_status == "friendly":
+        return f"你信仰{god_name}。{church_name}在这里可以公开活动，但仍要看地方势力的脸色。"
+    if faith_status == "restricted":
+        return f"你信仰{god_name}。{church_name}在这里受限存在，公开求助可能引来盘问。"
+    if faith_status == "hostile":
+        return f"你信仰{god_name}。{church_name}在这里被视为敌对异教或危险结社，你最好谨慎暴露身份。"
+    return f"你信仰{god_name}。这份信仰在当地的处境并不清晰，最好先观察。"
+
+
+def faith_action_suggestion(church_name, faith_status):
+    if faith_status in {"dominant", "friendly"}:
+        return f"去{church_name}的公开据点，询问最近是否有人求助或失踪"
+    if faith_status == "restricted":
+        return f"谨慎寻找{church_name}的私人联络点，不要直接暴露目的"
+    if faith_status == "hostile":
+        return f"隐藏与{church_name}有关的痕迹，先从旁人的恐惧里判断局势"
+    return "先观察本地宗教和治安气氛，再决定向谁开口"
+
+
+def first_hook_for_background(background_id):
+    hooks = {
+        "investigative_reporter": "你的采访提纲上只写着一句话：有人在说真话，但报纸不敢刊登。",
+        "church_novice": "你记得导师说过：异常最先污染的不是街道，而是祷词。",
+        "retired_officer": "你一眼看出现场的安静不正常，那是有人提前清过场的安静。",
+        "railway_clerk": "你口袋里那张误送的车票，目的地栏被墨水涂黑，却没有完全干透。",
+        "dock_scribe": "一名水手昨天把一枚湿透的硬币塞给你，只说不要相信今早第一班船。",
+        "fallen_noble": "一封没有署名的请柬把你带到这里，封蜡上却压着你家族早已废弃的纹章。",
+        "university_auditor": "你听说一份被撤下的讲义里，出现了本不该被公开的神名旁注。",
+        "black_market_broker": "昨夜有人开出过高价格，想买一件连名字都不愿说清的东西。",
+    }
+    return hooks.get(background_id, "你来到这里并非偶然。某个细节正在等待你先开口。")
 
 
 def find_background(value=None):

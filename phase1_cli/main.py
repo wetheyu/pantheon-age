@@ -269,6 +269,16 @@ def print_agentic_runtime_debug(runtime):
     open_action = runtime["open_action"]
     adjudication = runtime["adjudication"]
     commit = runtime["commit"]
+    trace = runtime.get("runtime_trace", {})
+    if trace:
+        steps = ", ".join(
+            f"{step['name']}={step['elapsed_ms']}ms"
+            for step in trace.get("steps", ())
+        )
+        print(
+            f"- trace: branch={trace.get('branch')}, "
+            f"total={trace.get('total_ms')}ms, steps={steps}"
+        )
     print(
         f"- providers: intent={providers['intent_agent']}, "
         f"bundle={providers['world_bundle']}, scene={providers['scene_agent']}, "
