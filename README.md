@@ -16,10 +16,16 @@ v10.7.0 / Phase 10.7 Final Demo Pass
 Agentic Runtime + Canon Retrieval + Persistent Memory + Progression Mechanics + FastAPI + Web Playtest Baseline + Observability + Safety/Quality Evals + Runtime Profiles + Provider Strategy + Dev Setup + Final Demo
 ```
 
-下一阶段：
+当前状态：
 
 ```text
 Phase 10 Complete / Final Demo Ready
+```
+
+后续方向：
+
+```text
+Post-10: Playtest polish, content expansion, deployment, and portfolio packaging
 ```
 
 ## 项目动机
