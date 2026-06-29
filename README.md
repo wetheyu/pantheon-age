@@ -181,7 +181,7 @@ cp .env.example .env
 OPENAI_API_KEY=你的真实_key
 PANTHEON_USE_AGENTIC_LLM=1
 PANTHEON_AGENTIC_TURN_DIRECTOR=1
-PANTHEON_OPENAI_MODEL=gpt-4o-mini
+PANTHEON_OPENAI_MODEL=gpt5.5
 ```
 
 `.env` 已被 `.gitignore` 忽略，不会上传 GitHub。

@@ -15,7 +15,7 @@ load_local_env()
 class LiveOpenAIProviderTests(unittest.TestCase):
     def test_openai_understands_jump_toward_location_as_move(self):
         provider = OpenAIActionCandidateProvider(
-            model=os.getenv("PANTHEON_OPENAI_MODEL", "gpt-4o-mini")
+            model=os.getenv("PANTHEON_OPENAI_MODEL", "gpt5.5")
         )
 
         result = resolve_action_candidate("跳向前厅", "修道院门口", provider=provider)

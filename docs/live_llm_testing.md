@@ -26,15 +26,12 @@ Then open `.env` locally and fill in:
 ```text
 OPENAI_API_KEY=your_real_key_here
 PANTHEON_USE_LLM=1
-PANTHEON_OPENAI_MODEL=gpt-4o-mini
+PANTHEON_OPENAI_MODEL=gpt5.5
 ```
 
-Use a model that your API key actually has access to. If `gpt-5.5` is available
-to your account, you can set:
-
-```text
-PANTHEON_OPENAI_MODEL=gpt-5.5
-```
+Use a model that your API key actually has access to. Override
+`PANTHEON_OPENAI_MODEL` locally if your account or endpoint uses a different
+model name.
 
 ## OpenAI-Compatible Local Providers
 

@@ -140,7 +140,7 @@ PANTHEON_USE_LLM=1 OPENAI_API_KEY=... ./.venv/bin/python -m phase1_cli.main
 可选模型覆盖：
 
 ```bash
-PANTHEON_OPENAI_MODEL=gpt-4o-mini PANTHEON_USE_LLM=1 OPENAI_API_KEY=... ./.venv/bin/python -m phase1_cli.main
+PANTHEON_OPENAI_MODEL=gpt5.5 PANTHEON_USE_LLM=1 OPENAI_API_KEY=... ./.venv/bin/python -m phase1_cli.main
 ```
 
 查看 Phase 4 runtime 摘要：

@@ -15,7 +15,7 @@ from .narrator import build_template_narration_proposal
 from .prompts import load_prompt
 
 
-DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
+DEFAULT_OPENAI_MODEL = "gpt5.5"
 LLM_ENABLED_ENV_VAR = "PANTHEON_USE_LLM"
 OPENAI_MODEL_ENV_VAR = "PANTHEON_OPENAI_MODEL"
 OPENAI_PROVIDER_ENV_VAR = "PANTHEON_OPENAI_PROVIDER"

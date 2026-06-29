@@ -45,7 +45,7 @@ Official OpenAI:
 OPENAI_API_KEY=your_key
 PANTHEON_OPENAI_PROVIDER=openai
 PANTHEON_OPENAI_BASE_URL=
-PANTHEON_OPENAI_MODEL=gpt-4o-mini
+PANTHEON_OPENAI_MODEL=gpt5.5
 ```
 
 OpenAI-compatible local endpoint:
