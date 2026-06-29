@@ -15,6 +15,7 @@ from .data import (
     LOCATIONS,
     POLLUTION_KEYWORDS,
 )
+from .progression import ATTRIBUTE_LABELS, attribute_modifier, normalize_check_attribute
 from .utils import clamp
 
 
@@ -65,14 +66,19 @@ def new_result(state, action):
     }
 
 
-def roll_check(state, stat, dc, modifier=0, modifier_label="职业修正"):
+def roll_check(state, attribute, dc, modifier=0, modifier_label="职业修正"):
+    attribute = normalize_check_attribute(attribute)
     roll = random.randint(1, 20)
-    stat_value = state.player.stats.get(stat, 0)
-    total = roll + stat_value + modifier
+    attribute_value = state.player.attributes.get(attribute, 10)
+    attribute_bonus = attribute_modifier(attribute_value)
+    total = roll + attribute_bonus + modifier
     return {
         "d20": roll,
-        "stat": stat,
-        "stat_value": stat_value,
+        "stat": attribute,
+        "attribute": attribute,
+        "attribute_label": ATTRIBUTE_LABELS.get(attribute, attribute),
+        "attribute_value": attribute_value,
+        "stat_value": attribute_bonus,
         "modifier": modifier,
         "modifier_label": modifier_label,
         "total": total,
@@ -179,17 +185,17 @@ def handle_investigate(state, action, result):
     modifier = best_modifier(state.player, ["investigate_bonus", "track_bonus", "scout_bonus"])
 
     if location == "修道院门口":
-        run_location_clue_check(state, result, "intelligence", 12, modifier, "泥泞脚印")
+        run_location_clue_check(state, result, "insight", 12, modifier, "泥泞脚印")
     elif location == "前厅":
-        run_location_clue_check(state, result, "intelligence", 12, modifier, "破损圣徽")
+        run_location_clue_check(state, result, "insight", 12, modifier, "破损圣徽")
     elif location == "祈祷大厅":
-        run_location_clue_check(state, result, "intelligence", 13, modifier, "破损圣徽")
+        run_location_clue_check(state, result, "insight", 13, modifier, "破损圣徽")
     elif location == "旧档案室":
-        run_location_clue_check(state, result, "intelligence", 14, modifier, next_archive_clue(state), fail_san_loss=1)
+        run_location_clue_check(state, result, "insight", 14, modifier, next_archive_clue(state), fail_san_loss=1)
     elif location == "钟楼":
-        run_location_clue_check(state, result, "intelligence", 14, modifier, "说谎时响起的钟声", fail_san_loss=1)
+        run_location_clue_check(state, result, "insight", 14, modifier, "说谎时响起的钟声", fail_san_loss=1)
     elif location == "地下墓室":
-        run_location_clue_check(state, result, "intelligence", 16, modifier, "地下墓室的亡者残响", fail_san_loss=2)
+        run_location_clue_check(state, result, "insight", 16, modifier, "地下墓室的亡者残响", fail_san_loss=2)
 
 
 def handle_analyze(state, action, result):
@@ -201,13 +207,13 @@ def handle_analyze(state, action, result):
     modifier = best_modifier(state.player, ["analyze_bonus", "lore_bonus", "identify_bonus"])
 
     if location == "旧档案室":
-        run_location_clue_check(state, result, "intelligence", 13, modifier, next_archive_clue(state), fail_san_loss=1)
+        run_location_clue_check(state, result, "knowledge", 13, modifier, next_archive_clue(state), fail_san_loss=1)
     elif location == "钟楼":
-        run_location_clue_check(state, result, "intelligence", 14, modifier, "说谎时响起的钟声", fail_san_loss=1)
+        run_location_clue_check(state, result, "knowledge", 14, modifier, "说谎时响起的钟声", fail_san_loss=1)
     elif location == "祈祷大厅":
-        run_location_clue_check(state, result, "intelligence", 13, modifier, "破损圣徽")
+        run_location_clue_check(state, result, "knowledge", 13, modifier, "破损圣徽")
     else:
-        check = roll_check(state, "intelligence", 12, modifier)
+        check = roll_check(state, "knowledge", 12, modifier)
         result["roll"] = check
         result["success"] = check["success"]
         if check["success"]:
@@ -232,7 +238,7 @@ def run_location_clue_check(state, result, stat, dc, modifier, clue_name, fail_s
 def handle_pollution_contact(state, result):
     player = state.player
     modifier = best_modifier(player, ["analyze_bonus", "lore_bonus", "identify_bonus"])
-    check = roll_check(state, "intelligence", 15, modifier)
+    check = roll_check(state, "knowledge", 15, modifier)
     result["roll"] = check
     result["success"] = check["success"]
 
@@ -259,7 +265,7 @@ def handle_attack(state, action, result):
     location = state.current_location
     dc = 16 if location == "地下墓室" else 14
     modifier = sum_modifiers(state.player, ["attack_bonus", "direct_combat_penalty", "combat_penalty"])
-    check = roll_check(state, "strength", dc, modifier)
+    check = roll_check(state, "physique", dc, modifier)
     result["roll"] = check
     result["success"] = check["success"]
 
@@ -281,7 +287,7 @@ def handle_pray(state, action, result):
     location = state.current_location
     player = state.player
     modifier = best_modifier(player, ["pray_bonus", "purify_bonus"])
-    check = roll_check(state, "faith", 12, modifier)
+    check = roll_check(state, "communion", 12, modifier)
     result["roll"] = check
     result["success"] = check["success"]
 
@@ -385,7 +391,7 @@ def handle_stealth(state, result):
 def handle_talk(state, result):
     location = state.current_location
     modifier = best_modifier(state.player, ["deceive_bonus", "lore_bonus"])
-    check = roll_check(state, "intelligence", 12, modifier)
+    check = roll_check(state, "insight", 12, modifier)
     result["roll"] = check
     result["success"] = check["success"]
 

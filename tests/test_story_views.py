@@ -103,11 +103,14 @@ class StoryViewTests(unittest.TestCase):
         self.assertIn("职业技能、信仰天赋、祷告和道具", text)
         self.assertIn("晋升必须满足资源和等级条件", text)
 
-    def test_roll_line_shows_faith_bonuses(self):
+    def test_roll_line_shows_communion_bonuses(self):
         roll = {
             "d20": 10,
-            "stat": "faith",
-            "stat_value": 8,
+            "stat": "communion",
+            "attribute": "communion",
+            "attribute_label": "共鸣",
+            "attribute_value": 14,
+            "stat_value": 2,
             "modifier": 6,
             "modifier_label": "行动修正",
             "total": 24,

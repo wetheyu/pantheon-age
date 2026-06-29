@@ -13,13 +13,14 @@ The program provides memory, consistency, validation, persistence, retrieval, an
 Build foundations first. Polish after the foundations stop moving.
 ```
 
-Completed and remaining order:
+Completed order:
 
 ```text
 Phase 7: Minimum Playable Experience Calibration
 Phase 8: Progression And Core Mechanics
 Phase 9: Web UI And API Product Experience
 Phase 10: Engineering Quality And Final Experience Optimization
+Post-10: Playtest polish, content expansion, deployment, and portfolio packaging
 ```
 
 Why this order:
@@ -30,6 +31,9 @@ Why this order:
 - Phase 9 moves the playable loop into a browser.
 - Phase 10 makes the whole project easier to debug, evaluate, deploy, and
   present.
+- Post-10 work should be small and practical: run more real playtests, add more
+  original canon, tune pacing, package deployment, and polish the portfolio
+  story.
 
 ## Task Format
 
@@ -381,7 +385,7 @@ Done when:
 
 Implemented baseline:
 
-- added six future-facing attributes while preserving the old four-stat bridge;
+- added six attributes and kept old-save compatibility defaults;
 - added class level, faith level, ascension rank, revelation, favor, devotion,
   progression skills, talents, prayers, burdens, and progression flags;
 - exposed progression through public character state and CLI status;
@@ -607,8 +611,8 @@ Implemented baseline:
 
 - browser play surface now shows read-only character identity, HP/SAN,
   suspicion, corruption, current city, scene focus, visited locations, six
-  attributes, legacy stats, progression resources, skills, talents, prayers,
-  burdens, inventory affordances, and clues;
+  attributes, progression resources, skills, talents, prayers, burdens,
+  inventory affordances, and clues;
 - panels update from the public API state after each submitted action;
 - frontend displays item affordances but does not execute item effects or mutate
   state.
@@ -720,6 +724,8 @@ Done when:
 
 ### Phase 10.7 Final Demo Pass
 
+Status: complete.
+
 Tasks:
 
 - choose one polished demo path;
@@ -734,13 +740,24 @@ Done when:
 
 ## Recommended Next Task
 
-Start with Phase 10.1 Observability And Trace Records.
+Start with a Post-10 live playtest polish pass.
 
-Reason: Phase 9 now has a browser-playable product slice. The next step is to
-make weird turns explainable before adding broader evals, packaging, and final
-demo polish.
+Reason: Phase 10 now has the final demo route, observability, safety evals,
+quality evals, runtime profiles, provider strategy, local development commands,
+and a browser demo path. The next useful work is no longer another foundation
+phase; it is repeated playtesting and focused polish based on what feels weak in
+real sessions.
 
-Detailed Phase 9/10 execution guidance now lives in:
+Useful Post-10 task examples:
+
+```text
+Post-10.1 Live playtest polish: run 3-5 real sessions and fix the top friction points.
+Post-10.2 Canon expansion: add focused city/faction/church cards only where playtests need them.
+Post-10.3 Deployment packaging: prepare a repeatable API + Web demo target.
+Post-10.4 Portfolio polish: screenshots, demo script, architecture diagram, and final README trim.
+```
+
+Detailed completed Phase 9/10 execution guidance lives in:
 
 ```text
 docs/final_phase10_plan.md

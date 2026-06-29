@@ -39,11 +39,13 @@ const ATTRIBUTE_LABELS: Record<string, string> = {
   communion: "共鸣",
 };
 
-const LEGACY_STAT_LABELS: Record<string, string> = {
-  strength: "力量",
-  agility: "敏捷",
-  intelligence: "智力",
-  faith: "信仰",
+const FINAL_DEMO_SETUP = {
+  playerName: "伊芙",
+  countryId: "lumiere",
+  city: "卢塞恩",
+  classId: "rogue",
+  god: "隐秘之神",
+  backgroundId: "investigative_reporter",
 };
 
 function App() {
@@ -84,8 +86,8 @@ function App() {
 
       <section className="workspace">
         <section className="story-panel">
-          <p className="eyebrow">Phase 9.6</p>
-          <h2>创建角色并试玩第一幕</h2>
+          <p className="eyebrow">Final Demo</p>
+          <h2>创建角色并试玩神秘调查</h2>
           <p>
             在浏览器里创建 world-mode 游戏，然后像跑团一样输入行动。前端只负责提交文字和展示返回结果；
             裁定、叙事、掷骰、记忆和状态修改仍由后端运行时负责。
@@ -183,6 +185,35 @@ function CharacterCreation({ data }: { data: ApiBootData }) {
     setSelectedEthnicity(nextCountry?.ethnicities[0]?.name ?? "");
   }
 
+  function applyFinalDemoSetup() {
+    const demoCountry =
+      data.origins.countries.find((country) => country.country_id === FINAL_DEMO_SETUP.countryId) ||
+      firstCountry;
+    setPlayerName(FINAL_DEMO_SETUP.playerName);
+    setSelectedCountryId(demoCountry?.country_id ?? "");
+    setSelectedCity(
+      demoCountry?.cities.find((city) => city.name === FINAL_DEMO_SETUP.city)?.name ||
+        demoCountry?.cities[0]?.name ||
+        "",
+    );
+    setSelectedEthnicity(demoCountry?.ethnicities[0]?.name ?? "");
+    setSelectedClassId(
+      data.classes.classes.find((item) => item.class_id === FINAL_DEMO_SETUP.classId)?.class_id ||
+        firstClass?.class_id ||
+        "",
+    );
+    setSelectedGod(
+      data.gods.gods.find((god) => god === FINAL_DEMO_SETUP.god) || firstGod || "",
+    );
+    setSelectedBackgroundId(
+      data.origins.backgrounds.find(
+        (background) => background.background_id === FINAL_DEMO_SETUP.backgroundId,
+      )?.background_id ||
+        firstBackground?.background_id ||
+        "",
+    );
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selectedCountry || !selectedCity || !selectedClassId || !selectedGod || !selectedBackgroundId) {
@@ -220,6 +251,9 @@ function CharacterCreation({ data }: { data: ApiBootData }) {
       <form className="panel creation-form" onSubmit={handleSubmit}>
         <p className="eyebrow">角色创建</p>
         <h2>开局设置</h2>
+        <button className="secondary-action" type="button" onClick={applyFinalDemoSetup}>
+          使用推荐 Demo 角色
+        </button>
 
         <label className="field">
           <span>名字</span>
@@ -734,11 +768,6 @@ function GameStatePanels({ state }: { state: PublicGameState }) {
       </section>
 
       <section className="panel state-card">
-        <p className="eyebrow">旧四维</p>
-        <AttributeGrid values={player.stats} labels={LEGACY_STAT_LABELS} />
-      </section>
-
-      <section className="panel state-card">
         <p className="eyebrow">成长</p>
         <dl className="compact-stats">
           <div>
@@ -863,8 +892,10 @@ function ItemCard({ item }: { item: ItemAffordance }) {
   const effects = item.effects
     .map((effect) => {
       const risk = effect.risk_types.join("/");
-      const stats = effect.check_stats.join("/");
-      return `${risk || "通用"} ${stats || ""} +${effect.bonus}${effect.consume ? " 消耗" : ""}`;
+      const attributes = effect.check_attributes
+        .map((attribute) => ATTRIBUTE_LABELS[attribute] || attribute)
+        .join("/");
+      return `${risk || "通用"} ${attributes || ""} +${effect.bonus}${effect.consume ? " 消耗" : ""}`;
     })
     .filter(Boolean);
 

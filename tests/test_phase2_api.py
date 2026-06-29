@@ -1,8 +1,10 @@
 import sys
 from pathlib import Path
+import os
 import tempfile
 import warnings
 import unittest
+from unittest.mock import patch
 
 warnings.filterwarnings("ignore", message="Using `httpx` with `starlette.testclient` is deprecated.*")
 
@@ -18,6 +20,19 @@ from phase2_api.services.session_store import clear_sessions, configure_storage
 
 class Phase2ApiTests(unittest.TestCase):
     def setUp(self):
+        self.env_patch = patch.dict(
+            os.environ,
+            {
+                "PANTHEON_USE_AGENTIC_RUNTIME": "0",
+                "PANTHEON_USE_AGENTIC_LLM": "0",
+                "PANTHEON_USE_LLM": "0",
+                "PANTHEON_CREATIVE_GM_MODE": "0",
+                "PANTHEON_AGENTIC_TURN_DIRECTOR": "0",
+                "PANTHEON_AGENTIC_FULL_LLM": "0",
+            },
+            clear=False,
+        )
+        self.env_patch.start()
         self.temp_dir = tempfile.TemporaryDirectory()
         self.db_path = Path(self.temp_dir.name) / "test.sqlite3"
         configure_storage(self.db_path)
@@ -25,6 +40,7 @@ class Phase2ApiTests(unittest.TestCase):
         self.client = TestClient(app)
 
     def tearDown(self):
+        self.env_patch.stop()
         self.temp_dir.cleanup()
 
     def test_health_endpoint(self):
@@ -124,6 +140,7 @@ class Phase2ApiTests(unittest.TestCase):
         self.assertEqual(api_payload["state"]["current_location"], "前厅")
         self.assertEqual(api_payload["mechanics"]["kind"], "action")
         self.assertIsNone(api_payload["debug"])
+        self.assertIsNone(action_payload["llm_runtime"])
 
         read_response = self.client.get(f"/games/{game_id}")
         self.assertEqual(read_response.status_code, 200)
@@ -184,6 +201,44 @@ class Phase2ApiTests(unittest.TestCase):
         self.assertIsNotNone(payload["debug"])
         self.assertIn("rule_result", payload["debug"])
         self.assertIn("action", payload["debug"])
+        self.assertIn("observability", payload["debug"])
+        self.assertEqual(
+            payload["debug"]["observability"]["runtime_phase"],
+            "phase4-structured-runtime",
+        )
+        self.assertIsNotNone(payload["response"]["llm_runtime"])
+
+    def test_world_action_debug_includes_safe_agentic_observability(self):
+        create_response = self.client.post(
+            "/games",
+            json={
+                "name": "伊芙",
+                "class_id": "mage",
+                "god": "真理之神",
+                "game_mode": "world",
+                "origin_country_id": "lumiere",
+                "origin_city": "维拉尔",
+                "background_id": "dock_scribe",
+            },
+        )
+
+        self.assertEqual(create_response.status_code, 200)
+        game_id = create_response.json()["game_id"]
+
+        response = self.client.post(
+            f"/games/{game_id}/actions",
+            json={"text": "观察码头账房附近的人群", "include_debug": True},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        observability = payload["debug"]["observability"]
+        self.assertEqual(observability["schema_version"], "10.1")
+        self.assertEqual(observability["runtime_phase"], "phase5-agentic-runtime")
+        self.assertIn("branch", observability["trace"])
+        self.assertIn("total_ms", observability["trace"])
+        self.assertIn("world_attempt_recorded", observability["commit"]["committed_effects"])
+        self.assertNotIn("hidden_context", str(observability))
 
     def test_game_events_is_empty_for_new_session(self):
         create_response = self.client.post(

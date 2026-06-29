@@ -36,6 +36,51 @@ to your account, you can set:
 PANTHEON_OPENAI_MODEL=gpt-5.5
 ```
 
+## OpenAI-Compatible Local Providers
+
+Phase 10.5 supports official OpenAI and local OpenAI-compatible endpoints
+through the same provider boundary. To use a local server, keep the game logic
+unchanged and configure only `.env`.
+
+Ollama example:
+
+```text
+OPENAI_API_KEY=local
+PANTHEON_OPENAI_PROVIDER=ollama
+PANTHEON_OPENAI_BASE_URL=http://localhost:11434/v1
+PANTHEON_OPENAI_MODEL=your-local-model
+```
+
+LM Studio example:
+
+```text
+OPENAI_API_KEY=local
+PANTHEON_OPENAI_PROVIDER=lm_studio
+PANTHEON_OPENAI_BASE_URL=http://localhost:1234/v1
+PANTHEON_OPENAI_MODEL=your-local-model
+```
+
+vLLM example:
+
+```text
+OPENAI_API_KEY=local
+PANTHEON_OPENAI_PROVIDER=vllm
+PANTHEON_OPENAI_BASE_URL=http://localhost:8000/v1
+PANTHEON_OPENAI_MODEL=your-local-model
+```
+
+Notes:
+
+- Leave `PANTHEON_OPENAI_BASE_URL` empty for official OpenAI.
+- Custom local endpoints use the chat-completions JSON path, so the local
+  server does not need to support OpenAI Responses API.
+- Local compatible servers often still require a placeholder `OPENAI_API_KEY`.
+- Local models may be weaker at strict structured JSON. If smoke tests fail
+  with parsing or schema errors, try a stronger instruct model, reduce output
+  length, or use the official provider for important playtests.
+- Provider switching must not bypass validators, dice, state commit, or memory
+  commit rules.
+
 ## Smoke Test
 
 Run the older Phase 4 provider smoke test first:
@@ -69,6 +114,7 @@ This prints:
 
 - runtime branch: `local`, `creative_gm`, `turn_director`, `turn_director_fallback_local`,
   `legacy_world_bundle`, or `full_multi_agent`;
+- provider endpoint summary: official OpenAI or custom OpenAI-compatible endpoint;
 - total elapsed time;
 - per-step timings;
 - provider reason;
@@ -80,6 +126,7 @@ It only calls OpenAI when `.env` enables `PANTHEON_USE_AGENTIC_LLM=1` and a real
 For the recommended high-freedom live play path, set:
 
 ```text
+PANTHEON_PLAY_PROFILE=fast
 PANTHEON_CREATIVE_GM_MODE=1
 PANTHEON_AGENTIC_TURN_DIRECTOR=1
 PANTHEON_AGENTIC_FULL_LLM=0
@@ -87,6 +134,29 @@ PANTHEON_AGENTIC_FULL_LLM=0
 
 In this mode, the LLM acts as the player-facing GM first. Python still owns
 memory, validation, dice, and state commit.
+
+Phase 10.4 adds four runtime profiles:
+
+```text
+local   = offline local providers, zero API cost
+fast    = recommended live play, one Creative GM call
+quality = more context/output budget for important scenes
+debug   = live play with runtime output enabled
+```
+
+Profile smoke commands:
+
+```bash
+env PANTHEON_PLAY_PROFILE=local ./.venv/bin/python -m agentic_runtime.smoke_test
+env PANTHEON_PLAY_PROFILE=fast ./.venv/bin/python -m agentic_runtime.smoke_test
+env PANTHEON_PLAY_PROFILE=quality ./.venv/bin/python -m agentic_runtime.smoke_test
+env PANTHEON_PLAY_PROFILE=debug ./.venv/bin/python -m agentic_runtime.smoke_test
+```
+
+The smoke output includes the runtime branch, slowest steps, profile budget
+status, and speed advice. In the current live path, most latency usually comes
+from the single OpenAI provider call rather than Python-side validation,
+memory, dice, or state commit.
 
 ## Live Unit Tests
 

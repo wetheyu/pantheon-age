@@ -130,10 +130,14 @@ class GameServiceTests(unittest.TestCase):
         self.assertEqual(state.current_location, "前厅")
         self.assertEqual(response.llm_runtime["phase"], "phase5-agentic-runtime")
         agentic = response.llm_runtime["agentic_runtime"]
+        observability = response.llm_runtime["observability"]
         self.assertIn("跳向前厅", agentic["open_action"]["method"])
         self.assertEqual(agentic["adjudication"]["action_type"], "move")
         self.assertEqual(agentic["runtime_trace"]["branch"], "local")
         self.assertIn("total_ms", agentic["runtime_trace"])
+        self.assertEqual(observability["runtime_phase"], "phase5-agentic-runtime")
+        self.assertEqual(observability["trace"]["branch"], "local")
+        self.assertIn("location_change", observability["commit"]["committed_effects"])
 
     def test_world_mode_uses_agentic_runtime_without_env_flag(self):
         state = self.make_world_state()
@@ -156,6 +160,7 @@ class GameServiceTests(unittest.TestCase):
         first_agentic = first.llm_runtime["agentic_runtime"]
         second_agentic = second.llm_runtime["agentic_runtime"]
         first_payload = first.to_dict()
+        public_payload = first.to_dict(include_runtime=False)
 
         self.assertNotIn("【格兰威克】", first.text)
         self.assertIn("街面上的脚步声", first.text)
@@ -172,6 +177,7 @@ class GameServiceTests(unittest.TestCase):
         self.assertEqual(len(state.agentic_memory["quest"]), 2)
         self.assertNotIn("hidden_context", first_agentic["memory_retrieval"])
         self.assertNotIn("agentic_memory", first_payload["state"])
+        self.assertIsNone(public_payload["llm_runtime"])
         self.assertTrue(
             any("异常钟声" in item for item in second_agentic["memory_retrieval"]["player_known"])
         )
@@ -186,7 +192,7 @@ class GameServiceTests(unittest.TestCase):
         self.assertIn("检定：d20(", response.text)
         self.assertIn("/ DC 16 ->", response.text)
         self.assertIn("风险：暴力", response.text)
-        self.assertIn("差值：+6", response.text)
+        self.assertIn("差值：+0", response.text)
         self.assertIn("属性：体魄 15 +2", response.text)
         self.assertIn("技能：正面战斗基础 +2", response.text)
         self.assertIn("小成功", response.text)

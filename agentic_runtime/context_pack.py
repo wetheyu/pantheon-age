@@ -19,6 +19,8 @@ from phase1_cli.progression import (
 from phase1_cli.scenarios import current_scene_focus_for_state
 from rag.canon import retrieve_canon_chunks
 
+from .runtime_profiles import active_runtime_profile
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RAG_SEED_PATH = PROJECT_ROOT / "docs" / "rag_seed_cards.md"
@@ -61,7 +63,6 @@ def build_player_context(state):
         "name": player.name,
         "class": player.class_name,
         "god": player.god,
-        "stats": dict(player.stats),
         "attributes": dict(player.attributes),
         "progression": {
             "class_level": player.class_level,
@@ -119,9 +120,28 @@ def build_visible_memory(memory_retrieval):
 
 
 def build_generation_directives():
+    profile = active_runtime_profile()
+    story_length = "For player-facing narration, prefer 4 to 8 short paragraphs when enough material exists."
+    if profile and profile.name == "fast":
+        story_length = (
+            "Fast profile: prefer 2 to 4 compact paragraphs and keep the "
+            "player-facing narration under about 650 Chinese characters unless "
+            "the action is unusually important."
+        )
+    elif profile and profile.name == "quality":
+        story_length = (
+            "Quality profile: prefer 4 to 7 vivid short paragraphs, with richer "
+            "sensory details and stronger hooks."
+        )
+    elif profile and profile.name == "debug":
+        story_length = (
+            "Debug profile: prefer 3 to 5 compact paragraphs. Keep prose readable "
+            "and never expose debug/runtime terms."
+        )
     return {
         "creative_rule": "LLM creates possibilities; code validates authority and commits truth.",
-        "story_length": "For player-facing narration, prefer 4 to 8 short paragraphs when enough material exists.",
+        "play_profile": profile.to_dict() if profile else {"name": "custom", "label": "Explicit switches"},
+        "story_length": story_length,
         "style": "Atmospheric tabletop GM prose in Chinese; no debug labels or system reports.",
         "authority": (
             "Do not grant clues, items, deaths, faction changes, permanent facts, upgrades, or endings "

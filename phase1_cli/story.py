@@ -201,9 +201,13 @@ def render_mechanical_summary(result):
 
 
 def render_roll_line(roll):
-    stat_name = STAT_NAMES.get(roll["stat"], roll["stat"])
+    stat_name = roll.get("attribute_label") or STAT_NAMES.get(roll["stat"], roll["stat"])
     outcome = roll.get("outcome_label") or ("成功" if roll["success"] else "失败")
     modifier_label = roll.get("modifier_label", "修正")
+    if "attribute_value" in roll:
+        stat_text = f"{stat_name}({roll['attribute_value']}/{roll['stat_value']:+d})"
+    else:
+        stat_text = f"{stat_name}({roll['stat_value']})"
     extras = []
     if roll.get("risk_label"):
         extras.append(f"风险：{roll['risk_label']}")
@@ -241,7 +245,7 @@ def render_roll_line(roll):
         extras.append(f"消耗：{'，'.join(roll['consumed_items'])}")
     extra_text = f"｜{'｜'.join(extras)}" if extras else ""
     return (
-        f"检定：d20({roll['d20']}) + {stat_name}({roll['stat_value']}) "
+        f"检定：d20({roll['d20']}) + {stat_text} "
         f"+ {modifier_label}({roll['modifier']:+d}) = {roll['total']} / DC {roll['dc']} -> {outcome}"
         f"{extra_text}"
     )

@@ -18,6 +18,8 @@ Do not let live LLM output bypass validators or state commit.
 
 ## Phase 10.1 Observability And Trace Records
 
+Status: complete.
+
 Goal:
 
 - make every weird turn explainable.
@@ -48,6 +50,16 @@ Done when:
 - API action response can include trace only when requested;
 - normal player-facing story remains clean.
 
+Implemented:
+
+- added `agentic_runtime/observability.py` for safe structured runtime summaries;
+- API default responses hide `response.llm_runtime`;
+- API debug responses include `debug.observability` and full runtime only when
+  `include_debug=true`;
+- CLI runtime debug output includes observability summary;
+- tests cover observability shape, API hiding behavior, and local/offline test
+  isolation.
+
 Verification:
 
 ```bash
@@ -55,6 +67,8 @@ Verification:
 ```
 
 ## Phase 10.2 Agent Safety Evals
+
+Status: complete.
 
 Goal:
 
@@ -97,10 +111,31 @@ Done when:
 Verification:
 
 ```bash
-env PANTHEON_USE_AGENTIC_LLM=0 PANTHEON_USE_LLM=0 ./.venv/bin/python -m unittest discover -s tests
+./.venv/bin/python -m unittest tests.test_safety_evals
+```
+
+Implemented:
+
+- added `agentic_runtime/safety_evals.py` for repeatable local/offline safety
+  evals;
+- added `tests/test_safety_evals.py`;
+- evals cover free reward attempts, unauthorized death, secret leakage, invented
+  ninth core god, uncommitted cross-city travel, impossible major purchase, and
+  scene continuity after setup;
+- fixed cross-city travel detection so explicit attempts to reach another city
+  become travel requests rather than direct location changes;
+- fixed blocked acquisition narration validation so quoted player intent is not
+  mistaken for confirmed property ownership.
+
+Additional verification:
+
+```bash
+./.venv/bin/python -m unittest tests.test_playtest_fixtures tests.test_agentic_runtime
 ```
 
 ## Phase 10.3 Narrative Quality Evals
+
+Status: complete.
 
 Goal:
 
@@ -140,10 +175,25 @@ Done when:
 Verification:
 
 ```bash
-./.venv/bin/python -m unittest tests.test_story_views tests.test_playtest_fixtures
+./.venv/bin/python -m unittest tests.test_narrative_quality_evals tests.test_story_views tests.test_playtest_fixtures
 ```
 
+Implemented:
+
+- added `agentic_runtime/narrative_quality_evals.py` for deterministic local
+  story-quality scoring;
+- added `tests/test_narrative_quality_evals.py`;
+- evals check second-person player agency, concrete/sensory detail, location
+  grounding, next actionable hook, paragraph pacing, backend/runtime term leaks,
+  and report-style labels;
+- fixed memory curation so committed effect ids are converted into
+  player-facing summaries before becoming visible long-term memory;
+- added defensive visible-memory filtering for old records that may contain
+  backend effect ids.
+
 ## Phase 10.4 Cost And Speed Optimization
+
+Status: complete.
 
 Goal:
 
@@ -181,6 +231,32 @@ Verification:
 ```bash
 ./.venv/bin/python -m agentic_runtime.smoke_test
 npm run smoke:api
+```
+
+Implemented:
+
+- added `agentic_runtime/runtime_profiles.py`;
+- added `agentic_runtime/performance.py`;
+- added `tests/test_runtime_profiles.py` and `tests/test_performance.py`;
+- `PANTHEON_PLAY_PROFILE` now supports `local`, `fast`, `quality`, and `debug`;
+- `fast` profile uses the one-call Creative GM path with compact context and
+  shorter narration guidance;
+- `quality` profile keeps more context/output budget for important scenes;
+- `debug` profile enables runtime output while keeping the same validation and
+  commit boundaries;
+- `agentic_runtime.smoke_test` now reports runtime profile, slowest steps,
+  budget status, and speed advice;
+- real LLM smoke testing confirmed the provider call dominates latency while
+  local memory, validation, commit, and persistence remain tiny.
+
+Observed live smoke:
+
+```text
+PANTHEON_PLAY_PROFILE=fast
+branch=creative_gm
+total ~= 17-23s in current runs
+dominant step=creative_gm_provider
+status=warn against a 20s fast-profile budget
 ```
 
 ## Phase 10.5 Provider Strategy And Local Model Path
@@ -224,6 +300,28 @@ Verification:
 ./.venv/bin/python -m unittest tests.test_llm_runtime_providers
 ```
 
+Status: complete in `v10.5.0`.
+
+Implemented:
+
+- added `PANTHEON_OPENAI_PROVIDER` and `PANTHEON_OPENAI_BASE_URL`;
+- `build_openai_client()` now supports official OpenAI and custom
+  OpenAI-compatible base URLs;
+- custom OpenAI-compatible endpoints use a chat-completions JSON path, so local
+  servers do not need to implement the newer Responses API;
+- runtime provider summaries include a safe endpoint summary without exposing
+  API keys or raw payloads;
+- `agentic_runtime.smoke_test` prints provider endpoint information;
+- added offline tests for custom base URL client construction and Agentic
+  Runtime endpoint reporting;
+- documented Ollama, LM Studio, vLLM, and generic local compatible setup.
+
+Verification run:
+
+```bash
+./.venv/bin/python -m unittest tests.test_llm_runtime_providers tests.test_runtime_profiles
+```
+
 ## Phase 10.6 Packaging And Dev Profiles
 
 Goal:
@@ -257,6 +355,32 @@ Verification:
 git status --ignored --short
 npm run build
 ```
+
+Status: complete in `v10.6.0`.
+
+Implemented:
+
+- added `scripts/dev.py` as a standard-library developer helper;
+- `scripts/dev.py doctor` reports local setup status without reading secrets;
+- `scripts/dev.py check` runs Python compile plus the offline unit test suite
+  with live LLM and live embeddings disabled;
+- added helper commands for CLI, API, Agentic Runtime smoke, Web install, Web
+  dev, Web build, and Web API smoke;
+- added `docs/dev_setup.md` for repeatable setup, profile usage, official
+  OpenAI/local endpoint config, common commands, local runtime files, and the
+  Docker decision;
+- expanded `.gitignore` for local env variants, SQLite sidecar files, logs,
+  caches, coverage, build output, and web runtime output;
+- updated README, Web README, docs index, changelog, AGENTS, and technical
+  roadmap to the packaging/dev-profile baseline.
+
+Docker decision:
+
+- defer Docker Compose until the final demo path is locked;
+- current recommended development path is `.venv` + FastAPI + Vite +
+  `scripts/dev.py`;
+- SQLite and local model providers do not currently require container
+  orchestration.
 
 ## Phase 10.7 Final Demo Pass
 
@@ -304,6 +428,32 @@ npm run build
 npm run smoke:api
 env PANTHEON_RUN_LIVE_LLM_TESTS=1 PANTHEON_USE_AGENTIC_LLM=1 ./.venv/bin/python -m unittest tests.test_live_agentic_runtime
 ```
+
+Status: complete in `v10.7.0`.
+
+Implemented:
+
+- added `docs/final_demo.md` as the recommended 5-10 minute portfolio route;
+- added `agentic_runtime/final_demo.py` with a local final demo smoke route;
+- added `tests/test_final_demo.py` to keep the route from regressing;
+- added `scripts/dev.py final-demo`;
+- updated Web UI copy from internal phase wording to final demo wording;
+- added a browser character-creation shortcut for the recommended final demo
+  setup: 卢米埃 / 卢塞恩 / 密探 / 隐秘之神 / 调查记者;
+- updated Web API smoke to use the final demo setup;
+- updated README with what the project demonstrates as an AI Agent engineering
+  portfolio piece.
+
+Final demo route demonstrates:
+
+- world-mode character creation and opening hook;
+- canon/context grounding;
+- memory continuity;
+- item bonus in dice context;
+- prayer bonus and religious legality pressure;
+- resource gate preventing impossible property acquisition;
+- violence gate preventing unauthorized death confirmation;
+- browser UI.
 
 ## Recommended Execution Order
 

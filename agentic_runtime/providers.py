@@ -6,6 +6,8 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
+from phase1_cli.progression import normalize_check_attribute
+
 from llm_runtime.providers import (
     OPENAI_MODEL_ENV_VAR,
     DEFAULT_OPENAI_MODEL,
@@ -14,6 +16,7 @@ from llm_runtime.providers import (
     call_openai_structured,
     load_local_env,
     load_runtime_notes,
+    openai_endpoint_summary,
 )
 
 from .contracts import (
@@ -37,6 +40,7 @@ from .narrator_agent import narrate_turn
 from .npc_agent import propose_npcs
 from .rule_arbiter_agent import propose_rule_adjudication
 from .scene_agent import propose_temporary_scene
+from .runtime_profiles import active_runtime_profile, apply_runtime_profile
 
 
 AGENTIC_LLM_ENABLED_ENV_VAR = "PANTHEON_USE_AGENTIC_LLM"
@@ -126,7 +130,7 @@ class WorldBundleOutput(BaseModel):
 
 class RuleCheckOutput(BaseModel):
     check_type: str
-    stat: Optional[Literal["strength", "agility", "intelligence", "faith"]] = None
+    stat: Optional[Literal["physique", "agility", "insight", "knowledge", "will", "communion"]] = None
     dc: Optional[int] = None
     reason: str = ""
 
@@ -136,7 +140,7 @@ class RuleBridgeActionOutput(BaseModel):
     target: Optional[str] = None
     item: Optional[str] = None
     requires_check: bool = False
-    check_stat: Optional[Literal["strength", "agility", "intelligence", "faith"]] = None
+    check_stat: Optional[Literal["physique", "agility", "insight", "knowledge", "will", "communion"]] = None
     difficulty: Optional[int] = None
     risk_type: Optional[
         Literal["violence", "social", "stealth", "theft", "escape", "occult", "travel", "high_risk"]
@@ -192,7 +196,7 @@ class CreativeGMOutput(BaseModel):
     risk_type: Optional[
         Literal["violence", "social", "stealth", "theft", "escape", "occult", "travel", "high_risk"]
     ] = None
-    check_stat: Optional[Literal["strength", "agility", "intelligence", "faith"]] = None
+    check_stat: Optional[Literal["physique", "agility", "insight", "knowledge", "will", "communion"]] = None
     difficulty: Optional[int] = None
     target_profile: str = ""
     possible_blockers: list[str] = Field(default_factory=list)
@@ -224,6 +228,9 @@ class AgenticProviders:
     llm_enabled: bool = False
     model: Optional[str] = None
     reason: str = "Local agentic providers enabled."
+    runtime_profile: Optional[str] = None
+    runtime_profile_description: str = ""
+    provider_endpoint: Optional[dict] = None
 
     def to_dict(self):
         return {
@@ -241,6 +248,9 @@ class AgenticProviders:
             "llm_enabled": self.llm_enabled,
             "model": self.model,
             "reason": self.reason,
+            "runtime_profile": self.runtime_profile,
+            "runtime_profile_description": self.runtime_profile_description,
+            "provider_endpoint": self.provider_endpoint,
         }
 
 
@@ -747,15 +757,19 @@ class OpenAITurnDirectorProvider(TurnDirectorProvider):
 
     def __init__(self, model=None, client=None, api_key=None):
         load_local_env()
+        self.runtime_profile = active_runtime_profile()
         self.model = model or os.getenv(OPENAI_MODEL_ENV_VAR, DEFAULT_OPENAI_MODEL)
         self.client = client
         self.api_key = api_key
 
     def propose_turn(self, state, user_text, memory_retrieval=None):
+        lore_card_limit = self.runtime_profile.lore_card_limit if self.runtime_profile else 3
+        runtime_notes_limit = self.runtime_profile.runtime_notes_limit if self.runtime_profile else 1000
         local_open_action = propose_open_action(user_text, state, memory_retrieval)
         local_adjudication = propose_rule_adjudication(state, local_open_action)
         payload = {
             "user_text": user_text,
+            "runtime_profile": self.runtime_profile.to_dict() if self.runtime_profile else {},
             "local_baseline": {
                 "open_action": local_open_action.to_dict(),
                 "adjudication": local_adjudication.to_dict(),
@@ -766,9 +780,9 @@ class OpenAITurnDirectorProvider(TurnDirectorProvider):
                 memory_retrieval=memory_retrieval,
                 open_action=local_open_action,
                 adjudication=local_adjudication,
-                lore_card_limit=3,
+                lore_card_limit=lore_card_limit,
             ),
-            "runtime_notes": load_runtime_notes(limit=1000),
+            "runtime_notes": load_runtime_notes(limit=runtime_notes_limit),
         }
         data = call_openai_structured(
             client=self.client,
@@ -824,15 +838,19 @@ class OpenAICreativeGMProvider(TurnDirectorProvider):
 
     def __init__(self, model=None, client=None, api_key=None):
         load_local_env()
+        self.runtime_profile = active_runtime_profile()
         self.model = model or os.getenv(OPENAI_MODEL_ENV_VAR, DEFAULT_OPENAI_MODEL)
         self.client = client
         self.api_key = api_key
 
     def propose_turn(self, state, user_text, memory_retrieval=None):
+        lore_card_limit = self.runtime_profile.lore_card_limit if self.runtime_profile else 5
+        runtime_notes_limit = self.runtime_profile.runtime_notes_limit if self.runtime_profile else 1600
         local_open_action = propose_open_action(user_text, state, memory_retrieval)
         local_adjudication = propose_rule_adjudication(state, local_open_action)
         payload = {
             "user_text": user_text,
+            "runtime_profile": self.runtime_profile.to_dict() if self.runtime_profile else {},
             "public_state": state.to_public_dict(),
             "local_baseline": {
                 "open_action": local_open_action.to_dict(),
@@ -844,9 +862,9 @@ class OpenAICreativeGMProvider(TurnDirectorProvider):
                 memory_retrieval=memory_retrieval,
                 open_action=local_open_action,
                 adjudication=local_adjudication,
-                lore_card_limit=5,
+                lore_card_limit=lore_card_limit,
             ),
-            "runtime_notes": load_runtime_notes(limit=1600),
+            "runtime_notes": load_runtime_notes(limit=runtime_notes_limit),
         }
         data = call_openai_structured(
             client=self.client,
@@ -983,7 +1001,11 @@ def split_sidecar_note(note, fallback_name):
 def build_creative_gm_adjudication_payload(data, user_text, local_adjudication):
     requires_check = bool(data.get("requires_check"))
     risk_type = data.get("risk_type")
-    check_stat = data.get("check_stat")
+    check_stat = (
+        normalize_check_attribute(data.get("check_stat"), risk_type or "high_risk")
+        if data.get("check_stat")
+        else None
+    )
     difficulty = data.get("difficulty")
     allowed_effects = [
         "temporary_scene",
@@ -1083,6 +1105,17 @@ def normalize_rule_adjudication_payload(payload, fallback=None):
                 getattr(fallback_check, "stat", None),
                 fallback_bridge.get("check_stat"),
             )
+        if bridge.get("check_stat"):
+            bridge["check_stat"] = normalize_check_attribute(
+                bridge["check_stat"],
+                bridge.get("risk_type") or "high_risk",
+            )
+        for check in checks:
+            if check.get("stat"):
+                check["stat"] = normalize_check_attribute(
+                    check["stat"],
+                    check.get("check_type") or bridge.get("risk_type") or "high_risk",
+                )
         if bridge.get("difficulty") is None:
             bridge["difficulty"] = first_present(
                 first_check_value(checks, "dc"),
@@ -1127,8 +1160,22 @@ def first_present(*values):
 
 def build_agentic_providers_from_env():
     load_local_env()
+    runtime_profile = active_runtime_profile()
+    if runtime_profile:
+        apply_runtime_profile(runtime_profile)
     local_providers = build_local_agentic_providers()
+    endpoint = openai_endpoint_summary()
     if not is_agentic_llm_enabled():
+        if runtime_profile:
+            return AgenticProviders(
+                **base_provider_kwargs(local_providers),
+                llm_enabled=False,
+                model=None,
+                reason=f"Runtime profile {runtime_profile.name}: {runtime_profile.description}",
+                runtime_profile=runtime_profile.name,
+                runtime_profile_description=runtime_profile.description,
+                provider_endpoint=endpoint,
+            )
         return local_providers
 
     if not os.getenv("OPENAI_API_KEY"):
@@ -1137,6 +1184,9 @@ def build_agentic_providers_from_env():
             llm_enabled=False,
             model=None,
             reason="OPENAI_API_KEY is missing; using local Agentic Runtime providers.",
+            runtime_profile=runtime_profile.name if runtime_profile else None,
+            runtime_profile_description=runtime_profile.description if runtime_profile else "",
+            provider_endpoint=endpoint,
         )
 
     model = os.getenv(OPENAI_MODEL_ENV_VAR, DEFAULT_OPENAI_MODEL)
@@ -1158,7 +1208,15 @@ def build_agentic_providers_from_env():
             world_bundle=None,
             llm_enabled=True,
             model=model,
-            reason=agentic_llm_reason(full_llm, use_turn_director, creative_gm),
+            reason=agentic_llm_reason(
+                full_llm,
+                use_turn_director,
+                creative_gm,
+                runtime_profile=runtime_profile,
+            ),
+            runtime_profile=runtime_profile.name if runtime_profile else None,
+            runtime_profile_description=runtime_profile.description if runtime_profile else "",
+            provider_endpoint=endpoint,
         )
 
     if use_turn_director and not full_llm:
@@ -1176,7 +1234,14 @@ def build_agentic_providers_from_env():
             world_bundle=None,
             llm_enabled=True,
             model=model,
-            reason=agentic_llm_reason(full_llm, use_turn_director),
+            reason=agentic_llm_reason(
+                full_llm,
+                use_turn_director,
+                runtime_profile=runtime_profile,
+            ),
+            runtime_profile=runtime_profile.name if runtime_profile else None,
+            runtime_profile_description=runtime_profile.description if runtime_profile else "",
+            provider_endpoint=endpoint,
         )
 
     return AgenticProviders(
@@ -1193,7 +1258,14 @@ def build_agentic_providers_from_env():
         world_bundle=None if full_llm else OpenAIWorldBundleProvider(model=model),
         llm_enabled=True,
         model=model,
-        reason=agentic_llm_reason(full_llm, use_turn_director),
+        reason=agentic_llm_reason(
+            full_llm,
+            use_turn_director,
+            runtime_profile=runtime_profile,
+        ),
+        runtime_profile=runtime_profile.name if runtime_profile else None,
+        runtime_profile_description=runtime_profile.description if runtime_profile else "",
+        provider_endpoint=endpoint,
     )
 
 
@@ -1264,23 +1336,26 @@ def is_creative_gm_enabled():
     return raw_value in {"1", "true", "yes", "on"}
 
 
-def agentic_llm_reason(full_llm, use_turn_director=False, creative_gm=False):
+def agentic_llm_reason(full_llm, use_turn_director=False, creative_gm=False, runtime_profile=None):
+    profile_prefix = ""
+    if runtime_profile:
+        profile_prefix = f"Runtime profile {runtime_profile.name}: {runtime_profile.description} "
     if creative_gm and not full_llm:
-        return (
+        return profile_prefix + (
             "OpenAI Creative GM mode enabled: one LLM call owns the player-facing "
             "imagination while local memory, validation, dice, and state commit stay authoritative."
         )
     if use_turn_director and not full_llm:
-        return (
+        return profile_prefix + (
             "OpenAI Turn Director agent enabled for low-latency live play; "
             "memory, validation, state commit, and fallback providers stay local."
         )
     if full_llm:
-        return (
+        return profile_prefix + (
             "OpenAI Intent/RuleArbiter/NPC/Event/Item/Narrator agents enabled; "
             "memory and commit use local providers."
         )
-    return (
+    return profile_prefix + (
         "OpenAI Intent, Rule Arbiter, and World Bundle agents enabled; "
         "memory and commit use local providers."
     )

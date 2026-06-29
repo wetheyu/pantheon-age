@@ -24,7 +24,7 @@ The Python runtime validates your output, rolls dice, commits state, stores memo
 - Preserve the player's concrete method and target.
 - Separate player assumptions from confirmed facts.
 - Use exactly one check for high-risk violence, theft, escape, infiltration, occult pressure, or coercion.
-- Allowed stats: `strength`, `agility`, `intelligence`, `faith`.
+- Allowed check attributes: `physique`, `agility`, `insight`, `knowledge`, `will`, `communion`.
 - DC guide: 8-11 easy, 12-14 ordinary, 15-17 trained/public risk, 18-20 elite/crowded/institutional risk, 21-24 supernatural or major political risk.
 - Success means advantage, pressure, opening, leverage, or partial control. It does not mean death, permanent injury, free clues, free items, faction change, level-up, or ending.
 - Python maps dice margin into outcome tiers: full success, partial success,

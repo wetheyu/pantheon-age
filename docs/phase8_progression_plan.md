@@ -27,7 +27,7 @@ Implemented:
   - `knowledge`
   - `will`
   - `communion`
-- preserved the old four-stat `stats` bridge for current checks;
+- preserved old-save loading compatibility while moving new checks to attributes;
 - added structured progression fields:
   - `class_level`
   - `faith_level`
@@ -119,11 +119,10 @@ Goal: move common world checks toward the six-attribute model.
 
 Implemented:
 
-- added shared world-mode check profiles that map `risk_type + legacy stat` to
-  a primary six-attribute profile;
+- added shared world-mode check profiles that map `risk_type + check_attribute`
+  to a primary six-attribute profile;
 - added d20-style `attribute_modifier = (attribute - 10) // 2`;
-- kept old four-stat checks as the compatibility bridge while adding the
-  six-attribute modifier into `行动修正`;
+- made the six-attribute modifier part of `行动修正`;
 - attached `attribute_profile` and `attribute_modifier` to roll results and
   check context;
 - made player-facing dice output show the six-attribute source, such as
@@ -133,10 +132,9 @@ Implemented:
 
 Why this matters:
 
-- six attributes now affect actual play without breaking older saves, CLI
-  tutorial checks, or existing API shapes;
-- future Phase 8 work can gradually reduce reliance on old `strength/agility/
-  intelligence/faith` values;
+- six attributes now affect actual play without breaking older saves;
+- early four-stat fields are old-save compatibility data, not the live check
+  model;
 - dice output remains readable while the internal model becomes more RPG-like.
 
 ## Phase 8.5 Ritual Advancement Slice

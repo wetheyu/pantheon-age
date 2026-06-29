@@ -75,7 +75,7 @@ class LLMRuntimeActionCandidateTests(unittest.TestCase):
 
         result = resolve_action_candidate("攻击黑影", "前厅", candidate=candidate)
 
-        self.assertEqual(result.action["check_stat"], "strength")
+        self.assertEqual(result.action["check_stat"], "physique")
         self.assertEqual(result.action["difficulty"], 14)
         self.assertTrue(result.action["requires_check"])
 

@@ -179,7 +179,7 @@ def create_character_interactive():
         print(f"- 民族：{character.flags['origin_ethnicity']}")
         print(f"- 开局城市：{character.flags['origin_city']}")
         print(f"- 身份：{character.flags['background_name']}")
-    print(f"- 属性：{character.stats}")
+    print(f"- 六属性：{character.attributes}")
     print(f"- HP/SAN：{character.hp}/{character.san}")
     print(f"- 初始道具：{', '.join(character.inventory)}")
     return character
@@ -269,6 +269,7 @@ def print_agentic_runtime_debug(runtime):
     open_action = runtime["open_action"]
     adjudication = runtime["adjudication"]
     commit = runtime["commit"]
+    observability = runtime.get("observability", {})
     trace = runtime.get("runtime_trace", {})
     if trace:
         steps = ", ".join(
@@ -278,6 +279,14 @@ def print_agentic_runtime_debug(runtime):
         print(
             f"- trace: branch={trace.get('branch')}, "
             f"total={trace.get('total_ms')}ms, steps={steps}"
+        )
+    if observability:
+        slowest = observability.get("trace", {}).get("slowest_step") or {}
+        print(
+            f"- observability: schema={observability.get('schema_version')}, "
+            f"failed_validations={observability.get('validations', {}).get('failed_count')}, "
+            f"memory_writes={observability.get('memory', {}).get('written_record_count')}, "
+            f"slowest={slowest.get('name')}:{slowest.get('elapsed_ms')}ms"
         )
     print(
         f"- providers: intent={providers['intent_agent']}, "

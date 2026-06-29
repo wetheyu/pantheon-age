@@ -16,7 +16,7 @@ from agentic_runtime.playtest_fixtures import (
 
 class PlaytestFixtureTests(unittest.TestCase):
     def test_default_local_playtest_fixture_preserves_core_safety_properties(self):
-        with patch("phase1_cli.rule_engine.random.randint", side_effect=[10, 12, 14]):
+        with patch("phase1_cli.rule_engine.random.randint", side_effect=[10, 12, 20]):
             results = run_playtest_fixture()
 
         failures = collect_playtest_failures(results)

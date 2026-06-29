@@ -67,6 +67,7 @@ def build_world_mode_bridge_action(state, open_action):
         "item": None,
         "requires_check": risk_check["requires_check"],
         "check_stat": risk_check["check_stat"],
+        "check_attribute": risk_check["check_stat"],
         "difficulty": risk_check["difficulty"],
         "risk_type": risk_check["risk_type"],
         "target_profile": risk_check["target_profile"],
@@ -177,7 +178,7 @@ def infer_world_risk_check(open_action):
         ),
     ):
         method_text = f"{open_action.raw_text} {open_action.method}".lower()
-        stat = "agility" if contains_any(method_text, ("偷袭", "暗杀", "背刺", "潜行", "ambush", "stealth")) else "strength"
+        stat = "agility" if contains_any(method_text, ("偷袭", "暗杀", "背刺", "潜行", "ambush", "stealth")) else "physique"
         return {
             "requires_check": True,
             "check_stat": stat,
@@ -268,7 +269,7 @@ def infer_world_risk_check(open_action):
     ):
         return {
             "requires_check": True,
-            "check_stat": "intelligence",
+            "check_stat": "insight",
             "difficulty": 14,
             "risk_type": "social",
             "target_profile": "social_target",
@@ -299,7 +300,7 @@ def infer_world_risk_check(open_action):
             "dream",
         ),
     ):
-        stat = "faith" if contains_any(text, ("祈祷", "祷告", "净化", "pray", "purify")) else "intelligence"
+        stat = "communion" if contains_any(text, ("祈祷", "祷告", "净化", "pray", "purify")) else "knowledge"
         return {
             "requires_check": True,
             "check_stat": stat,

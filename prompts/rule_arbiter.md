@@ -29,7 +29,7 @@ Return one JSON object:
   "required_checks": [
     {
       "check_type": "violence",
-      "stat": "strength",
+      "stat": "physique",
       "dc": 18,
       "reason": "目标是受训守卫，附近有人可能阻拦。"
     }
@@ -56,7 +56,8 @@ Return one JSON object:
     "target": "目标",
     "item": null,
     "requires_check": true,
-    "check_stat": "strength",
+    "check_stat": "physique",
+    "check_attribute": "physique",
     "difficulty": 18,
     "risk_type": "violence",
     "target_profile": "trained_guard",
@@ -98,14 +99,16 @@ For violence:
 - Success may create advantage, injury pressure, disarmament, fear, or an opening.
 - Success does not automatically mean death unless a future explicit death effect exists.
 
-## Allowed Stats
+## Allowed Check Attributes
 
 Use only:
 
-- `strength`: direct violence, force, grappling, weapon clashes.
-- `agility`: ambush, evasion, stealthy strike, quick movement.
-- `intelligence`: deception setup, tactical trick, investigation, analysis.
-- `faith`: prayer, ritual pressure, divine resistance.
+- `physique`: direct violence, force, grappling, weapon clashes.
+- `agility`: ambush, evasion, stealth, theft, quick movement.
+- `insight`: observation, persuasion reads, deception reads, investigation.
+- `knowledge`: analysis, archives, tactics, occult theory, engineering.
+- `will`: fear resistance, pressure, discipline, public faith pressure.
+- `communion`: prayer, ritual contact, purification, divine pressure.
 
 ## Boundary Rules
 

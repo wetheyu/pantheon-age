@@ -581,7 +581,7 @@ Validators should check:
 
 ## Current Execution Status
 
-Current status: `v9.7.0` completes Phase 9.7 Phase 1-9 Consolidation And Final Plan. The project now
+Current status: `v10.7.0` completes Phase 10.7 Final Demo Pass. The project now
 has CLI/API foundations, SQLite persistence, Agentic Runtime, canon retrieval,
 persistent memory, playability calibration, the first progression/core
 mechanics baseline, a frontend-ready API contract for world-mode setup and
@@ -590,7 +590,30 @@ world-mode game, show the opening narration, submit player actions, and render
 host story responses with read-only character/world state panels, opening
 action suggestions, game-over handling, restart flow, and an API smoke check.
 The current baseline is consolidated in `docs/phase1_9_architecture_summary.md`,
-and final execution work is planned in `docs/final_phase10_plan.md`.
+final execution work is planned in `docs/final_phase10_plan.md`, and Agentic
+Runtime turns now expose safe structured observability payloads in debug mode.
+Local safety evals now check that runtime changes do not accidentally grant
+free rewards, confirm unauthorized death, leak secrets, teleport the player,
+invent core gods, or bypass resource gates. Local narrative quality evals now
+check that player-facing prose keeps a GM-like voice, concrete detail, location
+grounding, actionable hooks, clean pacing, and no backend/runtime vocabulary.
+Runtime profiles now provide repeatable `local`, `fast`, `quality`, and `debug`
+play configurations. Smoke tests report the slowest steps, profile budget
+status, and speed advice. Current live tests show Python-side memory, validation,
+commit, and persistence are tiny; real latency is dominated by the LLM provider
+call. Provider configuration now supports official OpenAI and local
+OpenAI-compatible endpoints through `PANTHEON_OPENAI_BASE_URL`, so Ollama, LM
+Studio, vLLM, or another compatible server can reuse the same validators, dice,
+state commit, and memory commit boundaries. Local setup is now captured in
+`docs/dev_setup.md`, and `scripts/dev.py` provides repeatable commands for
+doctor checks, offline tests, CLI, API, Agentic smoke, Web development, Web
+builds, API smoke checks, and the final demo smoke route. Phase 10.7 adds a
+fixed 5-10 minute portfolio path in `docs/final_demo.md`, a local
+`agentic_runtime.final_demo` smoke test, and a Web UI "recommended demo
+character" shortcut. The final demo route shows opening context, canon/context
+retrieval, long-term memory growth, dice checks, item bonuses, prayer bonuses,
+resource blocking, and violence authority boundaries without exposing runtime
+internals to the player.
 
 See:
 
@@ -602,6 +625,8 @@ docs/phase7_completion_summary.md
 docs/phase8_completion_summary.md
 docs/phase9_10_execution_plan.md
 docs/final_phase10_plan.md
+docs/dev_setup.md
+docs/final_demo.md
 ```
 
 Note:

@@ -22,7 +22,7 @@ class IntentParserTests(unittest.TestCase):
 
         self.assertEqual(action["intent"], "pray")
         self.assertTrue(action["requires_check"])
-        self.assertEqual(action["check_stat"], "faith")
+        self.assertEqual(action["check_stat"], "communion")
 
     def test_use_item_alias(self):
         action = parse_intent("喝下镇静", "前厅")

@@ -3,6 +3,10 @@
 This checklist is the repeatable 20-minute manual playtest path for Pantheon Age.
 It checks player experience, not exact LLM wording.
 
+For the shorter portfolio route, use:
+
+- [final_demo.md](final_demo.md)
+
 Run from the project root:
 
 ```bash

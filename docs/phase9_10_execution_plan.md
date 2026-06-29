@@ -198,8 +198,8 @@ Implemented:
 
 - added read-only character/world state side panels;
 - panels display identity, location, scene focus, HP/SAN, suspicion,
-  corruption, six attributes, legacy stats, progression resources, skills,
-  talents, prayers, burdens, inventory affordances, and clues;
+  corruption, six attributes, progression resources, skills, talents, prayers,
+  burdens, inventory affordances, and clues;
 - panels update from the API response state after every submitted action;
 - frontend does not execute game rules or mutate state.
 

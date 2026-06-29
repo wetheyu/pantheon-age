@@ -5,6 +5,7 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, Optional
+from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field
 
@@ -17,9 +18,12 @@ from .prompts import load_prompt
 DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
 LLM_ENABLED_ENV_VAR = "PANTHEON_USE_LLM"
 OPENAI_MODEL_ENV_VAR = "PANTHEON_OPENAI_MODEL"
+OPENAI_PROVIDER_ENV_VAR = "PANTHEON_OPENAI_PROVIDER"
+OPENAI_BASE_URL_ENV_VAR = "PANTHEON_OPENAI_BASE_URL"
 RAG_CHAR_LIMIT_ENV_VAR = "PANTHEON_RAG_CHAR_LIMIT"
 OPENAI_TIMEOUT_ENV_VAR = "PANTHEON_OPENAI_TIMEOUT"
 OPENAI_MAX_OUTPUT_TOKENS_ENV_VAR = "PANTHEON_OPENAI_MAX_OUTPUT_TOKENS"
+DEFAULT_OPENAI_PROVIDER = "openai"
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 ENV_PATH = PROJECT_ROOT / ".env"
 
@@ -104,6 +108,7 @@ class RuntimeProviders:
     llm_enabled: bool
     model: Optional[str]
     reason: str
+    provider_endpoint: Optional[dict] = None
 
     def to_dict(self):
         return {
@@ -111,6 +116,7 @@ class RuntimeProviders:
             "narration_provider": self.narration_provider.provider_name,
             "llm_enabled": self.llm_enabled,
             "model": self.model,
+            "endpoint": self.provider_endpoint if self.llm_enabled else None,
             "reason": self.reason,
         }
 
@@ -227,6 +233,7 @@ class OpenAINarrationProvider(NarrationProvider):
 def build_runtime_providers_from_env():
     """Build the providers used by the CLI/API service layer."""
     load_local_env()
+    endpoint = openai_endpoint_summary()
     if not is_llm_enabled():
         return RuntimeProviders(
             action_provider=KeywordActionCandidateProvider(),
@@ -234,6 +241,7 @@ def build_runtime_providers_from_env():
             llm_enabled=False,
             model=None,
             reason=f"{LLM_ENABLED_ENV_VAR} is not enabled.",
+            provider_endpoint=endpoint,
         )
 
     if not os.getenv("OPENAI_API_KEY"):
@@ -243,6 +251,7 @@ def build_runtime_providers_from_env():
             llm_enabled=False,
             model=None,
             reason="OPENAI_API_KEY is missing; using local fallback providers.",
+            provider_endpoint=endpoint,
         )
 
     model = os.getenv(OPENAI_MODEL_ENV_VAR, DEFAULT_OPENAI_MODEL)
@@ -252,6 +261,7 @@ def build_runtime_providers_from_env():
         llm_enabled=True,
         model=model,
         reason="OpenAI providers enabled.",
+        provider_endpoint=endpoint,
     )
 
 
@@ -271,6 +281,15 @@ def call_openai_structured(client, api_key, model, prompt_name, payload, output_
     prompt = load_prompt(prompt_name)
     user_content = json.dumps(payload, ensure_ascii=False, indent=2)
 
+    if client is None and get_openai_base_url():
+        return call_openai_compatible_chat_structured(
+            openai_client,
+            model=model,
+            prompt=prompt,
+            user_content=user_content,
+            output_model=output_model,
+        )
+
     try:
         response = openai_client.responses.parse(
             model=model,
@@ -285,7 +304,67 @@ def call_openai_structured(client, api_key, model, prompt_name, payload, output_
     return extract_structured_payload(response)
 
 
-def build_openai_client(api_key=None, timeout=None):
+def call_openai_compatible_chat_structured(openai_client, model, prompt, user_content, output_model):
+    """Call an OpenAI-compatible chat endpoint and validate JSON locally."""
+    schema = json.dumps(output_model.model_json_schema(), ensure_ascii=False)
+    system_content = (
+        f"{prompt}\n\n"
+        "Return only one valid JSON object. Do not wrap it in Markdown. "
+        "The JSON must match this schema:\n"
+        f"{schema}"
+    )
+    kwargs = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system_content},
+            {"role": "user", "content": user_content},
+        ],
+        "max_tokens": get_openai_max_output_tokens(),
+        "response_format": {"type": "json_object"},
+    }
+
+    try:
+        response = openai_client.chat.completions.create(**kwargs)
+    except Exception as first_exc:
+        fallback_kwargs = dict(kwargs)
+        fallback_kwargs.pop("response_format", None)
+        try:
+            response = openai_client.chat.completions.create(**fallback_kwargs)
+        except Exception as second_exc:
+            raise OpenAIProviderError(
+                "OpenAI-compatible chat provider call failed: "
+                f"json mode failed with {first_exc}; plain JSON retry failed with {second_exc}"
+            ) from second_exc
+
+    content = extract_chat_content(response)
+    payload = parse_json_object(content)
+    return validate_structured_payload(payload, output_model)
+
+
+def extract_chat_content(response):
+    choices = getattr(response, "choices", None)
+    if not choices:
+        raise OpenAIProviderError("OpenAI-compatible chat response did not contain choices.")
+    message = getattr(choices[0], "message", None)
+    content = getattr(message, "content", None) if message else None
+    if not content:
+        raise OpenAIProviderError("OpenAI-compatible chat response did not contain message content.")
+    return content
+
+
+def validate_structured_payload(payload, output_model):
+    try:
+        parsed = output_model(**payload)
+    except Exception as exc:
+        raise OpenAIProviderError(
+            f"OpenAI-compatible chat response did not match {output_model.__name__}."
+        ) from exc
+    if hasattr(parsed, "model_dump"):
+        return parsed.model_dump()
+    return parsed.dict()
+
+
+def build_openai_client(api_key=None, timeout=None, base_url=None):
     load_local_env()
     try:
         from openai import OpenAI
@@ -294,9 +373,46 @@ def build_openai_client(api_key=None, timeout=None):
             "The openai package is not installed. Run: ./.venv/bin/python -m pip install -r requirements.txt"
         ) from exc
 
+    configured_base_url = base_url if base_url is not None else get_openai_base_url()
+    kwargs = {"timeout": timeout}
     if api_key:
-        return OpenAI(api_key=api_key, timeout=timeout)
-    return OpenAI(timeout=timeout)
+        kwargs["api_key"] = api_key
+    if configured_base_url:
+        kwargs["base_url"] = configured_base_url
+    return OpenAI(**kwargs)
+
+
+def get_openai_base_url():
+    load_local_env()
+    value = os.getenv(OPENAI_BASE_URL_ENV_VAR, "").strip()
+    return value or None
+
+
+def get_openai_provider_label():
+    load_local_env()
+    value = os.getenv(OPENAI_PROVIDER_ENV_VAR, "").strip().lower()
+    return value or DEFAULT_OPENAI_PROVIDER
+
+
+def openai_endpoint_summary():
+    """Return a safe provider summary without exposing keys or full request data."""
+    base_url = get_openai_base_url()
+    provider = get_openai_provider_label()
+    if provider == DEFAULT_OPENAI_PROVIDER and base_url:
+        provider = "openai_compatible"
+    return {
+        "provider": provider,
+        "endpoint": "custom_openai_compatible" if base_url else "official_openai",
+        "base_url_configured": bool(base_url),
+        "base_url_origin": summarize_base_url_origin(base_url) if base_url else None,
+    }
+
+
+def summarize_base_url_origin(base_url):
+    parsed = urlparse(base_url)
+    if parsed.scheme and parsed.netloc:
+        return f"{parsed.scheme}://{parsed.netloc}"
+    return "custom"
 
 
 def load_local_env(path=ENV_PATH):

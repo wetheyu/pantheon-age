@@ -187,7 +187,7 @@ def submit_game_action(game_id, text):
 
 
 def build_action_api_view(response, include_debug=False):
-    legacy_payload = response.to_dict()
+    legacy_payload = response.to_dict(include_runtime=include_debug)
     mechanics = {
         "kind": response.kind,
         "consumes_turn": response.consumes_turn,
@@ -218,9 +218,37 @@ def committed_effects_from_response(response):
 def build_action_debug_payload(response):
     runtime = response.llm_runtime or {}
     return {
+        "observability": build_observability_payload(response),
         "llm_runtime": runtime,
         "rule_result": response.rule_result,
         "action": response.action,
+    }
+
+
+def build_observability_payload(response):
+    runtime = response.llm_runtime or {}
+    if runtime.get("phase") == "phase5-agentic-runtime":
+        return runtime.get("observability", {})
+
+    providers = runtime.get("providers", {})
+    action_candidate = runtime.get("action_candidate", {})
+    narration = runtime.get("narration", {})
+    return {
+        "schema_version": "10.1",
+        "runtime_phase": "phase4-structured-runtime",
+        "providers": {
+            "llm_enabled": providers.get("llm_enabled"),
+            "model": providers.get("model"),
+            "reason": providers.get("reason"),
+            "action_provider": providers.get("action_provider"),
+            "narration_provider": providers.get("narration_provider"),
+        },
+        "fallbacks": {
+            "error_count": len(runtime.get("errors", [])),
+            "errors": list(runtime.get("errors", [])),
+            "action_candidate_used_fallback": action_candidate.get("used_fallback"),
+            "narration_used_fallback": narration.get("used_fallback"),
+        },
     }
 
 

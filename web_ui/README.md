@@ -1,6 +1,6 @@
 # Pantheon Age Web UI
 
-Phase 9.6 browser playtest client for Pantheon Age.
+Final demo browser playtest client for Pantheon Age.
 
 This app should consume FastAPI responses. It must not duplicate game rules,
 state mutation, dice logic, validators, memory commit rules, or Agentic Runtime
@@ -14,12 +14,25 @@ Start the API from the project root:
 ./.venv/bin/uvicorn phase2_api.main:app
 ```
 
+or:
+
+```bash
+./.venv/bin/python scripts/dev.py api
+```
+
 Start the web app:
 
 ```bash
 cd web_ui
 npm install
 npm run dev
+```
+
+or from the project root:
+
+```bash
+./.venv/bin/python scripts/dev.py web-install
+./.venv/bin/python scripts/dev.py web-dev
 ```
 
 Open:
@@ -47,6 +60,7 @@ VITE_API_BASE_URL=http://127.0.0.1:8000
 - Read `/health`, `/classes`, `/gods`, and `/origins`.
 - Show backend connection status.
 - Create a world-mode game through `POST /games`.
+- Provide a recommended final demo setup button in the character creation form.
 - Display returned `game_id`, public first-scene state, and opening narration.
 - Submit player actions through `POST /games/{game_id}/actions`.
 - Render player messages, host story responses, loading state, and lightweight
@@ -65,8 +79,14 @@ Start the API first, then run:
 npm run smoke:api
 ```
 
+or from the project root:
+
+```bash
+./.venv/bin/python scripts/dev.py web-smoke
+```
+
 The smoke script checks the main browser-facing API path without launching a
 browser.
 
-Phase 9 Web/API product baseline is complete. Further work belongs to Phase 10
-observability, evals, packaging, and final experience optimization.
+Phase 10.7 final demo pass is complete. The recommended demo route lives in
+`docs/final_demo.md`.

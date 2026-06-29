@@ -2,8 +2,8 @@
 
 import re
 
-from phase1_cli.data import BASE_STATS
 from phase1_cli.intent_parser import INTENT_PRIORITY
+from phase1_cli.progression import ATTRIBUTE_NAMES
 
 from .contracts import (
     AUTHORITY_LEVELS,
@@ -155,8 +155,8 @@ def validate_rule_adjudication(adjudication):
     if adjudication.bridge_action.get("intent") != adjudication.action_type:
         errors.append("Bridge action intent does not match adjudication action_type.")
     for check in adjudication.required_checks:
-        if check.stat is not None and check.stat not in BASE_STATS:
-            errors.append(f"Unsupported rule check stat: {check.stat}")
+        if check.stat is not None and check.stat not in ATTRIBUTE_NAMES:
+            errors.append(f"Unsupported rule check attribute: {check.stat}")
         if check.dc is not None and (not isinstance(check.dc, int) or check.dc < 0):
             errors.append("Rule check dc must be a non-negative integer or None.")
     if adjudication.action_type == "world_action":
@@ -175,8 +175,8 @@ def validate_world_adjudication(adjudication):
     if requires_check:
         if risk_type not in ALLOWED_WORLD_RISK_TYPES:
             errors.append(f"Unsupported world risk_type: {risk_type}")
-        if check_stat not in BASE_STATS:
-            errors.append(f"Unsupported world check_stat: {check_stat}")
+        if check_stat not in ATTRIBUTE_NAMES:
+            errors.append(f"Unsupported world check_attribute: {check_stat}")
         if not isinstance(difficulty, int):
             errors.append("World difficulty must be an integer when a check is required.")
         elif difficulty < MIN_WORLD_DC or difficulty > MAX_WORLD_DC:
@@ -335,8 +335,12 @@ def claims_blocked_acquisition(text, commit):
         return False
     if "unconfirmed_property_acquisition" not in set(commit.rejected_effects):
         return False
+    check_text = str(text)
+    raw_text = str(commit.rule_action.get("raw_text", "")).strip()
+    if raw_text:
+        check_text = check_text.replace(raw_text, "")
     return any(
-        contains_non_negated_pattern(text, pattern)
+        contains_non_negated_pattern(check_text, pattern)
         for pattern in CONFIRMED_ACQUISITION_PATTERNS
     )
 

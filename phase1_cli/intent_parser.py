@@ -8,12 +8,12 @@ from .data import INTENT_KEYWORDS, ITEM_ALIASES, LOCATION_ALIASES
 
 
 CHECK_DEFAULTS = {
-    "investigate": ("intelligence", 12),
-    "attack": ("strength", 14),
-    "pray": ("faith", 12),
+    "investigate": ("insight", 12),
+    "attack": ("physique", 14),
+    "pray": ("communion", 12),
     "stealth": ("agility", 14),
-    "talk": ("intelligence", 12),
-    "analyze": ("intelligence", 14),
+    "talk": ("insight", 12),
+    "analyze": ("knowledge", 14),
 }
 
 INTENT_PRIORITY = [

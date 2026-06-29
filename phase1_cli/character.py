@@ -70,7 +70,6 @@ class Character:
             "class_id": self.class_id,
             "class_name": self.class_name,
             "god": self.god,
-            "stats": self.stats,
             "attributes": self.attributes,
             "hp": self.hp,
             "max_hp": self.max_hp,
@@ -94,7 +93,6 @@ class Character:
             "class_id": self.class_id,
             "class_name": self.class_name,
             "god": self.god,
-            "stats": dict(self.stats),
             "attributes": dict(self.attributes),
             "hp": self.hp,
             "max_hp": self.max_hp,
@@ -145,7 +143,7 @@ class Character:
             class_id=data["class_id"],
             class_name=data["class_name"],
             god=data["god"],
-            stats=dict(data["stats"]),
+            stats=dict(data.get("stats") or BASE_STATS),
             attributes=attributes,
             hp=data["hp"],
             max_hp=data["max_hp"],
@@ -178,10 +176,6 @@ def build_character(name, class_id, god):
     progression = initial_progression_for(class_id, god)
     attributes = initial_attributes_for(class_id)
 
-    stats = BASE_STATS.copy()
-    for stat_name, bonus in class_config["stat_bonus"].items():
-        stats[stat_name] += bonus
-
     max_hp = max(1, BASE_HP + class_config["hp_bonus"])
     max_san = max(1, BASE_SAN + class_config["san_bonus"])
 
@@ -190,7 +184,7 @@ def build_character(name, class_id, god):
         class_id=class_id,
         class_name=class_config["name"],
         god=god,
-        stats=stats,
+        stats=dict(BASE_STATS),
         attributes=attributes,
         hp=max_hp,
         max_hp=max_hp,

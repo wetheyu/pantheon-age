@@ -35,8 +35,33 @@ DEFAULT_ATTRIBUTES = {
     "communion": 10,
 }
 
+LEGACY_STAT_ATTRIBUTE_PROFILES = {
+    ("violence", "strength"): "physique",
+    ("violence", "agility"): "agility",
+    ("social", "intelligence"): "insight",
+    ("social", "faith"): "will",
+    ("stealth", "agility"): "agility",
+    ("theft", "agility"): "agility",
+    ("escape", "agility"): "agility",
+    ("occult", "intelligence"): "knowledge",
+    ("occult", "faith"): "communion",
+    ("travel", "agility"): "agility",
+    ("travel", "intelligence"): "insight",
+    ("high_risk", "strength"): "physique",
+    ("high_risk", "agility"): "agility",
+    ("high_risk", "intelligence"): "insight",
+    ("high_risk", "faith"): "will",
+}
+
+LEGACY_STAT_FALLBACK_ATTRIBUTES = {
+    "strength": "physique",
+    "agility": "agility",
+    "intelligence": "knowledge",
+    "faith": "communion",
+}
+
 WORLD_CHECK_ATTRIBUTE_PROFILES = {
-    ("violence", "strength"): {
+    ("violence", "physique"): {
         "primary_attribute": "physique",
         "secondary_attributes": ("will",),
         "label": "正面对抗",
@@ -46,12 +71,12 @@ WORLD_CHECK_ATTRIBUTE_PROFILES = {
         "secondary_attributes": ("insight",),
         "label": "机动暴力",
     },
-    ("social", "intelligence"): {
+    ("social", "insight"): {
         "primary_attribute": "insight",
         "secondary_attributes": ("knowledge", "will"),
         "label": "社交判断",
     },
-    ("social", "faith"): {
+    ("social", "will"): {
         "primary_attribute": "will",
         "secondary_attributes": ("communion", "insight"),
         "label": "信仰施压",
@@ -71,12 +96,12 @@ WORLD_CHECK_ATTRIBUTE_PROFILES = {
         "secondary_attributes": ("physique", "insight"),
         "label": "脱离追捕",
     },
-    ("occult", "intelligence"): {
+    ("occult", "knowledge"): {
         "primary_attribute": "knowledge",
         "secondary_attributes": ("insight", "communion"),
         "label": "神秘解析",
     },
-    ("occult", "faith"): {
+    ("occult", "communion"): {
         "primary_attribute": "communion",
         "secondary_attributes": ("will", "knowledge"),
         "label": "神秘承受",
@@ -86,12 +111,12 @@ WORLD_CHECK_ATTRIBUTE_PROFILES = {
         "secondary_attributes": ("insight", "physique"),
         "label": "旅行行动",
     },
-    ("travel", "intelligence"): {
+    ("travel", "insight"): {
         "primary_attribute": "insight",
         "secondary_attributes": ("knowledge",),
         "label": "路线判断",
     },
-    ("high_risk", "strength"): {
+    ("high_risk", "physique"): {
         "primary_attribute": "physique",
         "secondary_attributes": ("will",),
         "label": "高风险体能",
@@ -101,15 +126,25 @@ WORLD_CHECK_ATTRIBUTE_PROFILES = {
         "secondary_attributes": ("insight",),
         "label": "高风险身手",
     },
-    ("high_risk", "intelligence"): {
+    ("high_risk", "insight"): {
         "primary_attribute": "insight",
         "secondary_attributes": ("knowledge",),
         "label": "高风险判断",
     },
-    ("high_risk", "faith"): {
+    ("high_risk", "will"): {
         "primary_attribute": "will",
         "secondary_attributes": ("communion",),
         "label": "高风险意志",
+    },
+    ("high_risk", "knowledge"): {
+        "primary_attribute": "knowledge",
+        "secondary_attributes": ("insight",),
+        "label": "高风险学识",
+    },
+    ("high_risk", "communion"): {
+        "primary_attribute": "communion",
+        "secondary_attributes": ("will",),
+        "label": "高风险共鸣",
     },
 }
 
@@ -210,7 +245,7 @@ CLASS_SKILL_DEFINITIONS = {
         "class_id": "warrior",
         "description": "在正面对抗、护卫、压制和武器交锋中保持姿态。",
         "risk_types": ("violence",),
-        "check_stats": ("strength",),
+        "check_attributes": ("physique",),
         "attribute_hints": ("physique", "will"),
         "keywords": ("战斗", "攻击", "护卫", "阻挡", "压制", "决斗", "守卫"),
         "bonus": 2,
@@ -219,7 +254,7 @@ CLASS_SKILL_DEFINITIONS = {
         "class_id": "mage",
         "description": "阅读仪式、符号、异常现象和神秘学结构。",
         "risk_types": ("occult",),
-        "check_stats": ("intelligence", "faith"),
+        "check_attributes": ("knowledge", "communion"),
         "attribute_hints": ("knowledge", "communion"),
         "keywords": ("异常", "仪式", "符号", "法术", "解析", "禁书", "神秘"),
         "bonus": 2,
@@ -228,7 +263,7 @@ CLASS_SKILL_DEFINITIONS = {
         "class_id": "rogue",
         "description": "避开视线、处理锁具、伪装身份和无声接近目标。",
         "risk_types": ("stealth", "theft", "escape"),
-        "check_stats": ("agility",),
+        "check_attributes": ("agility", "insight"),
         "attribute_hints": ("agility", "insight"),
         "keywords": ("潜行", "潜入", "开锁", "撬", "偷", "伪装", "尾随"),
         "bonus": 2,
@@ -237,7 +272,7 @@ CLASS_SKILL_DEFINITIONS = {
         "class_id": "hunter",
         "description": "追踪痕迹、侦察路线、识别陷阱和在复杂地形中行动。",
         "risk_types": ("stealth", "escape", "high_risk", "travel"),
-        "check_stats": ("agility", "intelligence"),
+        "check_attributes": ("agility", "insight"),
         "attribute_hints": ("agility", "insight"),
         "keywords": ("追踪", "侦察", "足迹", "陷阱", "路线", "埋伏", "野外"),
         "bonus": 2,
@@ -246,7 +281,7 @@ CLASS_SKILL_DEFINITIONS = {
         "class_id": "priest",
         "description": "进行公开或私下祷告、净化、安魂和抵抗神秘压力。",
         "risk_types": ("occult", "social", "high_risk"),
-        "check_stats": ("faith", "intelligence"),
+        "check_attributes": ("will", "communion"),
         "attribute_hints": ("will", "communion"),
         "keywords": ("祷告", "净化", "安魂", "祝福", "忏悔", "圣徽", "仪式"),
         "bonus": 2,
@@ -255,7 +290,7 @@ CLASS_SKILL_DEFINITIONS = {
         "class_id": "alchemist",
         "description": "鉴定药剂、毒素、材料和炼金器具，并做安全处理。",
         "risk_types": ("occult", "high_risk", "theft"),
-        "check_stats": ("intelligence", "agility"),
+        "check_attributes": ("knowledge", "insight", "agility"),
         "attribute_hints": ("knowledge", "insight"),
         "keywords": ("药剂", "炼金", "鉴定", "毒", "材料", "调剂", "器具"),
         "bonus": 2,
@@ -289,7 +324,7 @@ GOD_TALENT_DEFINITIONS = {
         "god": "海洋之神",
         "description": "感知潮汐、航线、沉船传闻和水域异常的细微变化。",
         "risk_types": ("travel", "occult", "high_risk"),
-        "check_stats": ("intelligence", "faith", "agility"),
+        "check_attributes": ("insight", "communion", "agility"),
         "attribute_hints": ("insight", "communion"),
         "keywords": ("海", "潮", "水", "船", "港", "码头", "航线", "风暴", "沉船"),
         "bonus": 1,
@@ -298,7 +333,7 @@ GOD_TALENT_DEFINITIONS = {
         "god": "真理之神",
         "description": "更容易察觉证词、记录、印章和公开声明里的裂缝。",
         "risk_types": ("social", "occult", "high_risk"),
-        "check_stats": ("intelligence", "faith"),
+        "check_attributes": ("insight", "knowledge", "communion"),
         "attribute_hints": ("insight", "knowledge"),
         "keywords": ("证词", "谎言", "记录", "印章", "真相", "审问", "报纸", "档案"),
         "bonus": 1,
@@ -307,7 +342,7 @@ GOD_TALENT_DEFINITIONS = {
         "god": "战争之神",
         "description": "感知队列、伏击、火力、士气和暴力升级的方向。",
         "risk_types": ("violence", "high_risk", "escape"),
-        "check_stats": ("strength", "intelligence", "agility"),
+        "check_attributes": ("physique", "insight", "agility", "will"),
         "attribute_hints": ("physique", "insight"),
         "keywords": ("军", "守卫", "队列", "伏击", "战斗", "士兵", "火力", "阵地"),
         "bonus": 1,
@@ -316,7 +351,7 @@ GOD_TALENT_DEFINITIONS = {
         "god": "审判之神",
         "description": "面对契约、誓言、判决和法律秩序时，更容易发现违誓痕迹。",
         "risk_types": ("social", "occult", "high_risk"),
-        "check_stats": ("intelligence", "faith"),
+        "check_attributes": ("will", "insight", "knowledge", "communion"),
         "attribute_hints": ("will", "insight"),
         "keywords": ("誓言", "契约", "判决", "审判", "法庭", "证词", "通行证", "罪"),
         "bonus": 1,
@@ -325,7 +360,7 @@ GOD_TALENT_DEFINITIONS = {
         "god": "丰饶之神",
         "description": "感知生命、病症、药草、过度生长和身体异常。",
         "risk_types": ("occult", "social", "high_risk"),
-        "check_stats": ("faith", "intelligence"),
+        "check_attributes": ("communion", "insight", "will"),
         "attribute_hints": ("communion", "insight"),
         "keywords": ("生命", "疾病", "伤口", "血", "花", "药", "蔷薇", "生长", "腐烂"),
         "bonus": 1,
@@ -334,7 +369,7 @@ GOD_TALENT_DEFINITIONS = {
         "god": "死亡之神",
         "description": "在死亡现场、墓地、遗嘱和亡者痕迹旁听见残留秩序。",
         "risk_types": ("occult", "social", "high_risk"),
-        "check_stats": ("faith", "intelligence"),
+        "check_attributes": ("will", "communion", "insight"),
         "attribute_hints": ("will", "communion"),
         "keywords": ("死亡", "亡者", "尸体", "墓", "遗嘱", "葬礼", "安魂", "死者"),
         "bonus": 1,
@@ -343,7 +378,7 @@ GOD_TALENT_DEFINITIONS = {
         "god": "隐秘之神",
         "description": "更容易察觉暗号、假身份、被隐藏的入口和沉默里的信息。",
         "risk_types": ("stealth", "theft", "social", "high_risk"),
-        "check_stats": ("agility", "intelligence"),
+        "check_attributes": ("agility", "insight"),
         "attribute_hints": ("agility", "insight"),
         "keywords": ("秘密", "暗号", "隐藏", "假身份", "夜", "阴影", "档案", "无声"),
         "bonus": 1,
@@ -352,7 +387,7 @@ GOD_TALENT_DEFINITIONS = {
         "god": "深渊之神",
         "description": "听见梦境、黑水、裂缝和禁忌知识里不该稳定存在的回声。",
         "risk_types": ("occult", "high_risk"),
-        "check_stats": ("faith", "intelligence"),
+        "check_attributes": ("communion", "knowledge"),
         "attribute_hints": ("communion", "knowledge"),
         "keywords": ("深渊", "梦", "黑水", "污染", "裂缝", "禁忌", "低语", "梦魇"),
         "bonus": 1,
@@ -364,7 +399,7 @@ GOD_PRAYER_DEFINITIONS = {
         "god": "海洋之神",
         "description": "请求潮汐短暂平稳，用于航行、水域异常和风暴压力。",
         "risk_types": ("travel", "occult", "high_risk"),
-        "check_stats": ("faith", "intelligence", "agility"),
+        "check_attributes": ("communion", "insight", "agility"),
         "attribute_hints": ("communion", "insight"),
         "keywords": ("平潮祷告", "平潮", "潮汐", "风暴", "航线", "沉船", "海"),
         "bonus": 3,
@@ -374,7 +409,7 @@ GOD_PRAYER_DEFINITIONS = {
         "god": "真理之神",
         "description": "请求真理秩序照见证词和记录中的关键矛盾。",
         "risk_types": ("social", "occult", "high_risk"),
-        "check_stats": ("faith", "intelligence"),
+        "check_attributes": ("communion", "knowledge", "insight"),
         "attribute_hints": ("knowledge", "insight"),
         "keywords": ("白塔明证", "明证", "证词", "真相", "谎言", "记录", "档案"),
         "bonus": 3,
@@ -384,7 +419,7 @@ GOD_PRAYER_DEFINITIONS = {
         "god": "战争之神",
         "description": "请求战争秩序稳住士气、压制恐惧或把混乱推向可控对抗。",
         "risk_types": ("violence", "high_risk", "escape"),
-        "check_stats": ("faith", "strength", "intelligence"),
+        "check_attributes": ("will", "physique", "insight"),
         "attribute_hints": ("will", "physique"),
         "keywords": ("铁血号令", "号令", "战斗", "士气", "守卫", "军", "压制"),
         "bonus": 3,
@@ -394,7 +429,7 @@ GOD_PRAYER_DEFINITIONS = {
         "god": "审判之神",
         "description": "请求审判秩序压制混乱，让契约、罪责或回答变得沉重。",
         "risk_types": ("social", "occult", "high_risk"),
-        "check_stats": ("faith", "intelligence"),
+        "check_attributes": ("will", "insight", "communion"),
         "attribute_hints": ("will", "insight"),
         "keywords": ("审判钟声", "钟声", "审判", "契约", "誓言", "罪", "判决"),
         "bonus": 3,
@@ -404,7 +439,7 @@ GOD_PRAYER_DEFINITIONS = {
         "god": "丰饶之神",
         "description": "请求生命秩序稳定伤势、病症或过度生长的异常。",
         "risk_types": ("occult", "high_risk", "social"),
-        "check_stats": ("faith", "intelligence"),
+        "check_attributes": ("communion", "will", "insight"),
         "attribute_hints": ("communion", "will"),
         "keywords": ("蔷薇复苏", "复苏", "蔷薇", "生命", "伤口", "疾病", "药"),
         "bonus": 3,
@@ -414,7 +449,7 @@ GOD_PRAYER_DEFINITIONS = {
         "god": "死亡之神",
         "description": "请求死亡秩序平复亡者、墓地、遗嘱或死亡现场的回响。",
         "risk_types": ("occult", "social", "high_risk"),
-        "check_stats": ("faith", "intelligence"),
+        "check_attributes": ("will", "communion", "insight"),
         "attribute_hints": ("will", "communion"),
         "keywords": ("安魂", "死亡", "亡者", "墓", "遗嘱", "尸体", "葬礼"),
         "bonus": 3,
@@ -424,7 +459,7 @@ GOD_PRAYER_DEFINITIONS = {
         "god": "隐秘之神",
         "description": "请求隐秘秩序降低存在感，遮住一次行动的边缘痕迹。",
         "risk_types": ("stealth", "theft", "escape", "high_risk"),
-        "check_stats": ("faith", "agility", "intelligence"),
+        "check_attributes": ("communion", "agility", "insight"),
         "attribute_hints": ("agility", "insight"),
         "keywords": ("无声祈祷", "无声", "隐秘", "隐藏", "暗号", "假身份", "阴影"),
         "bonus": 3,
@@ -434,7 +469,7 @@ GOD_PRAYER_DEFINITIONS = {
         "god": "深渊之神",
         "description": "请求深渊回声短暂回应梦境、污染、黑水或禁忌裂缝。",
         "risk_types": ("occult", "high_risk"),
-        "check_stats": ("faith", "intelligence"),
+        "check_attributes": ("communion", "knowledge"),
         "attribute_hints": ("communion", "knowledge"),
         "keywords": ("深渊低语", "低语", "深渊", "梦", "黑水", "污染", "裂缝"),
         "bonus": 3,
@@ -550,17 +585,18 @@ def learned_class_skill_definitions(character):
     return definitions
 
 
-def matching_class_skill_bonuses(character, risk_type, stat, rule_action=None):
+def matching_class_skill_bonuses(character, risk_type, attribute, rule_action=None):
     """Return learned class skills that can help this adjudicated check.
 
-    The primary match is the broad adjudicated risk/stat, not a growing list of
+    The primary match is the broad adjudicated risk/attribute, not a growing list of
     player-input keywords. Keywords only help borderline generic checks such as
-    high_risk until Phase 8.4 moves checks fully onto the six-attribute model.
+    high_risk.
     """
+    attribute = normalize_check_attribute(attribute, risk_type)
     action_text = action_text_for_skill_match(rule_action or {})
     matches = []
     for definition in learned_class_skill_definitions(character):
-        if class_skill_matches(definition, risk_type, stat, action_text):
+        if class_skill_matches(definition, risk_type, attribute, action_text):
             matches.append(
                 {
                     "name": definition["name"],
@@ -800,17 +836,39 @@ def advancement_rewards(character, advancement_type, config):
     return []
 
 
-def world_attribute_profile_for(character, risk_type, stat):
+def normalize_check_attribute(value, risk_type="high_risk"):
+    if value in ATTRIBUTE_NAMES:
+        return value
+    mapped = LEGACY_STAT_ATTRIBUTE_PROFILES.get((risk_type, value))
+    if mapped:
+        return mapped
+    return LEGACY_STAT_FALLBACK_ATTRIBUTES.get(value, "insight")
+
+
+def normalized_check_attributes(values, risk_type="high_risk"):
+    return tuple(
+        dict.fromkeys(normalize_check_attribute(value, risk_type) for value in values)
+    )
+
+
+def definition_check_attributes(definition):
+    values = definition.get("check_attributes", definition.get("check_stats", ()))
+    return normalized_check_attributes(values)
+
+
+def world_attribute_profile_for(character, risk_type, attribute):
+    attribute = normalize_check_attribute(attribute, risk_type)
     profile = (
-        WORLD_CHECK_ATTRIBUTE_PROFILES.get((risk_type, stat))
-        or WORLD_CHECK_ATTRIBUTE_PROFILES.get(("high_risk", stat))
-        or fallback_attribute_profile(stat)
+        WORLD_CHECK_ATTRIBUTE_PROFILES.get((risk_type, attribute))
+        or WORLD_CHECK_ATTRIBUTE_PROFILES.get(("high_risk", attribute))
+        or fallback_attribute_profile(attribute)
     )
     primary = profile["primary_attribute"]
     value = clamp_attribute(normalize_int(character.attributes.get(primary, 10), 10))
     modifier = attribute_modifier(value)
     return {
         "label": profile["label"],
+        "check_attribute": attribute,
         "primary_attribute": primary,
         "primary_label": ATTRIBUTE_LABELS.get(primary, primary),
         "primary_value": value,
@@ -823,29 +881,42 @@ def world_attribute_profile_for(character, risk_type, stat):
     }
 
 
-def fallback_attribute_profile(stat):
-    if stat == "strength":
+def fallback_attribute_profile(attribute):
+    attribute = normalize_check_attribute(attribute)
+    if attribute == "physique":
         return {
             "primary_attribute": "physique",
             "secondary_attributes": ("will",),
-            "label": "力量兼容检定",
+            "label": "体魄检定",
         }
-    if stat == "agility":
+    if attribute == "agility":
         return {
             "primary_attribute": "agility",
             "secondary_attributes": ("insight",),
-            "label": "敏捷兼容检定",
+            "label": "灵巧检定",
         }
-    if stat == "faith":
+    if attribute == "will":
+        return {
+            "primary_attribute": "will",
+            "secondary_attributes": ("communion",),
+            "label": "意志检定",
+        }
+    if attribute == "communion":
         return {
             "primary_attribute": "communion",
             "secondary_attributes": ("will",),
-            "label": "信仰兼容检定",
+            "label": "共鸣检定",
+        }
+    if attribute == "knowledge":
+        return {
+            "primary_attribute": "knowledge",
+            "secondary_attributes": ("insight",),
+            "label": "知识检定",
         }
     return {
-        "primary_attribute": "knowledge",
-        "secondary_attributes": ("insight",),
-        "label": "智力兼容检定",
+        "primary_attribute": "insight",
+        "secondary_attributes": ("knowledge",),
+        "label": "洞察检定",
     }
 
 
@@ -896,11 +967,12 @@ def learned_faith_definitions(names, god, definition_map):
     return definitions
 
 
-def matching_faith_talent_bonuses(character, risk_type, stat, rule_action=None):
+def matching_faith_talent_bonuses(character, risk_type, attribute, rule_action=None):
+    attribute = normalize_check_attribute(attribute, risk_type)
     action_text = action_text_for_skill_match(rule_action or {})
     matches = []
     for definition in learned_talent_definitions(character):
-        if faith_definition_matches(definition, risk_type, stat, action_text):
+        if faith_definition_matches(definition, risk_type, attribute, action_text):
             matches.append(
                 {
                     "name": definition["name"],
@@ -911,13 +983,14 @@ def matching_faith_talent_bonuses(character, risk_type, stat, rule_action=None):
     return matches
 
 
-def matching_prayer_bonuses(character, risk_type, stat, rule_action=None):
+def matching_prayer_bonuses(character, risk_type, attribute, rule_action=None):
+    attribute = normalize_check_attribute(attribute, risk_type)
     action_text = action_text_for_skill_match(rule_action or {})
     matches = []
     for definition in learned_prayer_definitions(character):
         if not prayer_was_invoked(definition, character, action_text):
             continue
-        if faith_definition_matches(definition, risk_type, stat, action_text):
+        if faith_definition_matches(definition, risk_type, attribute, action_text):
             matches.append(
                 {
                     "name": definition["name"],
@@ -929,13 +1002,14 @@ def matching_prayer_bonuses(character, risk_type, stat, rule_action=None):
     return matches
 
 
-def faith_definition_matches(definition, risk_type, stat, action_text):
+def faith_definition_matches(definition, risk_type, attribute, action_text):
     risk_match = risk_type in definition["risk_types"]
-    stat_match = not definition["check_stats"] or stat in definition["check_stats"]
+    check_attributes = definition_check_attributes(definition)
+    attribute_match = not check_attributes or attribute in check_attributes
     keyword_match = any(keyword in action_text for keyword in definition["keywords"])
-    if risk_match and stat_match:
+    if risk_match and attribute_match:
         return True
-    if keyword_match and (risk_match or stat_match):
+    if keyword_match and (risk_match or attribute_match):
         return True
     return False
 
@@ -958,14 +1032,15 @@ def prayer_was_invoked(definition, character, action_text):
     return any(term and term in action_text for term in invocation_terms)
 
 
-def class_skill_matches(definition, risk_type, stat, action_text):
+def class_skill_matches(definition, risk_type, attribute, action_text):
     risk_match = risk_type in definition["risk_types"]
-    stat_match = not definition["check_stats"] or stat in definition["check_stats"]
-    if risk_match and stat_match:
+    check_attributes = definition_check_attributes(definition)
+    attribute_match = not check_attributes or attribute in check_attributes
+    if risk_match and attribute_match:
         return True
 
     keyword_match = any(keyword in action_text for keyword in definition["keywords"])
-    if keyword_match and (risk_match or stat_match):
+    if keyword_match and (risk_match or attribute_match):
         return True
 
     return False
@@ -991,7 +1066,7 @@ def compact_skill_definition(definition):
         "description": definition["description"],
         "bonus": definition["bonus"],
         "risk_types": list(definition["risk_types"]),
-        "check_stats": list(definition["check_stats"]),
+        "check_attributes": list(definition_check_attributes(definition)),
         "attribute_hints": list(definition["attribute_hints"]),
     }
 
@@ -1003,7 +1078,7 @@ def compact_faith_definition(definition, include_cost=False):
         "description": definition["description"],
         "bonus": definition["bonus"],
         "risk_types": list(definition["risk_types"]),
-        "check_stats": list(definition["check_stats"]),
+        "check_attributes": list(definition_check_attributes(definition)),
         "attribute_hints": list(definition["attribute_hints"]),
     }
     if include_cost:

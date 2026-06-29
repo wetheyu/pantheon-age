@@ -21,6 +21,7 @@ from phase1_cli.progression import (
     matching_class_skill_bonuses,
     matching_faith_talent_bonuses,
     matching_prayer_bonuses,
+    normalize_check_attribute,
     world_attribute_profile_for,
 )
 from phase1_cli.scenarios import (
@@ -371,11 +372,13 @@ def commit_world_checked_action(
     scene_after = scene_after or current_scene_focus_for_state(state)
     location_decision = location_decision or {"type": "stay", "rejected_effects": ()}
     risk_type = rule_action.get("risk_type") or "high_risk"
-    stat = rule_action.get("check_stat") or "agility"
+    attribute = normalize_check_attribute(rule_action.get("check_attribute") or rule_action.get("check_stat") or "agility", risk_type)
+    rule_action["check_stat"] = attribute
+    rule_action["check_attribute"] = attribute
     dc = rule_action.get("difficulty") or 14
-    modifier = world_check_modifier(state, stat, risk_type, rule_action)
+    modifier = world_check_modifier(state, attribute, risk_type, rule_action)
     check = annotate_world_check(
-        roll_check(state, stat, dc, modifier, "行动修正"),
+        roll_check(state, attribute, dc, modifier, "行动修正"),
         risk_type,
         rule_action,
     )
@@ -441,7 +444,8 @@ def commit_world_checked_action(
     )
 
 
-def world_check_modifier(state, stat, risk_type, rule_action=None):
+def world_check_modifier(state, attribute, risk_type, rule_action=None):
+    attribute = normalize_check_attribute(attribute, risk_type)
     if risk_type == "violence":
         base_modifier = sum_modifiers(state.player, ["attack_bonus", "direct_combat_penalty", "combat_penalty"])
     elif risk_type == "social":
@@ -449,32 +453,34 @@ def world_check_modifier(state, stat, risk_type, rule_action=None):
     elif risk_type == "theft":
         base_modifier = sum_modifiers(state.player, ["stealth_bonus", "lockpick_bonus", "deceive_bonus"])
     elif risk_type == "occult":
-        if stat == "faith":
+        if attribute in {"communion", "will"}:
             base_modifier = sum_modifiers(state.player, ["pray_bonus", "purify_bonus"])
         else:
             base_modifier = sum_modifiers(state.player, ["analyze_bonus", "ritual_bonus", "lore_bonus", "identify_bonus"])
-    elif stat == "agility":
+    elif attribute == "agility":
         base_modifier = sum_modifiers(state.player, ["stealth_bonus", "escape_bonus"])
     else:
         base_modifier = 0
 
-    attribute_profile = world_attribute_profile_for(state.player, risk_type, stat)
+    attribute_profile = world_attribute_profile_for(state.player, risk_type, attribute)
     attribute_modifier = attribute_profile["modifier"]
-    skill_bonuses = matching_class_skill_bonuses(state.player, risk_type, stat, rule_action)
-    talent_bonuses = matching_faith_talent_bonuses(state.player, risk_type, stat, rule_action)
+    skill_bonuses = matching_class_skill_bonuses(state.player, risk_type, attribute, rule_action)
+    talent_bonuses = matching_faith_talent_bonuses(state.player, risk_type, attribute, rule_action)
     prayer_bonuses, blocked_prayers = activate_prayers_for_check(
         state.player,
         risk_type,
-        stat,
+        attribute,
         rule_action,
     )
     item_bonuses, consumed_items = activate_items_for_check(
         state.player,
         risk_type,
-        stat,
+        attribute,
         rule_action,
     )
     if rule_action is not None:
+        rule_action["check_stat"] = attribute
+        rule_action["check_attribute"] = attribute
         rule_action["attribute_profile"] = attribute_profile
         rule_action["attribute_modifier"] = attribute_modifier
         rule_action["skill_bonuses"] = skill_bonuses
@@ -493,8 +499,9 @@ def world_check_modifier(state, stat, risk_type, rule_action=None):
     )
 
 
-def activate_prayers_for_check(player, risk_type, stat, rule_action=None):
-    prayer_candidates = matching_prayer_bonuses(player, risk_type, stat, rule_action)
+def activate_prayers_for_check(player, risk_type, attribute, rule_action=None):
+    attribute = normalize_check_attribute(attribute, risk_type)
+    prayer_candidates = matching_prayer_bonuses(player, risk_type, attribute, rule_action)
     if not prayer_candidates:
         return [], []
 
@@ -771,6 +778,7 @@ def annotate_world_check(check, risk_type, rule_action):
     check["outcome_level"] = outcome_level
     check["outcome_label"] = OUTCOME_LABELS[outcome_level]
     check["reason"] = rule_action.get("open_primary_goal") or rule_action.get("raw_text", "")
+    check["check_attribute"] = rule_action.get("check_attribute") or check.get("attribute")
     check["attribute_profile"] = dict(rule_action.get("attribute_profile", {}))
     check["attribute_modifier"] = rule_action.get("attribute_modifier", 0)
     check["skill_bonuses"] = list(rule_action.get("skill_bonuses", []))
@@ -792,6 +800,7 @@ def build_check_context(check, risk_type, rule_action):
         "target_profile": rule_action.get("target_profile", ""),
         "possible_blockers": list(rule_action.get("possible_blockers", [])),
         "reason": check.get("reason", ""),
+        "check_attribute": check.get("check_attribute"),
         "attribute_profile": dict(check.get("attribute_profile", {})),
         "attribute_modifier": check.get("attribute_modifier", 0),
         "skill_bonuses": list(check.get("skill_bonuses", [])),
@@ -850,6 +859,12 @@ WORLD_TRAVEL_KEYWORDS = (
     "远行",
     "出城",
     "跨城",
+    "瞬移",
+    "传送",
+    "直接到",
+    "直接去",
+    "立刻到",
+    "立刻去",
 )
 
 WORLD_SCENE_LOCATION_MARKERS = (
@@ -941,9 +956,19 @@ def infer_travel_destination(state, raw_text, target):
     destination = target_city or text_city
     if not destination or destination == state.current_location:
         return None
-    if target_city or contains_any(raw_text, (*WORLD_TRAVEL_KEYWORDS, *WORLD_SCENE_MOVE_KEYWORDS)):
+    if target_city or has_cross_city_travel_intent(raw_text, destination):
         return destination
     return None
+
+
+def has_cross_city_travel_intent(raw_text, destination):
+    return (
+        contains_any(raw_text, (*WORLD_TRAVEL_KEYWORDS, *WORLD_SCENE_MOVE_KEYWORDS))
+        or f"到{destination}" in raw_text
+        or f"去{destination}" in raw_text
+        or f"抵达{destination}" in raw_text
+        or f"前往{destination}" in raw_text
+    )
 
 
 def infer_requested_scene_focus(state, rule_action):

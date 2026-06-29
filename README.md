@@ -7,19 +7,19 @@
 当前版本：
 
 ```text
-v9.7.0 / Phase 9.7 Phase 1-9 Consolidation And Final Plan
+v10.7.0 / Phase 10.7 Final Demo Pass
 ```
 
 当前主线：
 
 ```text
-Agentic Runtime + Canon Retrieval + Persistent Memory + Progression Mechanics + FastAPI + Web Playtest Baseline + Final Phase Plan
+Agentic Runtime + Canon Retrieval + Persistent Memory + Progression Mechanics + FastAPI + Web Playtest Baseline + Observability + Safety/Quality Evals + Runtime Profiles + Provider Strategy + Dev Setup + Final Demo
 ```
 
 下一阶段：
 
 ```text
-Phase 10.1 Observability
+Phase 10 Complete / Final Demo Ready
 ```
 
 ## 项目动机
@@ -37,6 +37,21 @@ LLM 负责创造可能性。
 只有通过验证并提交的结构化内容，才算世界现实。
 ```
 
+## 这个项目展示什么
+
+这是一个 AI Agent 工程作品，而不只是一个文字冒险 demo。它重点展示：
+
+- 高自由度 LLM 叙事：模型负责理解开放行动、生成场景、NPC、事件和主持人文本；
+- 程序化权限边界：Python 负责验证、掷骰、状态提交、资源限制、记忆写入和安全回退；
+- RAG / context packing：只把相关世界设定、角色状态、记忆和规则上下文喂给模型；
+- 长期记忆：只保存经过提交的事实和玩家可见记忆，不把原始 LLM 输出直接当世界真相；
+- 多层 eval：安全评测、叙事质量评测、试玩 fixture 和 final demo smoke 防止回归；
+- API + Web：FastAPI 提供游戏接口，React/Vite 提供浏览器试玩界面。
+
+推荐展示路线见：
+
+- [docs/final_demo.md](docs/final_demo.md)
+
 ## 当前能力
 
 ### 游戏闭环
@@ -51,6 +66,9 @@ LLM 负责创造可能性。
 - LLM / Agent 可以提出开放行动理解、规则裁定建议、临时场景、NPC、事件、物件和叙事。
 - Validator 和 State Commit 层负责阻止越权死亡、奖励、线索、地点变化、秘密泄露和未授权状态修改。
 - 没有 API key、模型失败或输出不合规时，可以回退到本地 provider。
+- `agentic_runtime/safety_evals.py` 提供本地离线安全评测，检查白拿奖励、越权击杀、秘密泄露、瞬移、乱造核心神明和资源越权等回归。
+- `agentic_runtime/narrative_quality_evals.py` 提供本地离线叙事质量评测，检查主持人口吻、具体感、行动钩子、后台词泄露和节奏长度。
+- `PANTHEON_PLAY_PROFILE` 支持 `local`、`fast`、`quality`、`debug` 四档运行配置；`agentic_runtime.smoke_test` 会输出耗时、慢步骤和性能建议。
 
 ### RAG 与长期记忆
 
@@ -93,12 +111,13 @@ tests/                 自动化测试
 进入项目根目录：
 
 ```bash
-cd <project-root>
+cd pantheon-age
 ```
 
-安装依赖：
+创建虚拟环境并安装依赖：
 
 ```bash
+python3 -m venv .venv
 ./.venv/bin/python -m pip install -r requirements.txt
 ```
 
@@ -109,6 +128,14 @@ cd <project-root>
 ```
 
 默认模式不会调用真实 LLM，可以离线、本地、零成本运行。
+
+也可以使用开发辅助入口：
+
+```bash
+./.venv/bin/python scripts/dev.py doctor
+./.venv/bin/python scripts/dev.py check
+./.venv/bin/python scripts/dev.py cli
+```
 
 ## 启用世界模式
 
@@ -153,6 +180,17 @@ PANTHEON_OPENAI_MODEL=gpt-4o-mini
 
 `.env` 已被 `.gitignore` 忽略，不会上传 GitHub。
 
+如果要切到本地 OpenAI-compatible 模型，不需要改代码，只改 `.env`：
+
+```text
+OPENAI_API_KEY=local
+PANTHEON_OPENAI_PROVIDER=ollama
+PANTHEON_OPENAI_BASE_URL=http://localhost:11434/v1
+PANTHEON_OPENAI_MODEL=你的本地模型名
+```
+
+也可以把 provider 改成 `lm_studio`、`vllm` 或其他自定义名称。无论走官方 OpenAI 还是本地兼容端点，游戏都会继续使用同一套 validator、掷骰、状态提交和记忆规则。
+
 常用设置：
 
 ```text
@@ -180,6 +218,12 @@ PANTHEON_CANON_RETRIEVAL=vector_hybrid
 
 ```bash
 ./.venv/bin/uvicorn phase2_api.main:app
+```
+
+或：
+
+```bash
+./.venv/bin/python scripts/dev.py api
 ```
 
 API 文档：
@@ -210,12 +254,12 @@ POST   /games/{game_id}/actions
 ```json
 {
   "name": "伊芙",
-  "class_id": "mage",
-  "god": "真理之神",
+  "class_id": "rogue",
+  "god": "隐秘之神",
   "game_mode": "world",
   "origin_country_id": "lumiere",
-  "origin_city": "维拉尔",
-  "background_id": "dock_scribe"
+  "origin_city": "卢塞恩",
+  "background_id": "investigative_reporter"
 }
 ```
 
@@ -266,6 +310,13 @@ npm install
 npm run dev
 ```
 
+或使用开发辅助入口：
+
+```bash
+./.venv/bin/python scripts/dev.py web-install
+./.venv/bin/python scripts/dev.py web-dev
+```
+
 浏览器打开：
 
 ```text
@@ -297,8 +348,14 @@ npm run smoke:api
 普通测试不会调用真实 LLM 或真实向量接口：
 
 ```bash
-./.venv/bin/python -m py_compile phase1_cli/*.py phase2_api/*.py phase2_api/routes/*.py phase2_api/services/*.py phase3_persistence/*.py agentic_runtime/*.py llm_runtime/*.py rag/*.py tests/*.py
+./.venv/bin/python -m py_compile phase1_cli/*.py phase2_api/*.py phase2_api/routes/*.py phase2_api/services/*.py phase3_persistence/*.py agentic_runtime/*.py llm_runtime/*.py rag/*.py scripts/*.py tests/*.py
 env PANTHEON_USE_AGENTIC_LLM=0 PANTHEON_USE_LLM=0 PANTHEON_EMBEDDING_PROVIDER=local PANTHEON_CANON_RETRIEVAL=keyword ./.venv/bin/python -m unittest discover -s tests
+```
+
+等价的本地检查入口：
+
+```bash
+./.venv/bin/python scripts/dev.py check
 ```
 
 真实 LLM 测试需要显式开启：
@@ -326,38 +383,88 @@ PANTHEON_USE_AGENTIC_LLM=1
 ./.venv/bin/python -m agentic_runtime.smoke_test
 ```
 
+按 profile 检查：
+
+```bash
+env PANTHEON_PLAY_PROFILE=local ./.venv/bin/python -m agentic_runtime.smoke_test
+env PANTHEON_PLAY_PROFILE=fast ./.venv/bin/python -m agentic_runtime.smoke_test
+env PANTHEON_PLAY_PROFILE=quality ./.venv/bin/python -m agentic_runtime.smoke_test
+env PANTHEON_PLAY_PROFILE=debug ./.venv/bin/python -m agentic_runtime.smoke_test
+```
+
+本地安全评测：
+
+```bash
+./.venv/bin/python -m unittest tests.test_safety_evals
+```
+
+本地叙事质量评测：
+
+```bash
+./.venv/bin/python -m unittest tests.test_narrative_quality_evals
+```
+
 手动试玩清单：
 
 - [docs/playtest_checklist.md](docs/playtest_checklist.md)
+
+最终展示路线：
+
+```bash
+./.venv/bin/python scripts/dev.py final-demo
+```
+
+- [docs/final_demo.md](docs/final_demo.md)
 
 ## 文档
 
 完整文档入口：
 
 - [docs/README.md](docs/README.md)
+- [docs/github_release_checklist.md](docs/github_release_checklist.md)
 
 建议阅读顺序：
 
-1. [docs/phase1_9_architecture_summary.md](docs/phase1_9_architecture_summary.md)：当前架构基线；
-2. [docs/agentic_runtime_architecture.md](docs/agentic_runtime_architecture.md)：长期 Agentic Runtime 设计；
-3. [docs/phase6_completion_summary.md](docs/phase6_completion_summary.md)：Phase 6 完成情况；
-4. [docs/phase7_completion_summary.md](docs/phase7_completion_summary.md)：Phase 7 完成情况；
-5. [docs/phase8_completion_summary.md](docs/phase8_completion_summary.md)：Phase 8 完成情况；
-6. [docs/playtest_checklist.md](docs/playtest_checklist.md)：世界模式试玩清单；
-7. [docs/final_phase10_plan.md](docs/final_phase10_plan.md)：最终 Phase 10 开发计划；
-8. [docs/future_phase_plan.md](docs/future_phase_plan.md)：阶段总路线；
-9. [docs/world_bible.md](docs/world_bible.md)：世界观总览。
+1. [docs/project_architecture.md](docs/project_architecture.md)：当前项目结构、运行主链路和模块职责；
+2. [docs/final_demo.md](docs/final_demo.md)：最终展示路线；
+3. [docs/agentic_runtime_architecture.md](docs/agentic_runtime_architecture.md)：长期 Agentic Runtime 设计；
+4. [docs/playtest_checklist.md](docs/playtest_checklist.md)：世界模式试玩清单；
+5. [docs/dev_setup.md](docs/dev_setup.md)：本地开发、运行、测试和环境文件说明；
+6. [docs/world_bible.md](docs/world_bible.md)：世界观总览；
+7. [docs/progression_design.md](docs/progression_design.md)：成长系统、属性、仪式晋升和道具设计；
+8. [docs/phase1_9_architecture_summary.md](docs/phase1_9_architecture_summary.md)：历史架构基线；
+9. [docs/final_phase10_plan.md](docs/final_phase10_plan.md)：最终 Phase 10 开发记录；
+10. [docs/future_phase_plan.md](docs/future_phase_plan.md)：Post-10 路线。
+
+## 上传 GitHub 前检查
+
+本仓库默认不会上传 `.env`、`.venv/`、SQLite 数据库、存档、前端构建产物和 `.local_notes/` 私人笔记。
+
+推荐在提交前运行：
+
+```bash
+./.venv/bin/python scripts/dev.py check
+cd web_ui
+npm run build
+```
+
+需要快速检查忽略规则时：
+
+```bash
+git check-ignore -v .env .local_notes/project_interview_guide.md data/pantheon_age.sqlite3 web_ui/dist/index.html
+```
 
 ## 当前限制
 
 - 世界模式已经可试玩；地点连续性、风险反馈、基本安全边界和 Phase 8 核心机制已有回归测试，长期玩法仍需要继续打磨。
 - Phase 8 已完成技能、天赋、祷告、六属性检定、仪式晋升和道具机制的基础基线，完整成长体验仍会继续扩展。
-- 网页界面已经具备最小 React/Vite 骨架、角色创建流程、聊天式行动提交、行动建议、只读状态面板和 API smoke 检查；下一步进入工程观测、评测和最终体验优化。
-- 真实 LLM 与真实向量接口调用需要用户自行配置 API key，并会产生 API 成本。
+- 网页界面已经具备 React/Vite 试玩客户端、角色创建流程、聊天式行动提交、行动建议、只读状态面板、API smoke 检查和推荐 demo 角色入口。
+- 真实 LLM 与真实向量接口调用需要用户自行配置 API key，并可能产生 API 成本；本地 OpenAI-compatible 模型可降低成本，但结构化 JSON 稳定性和叙事质量取决于本地模型能力。
+- Docker Compose 暂时延后；当前推荐用 `.venv`、`scripts/dev.py`、FastAPI 和 Vite 直接开发。最终 demo 路线已经固定在 [docs/final_demo.md](docs/final_demo.md)。
 
 ## 后续阶段
 
 ```text
-Phase 10.1: Observability 与 trace 记录
-Phase 10: 工程质量与最终体验优化
+Phase 10: 完成最终 demo 路线
+Post-10: 持续试玩、内容扩展、部署与作品包装
 ```

@@ -196,6 +196,22 @@ button {
   opacity: 0.65;
 }
 
+.secondary-action {
+  width: 100%;
+  border: 1px solid #9aa69d;
+  border-radius: 8px;
+  margin-top: 14px;
+  padding: 10px 13px;
+  color: #2f4a3f;
+  background: #eef3ec;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.secondary-action:hover {
+  background: #e1eadf;
+}
+
 .form-error {
   border-left: 3px solid #b64b3e;
   margin: 14px 0 0;

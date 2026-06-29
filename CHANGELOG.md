@@ -2,6 +2,50 @@
 
 ## Unreleased
 
+- Phase 10.7 完成 Final Demo Pass：新增 `docs/final_demo.md`，固定 5-10 分钟作品展示路线，推荐角色为卢米埃 / 卢塞恩 / 密探 / 隐秘之神 / 调查记者；
+- 新增 `agentic_runtime/final_demo.py` 和 `tests/test_final_demo.py`，用本地离线方式检查最终 demo 是否展示开场、canon/context、记忆增长、道具加值、祷告加值、资源阻断和暴力边界；
+- `scripts/dev.py` 新增 `final-demo` 命令，可直接运行最终 demo smoke；
+- Web 创建角色页新增“使用推荐 Demo 角色”按钮，方便浏览器展示时一键填入最终 demo 配置；
+- Web API smoke 改为使用最终 demo 推荐角色和开场调查行动；
+- README 新增“这个项目展示什么”，明确 Agentic Runtime、RAG/context packing、长期记忆、验证边界、多层 eval、API/Web 的作品价值；
+- Web README、docs/README、dev setup、playtest checklist、technical roadmap、AGENTS 和 final Phase 10 plan 同步最终 demo 路线；
+- 将项目版本推进到 `v10.7.0 Phase 10.7 Final Demo Pass`，Phase 10 完成，后续进入 Post-10 试玩、内容扩展、部署与作品包装；
+- Phase 10.6 完成 Packaging And Dev Profiles：新增 `scripts/dev.py`，提供 `doctor`、`check`、`cli`、`api`、`agentic-smoke`、`web-install`、`web-dev`、`web-build` 和 `web-smoke` 开发入口；
+- `scripts/dev.py check` 会运行 Python 编译和离线测试，并显式关闭 live LLM 与 live embedding，作为默认本地质量检查；
+- 新增 `docs/dev_setup.md`，整理 Python 环境、`.env`、运行 profile、官方 OpenAI / 本地兼容 endpoint、常用命令、本地运行文件和 Docker 取舍；
+- `.gitignore` 扩展本地 env 变体、SQLite sidecar、日志、缓存、coverage、构建产物和 Web runtime 输出；
+- README、Web README、docs/README、AGENTS、technical roadmap 和 final Phase 10 plan 同步 Phase 10.6 开发入口与打包策略；
+- Docker Compose 暂时延后，当前推荐 `.venv` + FastAPI + Vite + `scripts/dev.py` 的本地开发路径；
+- 将项目版本推进到 `v10.6.0 Phase 10.6 Packaging And Dev Profiles`，下一阶段进入 Phase 10.7 Final Demo Pass；
+- Phase 10.5 完成 Provider Strategy And Local Model Path：新增 `PANTHEON_OPENAI_PROVIDER` 与 `PANTHEON_OPENAI_BASE_URL`，支持官方 OpenAI 与本地 OpenAI-compatible endpoint 共用同一 provider 边界；
+- `llm_runtime.providers.build_openai_client()` 现在可把自定义 base URL 传给 OpenAI client；自定义 endpoint 会走 chat-completions JSON 路径，兼容 Ollama、LM Studio、vLLM 或其他本地兼容服务；
+- `RuntimeProviders` 与 `AgenticProviders` 的 debug/smoke 摘要新增安全 endpoint 信息，只暴露 provider 类型、endpoint 类型和 base URL origin，不包含 API key 或原始 payload；
+- `agentic_runtime.smoke_test` 会显示当前 provider endpoint，方便确认试玩走的是官方 OpenAI 还是本地兼容服务；
+- 新增离线 provider 配置测试，覆盖 custom base URL client 构建、Phase 4 provider endpoint 摘要和 Agentic Runtime endpoint 报告；
+- README、`.env.example`、live LLM testing、technical roadmap、docs/README、AGENTS 和 final Phase 10 plan 同步本地模型路径与限制说明；
+- 将项目版本推进到 `v10.5.0 Phase 10.5 Provider Strategy And Local Model Path`，下一阶段进入 Phase 10.6 Packaging And Dev Profiles；
+- Phase 10.4 完成 Cost And Speed Optimization：新增 `agentic_runtime/runtime_profiles.py`，提供 `local`、`fast`、`quality`、`debug` 四档运行 profile；
+- 新增 `agentic_runtime/performance.py` 和 `tests/test_performance.py`，`agentic_runtime.smoke_test` 现在会输出 profile、慢步骤、预算状态和性能建议；
+- `OpenAITurnDirectorProvider` 与 `OpenAICreativeGMProvider` 会根据 profile 调整 lore cards、runtime notes 和 prompt 指令，`fast` 模式会要求更短、更紧凑的主持人叙事；
+- `.env.example` 增加 `PANTHEON_PLAY_PROFILE`，可用 profile 统一控制真实试玩、本地回归、质量模式和 debug 模式；
+- 真实 LLM smoke 已跑通：`fast` profile 走 `creative_gm` 单调用路径，Python/RAG/commit 基本低于毫秒级，主要耗时集中在 OpenAI provider；调优后实测可从约 25 秒降到约 17-23 秒区间，仍受模型、网络和输出长度影响；
+- 将项目版本推进到 `v10.4.0 Phase 10.4 Cost And Speed Optimization`，下一阶段进入 Phase 10.5 Provider Strategy And Local Model Path；
+- Phase 10.3 完成 Narrative Quality Evals：新增 `agentic_runtime/narrative_quality_evals.py` 和 `tests/test_narrative_quality_evals.py`，默认本地离线评估主持人叙事质量；
+- 叙事质量评测会检查玩家第二人称、感官/具体细节、行动钩子、地点锚点、段落长度、后台词泄露和报告式标签；
+- 修复长期记忆泄露内部效果名的问题：`memory_curator` 会把 `committed_effects` 转成人话摘要，`world_slice` 会过滤旧存档里可能残留的后台效果词；
+- 本地 world-mode 叙事不再把 `world_attempt_recorded`、`world_check_success`、`travel_request_recorded` 等内部状态写进“你还记得”；
+- 将项目版本推进到 `v10.3.0 Phase 10.3 Narrative Quality Evals`，下一阶段进入 Phase 10.4 Cost And Speed Optimization；
+- Phase 10.2 完成 Agent Safety Evals：新增 `agentic_runtime/safety_evals.py` 和 `tests/test_safety_evals.py`，默认本地离线检查关键 Agent 权限边界；
+- 安全评测覆盖白拿高级奖励、越权击杀、秘密名单泄露、乱造第九核心神明、跨城瞬移、资源不足却直接购买庄园，以及 setup 后场景连续性；
+- 修复 world-mode 跨城目的地识别：玩家明确指向另一个城市时，哪怕说“瞬移/直接到”，也只能记录为出行请求，不能直接改变城市级位置；
+- 修复 blocked acquisition 叙事校验：validator 会忽略“玩家提出的原话”，只检查叙事是否真的确认成交、产权或钥匙；
+- 将项目版本推进到 `v10.2.0 Phase 10.2 Agent Safety Evals`，下一阶段进入 Phase 10.3 Narrative Quality Evals；
+- Phase 10.1 完成 Observability And Trace Records：新增 `agentic_runtime/observability.py`，把完整 Agentic Runtime 结果压缩为安全、结构化、可调试的观测 payload；
+- API 行动响应现在默认隐藏 `response.llm_runtime`，只有 `include_debug=true` 时才返回完整 runtime 与 `debug.observability`；
+- `debug.observability` 包含 provider 分支、模型、fallback、验证失败、提交效果、掷骰摘要、记忆写入数量、生成内容数量和叙事来源，不包含 API key、prompt、原始 LLM payload 或 secret memory 内容；
+- CLI `PANTHEON_SHOW_RUNTIME=1` 输出新增 observability 摘要，包括 schema、失败验证数、记忆写入数和最慢步骤；
+- 测试补齐 Agentic Runtime observability、API 默认隐藏 runtime、API debug 返回安全观测 payload，并强制 API 单测走本地 provider，避免 `.env` 意外触发真实 LLM；
+- 将项目版本推进到 `v10.1.0 Phase 10.1 Observability And Trace Records`，下一阶段进入 Phase 10.2 Agent Safety Evals；
 - Phase 9.7 完成 Phase 1-9 Consolidation And Final Plan：新增 `docs/phase1_9_architecture_summary.md` 作为当前架构基线，替换旧 `docs/phase1_8_architecture_summary.md`；
 - 新增 `docs/final_phase10_plan.md`，把最终 Phase 10 拆成 Observability、Agent Safety Evals、Narrative Quality Evals、Cost/Speed Optimization、Provider Strategy、Packaging/Dev Profiles 和 Final Demo Pass；
 - 新增 `tests/test_live_agentic_runtime.py`，为当前 Agentic Runtime 主路径补充显式 opt-in 的真实 LLM live test；
@@ -12,7 +56,7 @@
 - README、Web README、AGENTS、future phase plan、technical roadmap 和 Phase 9/10 execution plan 更新到 `v9.6.0 Phase 9.6 API/Web Playtest Pass`；
 - Phase 9 Web UI/API 产品体验收口，下一阶段进入 Phase 10.1 Observability；
 - Phase 9.5 完成 Character And World Panels：网页游玩界面新增只读角色与世界状态侧栏；
-- 状态侧栏展示角色身份、HP、SAN、Suspicion、Corruption、当前位置、已访问地点、六属性、旧四维、成长等级、Revelation、Favor、Devotion、技能、天赋、祷告、负担、背包道具和线索；
+- 状态侧栏展示角色身份、HP、SAN、Suspicion、Corruption、当前位置、已访问地点、六属性、成长等级、Revelation、Favor、Devotion、技能、天赋、祷告、负担、背包道具和线索；
 - 前端类型扩展到完整公开 `GameState.to_public_dict()` 形状，行动返回后状态面板会跟随后端公开状态刷新；
 - 背包面板展示道具 affordance 摘要，但不在前端执行道具效果，仍由后端裁定；
 - 将项目版本推进到 `v9.5.0 Phase 9.5 Character And World Panels`，下一阶段进入 Phase 9.6 API/Web Playtest Pass；
@@ -86,7 +130,7 @@
 - 玩家可见掷骰文本现在会显示天赋/祷告来源，例如 `天赋：临终残响 +1`、`祷告：安魂 +3`；
 - 敌对或受限宗教环境中公开祷告会增加 Suspicion 风险，避免信仰能力变成无代价万能按钮；
 - Phase 8.4 完成 Generic Check System Migration：world-mode 检定现在会根据 `risk_type + check_stat` 选择六属性 profile；
-- 六属性现在通过 `attribute_modifier = (attribute - 10) // 2` 参与 `行动修正`，旧四属性仍保留为兼容桥；
+- 六属性现在通过 `attribute_modifier = (attribute - 10) // 2` 参与 `行动修正`，早期四属性字段仅保留为旧存档读取兼容；
 - 掷骰结果和 `check_context` 现在包含 `attribute_profile` 与 `attribute_modifier`，玩家可见文本会显示如 `属性：体魄 15 +2`；
 - 职业技能、信仰天赋、祷告和六属性修正现在共用同一条 world-mode modifier 路径，为后续仪式晋升和物品效果打地基；
 - Phase 8.5 完成 Ritual Advancement Slice：新增职业等级、信仰等级和第一次神秘阶位晋升的最小提交路径；

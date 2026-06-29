@@ -8,6 +8,7 @@ import os
 from dataclasses import dataclass
 from typing import Optional
 
+from agentic_runtime.observability import build_agentic_observability_payload
 from agentic_runtime.orchestrator import run_agentic_turn
 from llm_runtime.actions import build_keyword_action_candidate, resolve_action_candidate
 from llm_runtime.adjudication import adjudicate_candidate
@@ -63,8 +64,8 @@ class GameResponse:
     llm_runtime: Optional[dict] = None
     ending_text: str = ""
 
-    def to_dict(self):
-        return {
+    def to_dict(self, include_runtime=True):
+        payload = {
             "kind": self.kind,
             "text": self.text,
             "consumes_turn": self.consumes_turn,
@@ -73,10 +74,11 @@ class GameResponse:
             "should_load": self.should_load,
             "action": self.action,
             "rule_result": self.rule_result,
-            "llm_runtime": self.llm_runtime,
+            "llm_runtime": self.llm_runtime if include_runtime else None,
             "ending_text": self.ending_text,
             "state": self.state.to_public_dict(),
         }
+        return payload
 
 
 def normalize_command(user_text):
@@ -213,6 +215,7 @@ def handle_agentic_player_input(state, raw_text):
         rule_result=result.commit.rule_result,
         llm_runtime={
             "phase": "phase5-agentic-runtime",
+            "observability": build_agentic_observability_payload(result),
             "agentic_runtime": result.to_dict(),
         },
         ending_text=ending_text,

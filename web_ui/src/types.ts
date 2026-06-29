@@ -54,7 +54,7 @@ export type ItemAffordance = {
   consumable: boolean;
   effects: Array<{
     risk_types: string[];
-    check_stats: string[];
+    check_attributes: string[];
     bonus: number;
     consume: boolean;
   }>;
@@ -104,7 +104,6 @@ export type PublicGameState = {
     class_id: string;
     class_name: string;
     god: string;
-    stats: Record<string, number>;
     attributes: Record<string, number>;
     hp: number;
     max_hp: number;

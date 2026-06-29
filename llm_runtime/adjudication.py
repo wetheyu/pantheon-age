@@ -1,6 +1,7 @@
 """Generic adjudication requests for semantic action candidates."""
 
-from phase1_cli.data import DIFFICULTY, STAT_NAMES
+from phase1_cli.data import DIFFICULTY
+from phase1_cli.progression import ATTRIBUTE_NAMES
 
 from .contracts import ActionCandidate, AdjudicationRequest, AdjudicationResult, AdjudicationValidation
 
@@ -71,7 +72,7 @@ INTENT_ADJUDICATION_DEFAULTS = {
     "investigate": {
         "check_type": "investigation",
         "requires_check": True,
-        "primary_stat": "intelligence",
+        "primary_stat": "insight",
         "difficulty": DIFFICULTY["normal"],
         "skill_tags": ("investigate", "perception"),
         "risk_tags": ("time",),
@@ -80,7 +81,7 @@ INTENT_ADJUDICATION_DEFAULTS = {
     "analyze": {
         "check_type": "occult_analysis",
         "requires_check": True,
-        "primary_stat": "intelligence",
+        "primary_stat": "knowledge",
         "difficulty": DIFFICULTY["normal"],
         "skill_tags": ("analyze", "lore"),
         "risk_tags": ("san_loss", "corruption"),
@@ -89,7 +90,7 @@ INTENT_ADJUDICATION_DEFAULTS = {
     "attack": {
         "check_type": "combat",
         "requires_check": True,
-        "primary_stat": "strength",
+        "primary_stat": "physique",
         "difficulty": DIFFICULTY["normal"],
         "skill_tags": ("attack",),
         "risk_tags": ("combat", "hp_loss"),
@@ -98,7 +99,7 @@ INTENT_ADJUDICATION_DEFAULTS = {
     "pray": {
         "check_type": "faith",
         "requires_check": True,
-        "primary_stat": "faith",
+        "primary_stat": "communion",
         "difficulty": DIFFICULTY["normal"],
         "skill_tags": ("pray", "ritual"),
         "risk_tags": ("san_loss",),
@@ -134,7 +135,7 @@ INTENT_ADJUDICATION_DEFAULTS = {
     "talk": {
         "check_type": "social",
         "requires_check": True,
-        "primary_stat": "intelligence",
+        "primary_stat": "insight",
         "difficulty": DIFFICULTY["normal"],
         "skill_tags": ("talk", "social"),
         "risk_tags": ("social", "suspicion"),
@@ -190,8 +191,8 @@ def validate_adjudication_request(request):
     if request.check_type not in {data["check_type"] for data in INTENT_ADJUDICATION_DEFAULTS.values()}:
         errors.append(f"Unsupported check type: {request.check_type}")
 
-    if request.primary_stat is not None and request.primary_stat not in STAT_NAMES:
-        errors.append(f"Unsupported primary stat: {request.primary_stat}")
+    if request.primary_stat is not None and request.primary_stat not in ATTRIBUTE_NAMES:
+        errors.append(f"Unsupported primary attribute: {request.primary_stat}")
 
     if request.difficulty is not None and (not isinstance(request.difficulty, int) or request.difficulty < 0):
         errors.append("Difficulty must be a non-negative integer or None.")

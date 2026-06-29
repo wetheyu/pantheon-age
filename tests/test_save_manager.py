@@ -18,8 +18,8 @@ class SaveManagerTests(unittest.TestCase):
 
         self.assertEqual(character.class_name, "骑士")
         self.assertEqual(character.max_hp, 25)
-        self.assertEqual(character.stats["strength"], 8)
         self.assertEqual(character.attributes["physique"], 15)
+        self.assertEqual(character.attributes["will"], 14)
         self.assertEqual(character.class_level, 1)
         self.assertEqual(character.faith_level, 1)
         self.assertEqual(character.ascension_rank, 0)

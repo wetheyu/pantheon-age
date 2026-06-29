@@ -45,8 +45,8 @@ Current implementation:
 - Phase 5: Agentic Runtime baseline complete.
 - Phase 6: World Knowledge And Persistent Memory complete.
 - Phase 7: Minimum Playable Experience Calibration complete.
-- Current milestone: Phase 9.7 Phase 1-9 Consolidation And Final Plan complete.
-- Next milestone: Phase 10.1 Observability.
+- Current milestone: Phase 10.7 Final Demo Pass complete.
+- Next milestone: Post-10 playtesting, content expansion, deployment, and portfolio packaging.
 - Existing reusable core lives in `phase1_cli/`.
 - Existing API layer lives in `phase2_api/`.
 - Existing persistence layer lives in `phase3_persistence/`.
@@ -94,6 +94,10 @@ Current important files:
 - `agentic_runtime/validators.py`: Phase 5 validators.
 - `agentic_runtime/world_relations.py`: dynamic nation relation signal and snapshot interface.
 - `agentic_runtime/playtest_fixtures.py`: repeatable local world-mode playtest fixture.
+- `agentic_runtime/safety_evals.py`: repeatable local safety evals for authority-boundary regressions.
+- `agentic_runtime/narrative_quality_evals.py`: repeatable local narrative quality evals for player-facing prose regressions.
+- `agentic_runtime/runtime_profiles.py`: local/fast/quality/debug runtime profile definitions.
+- `agentic_runtime/performance.py`: runtime trace budget summaries and speed advice.
 - `prompts/creative_gm.md`: high-freedom GM-first live LLM prompt.
 - `llm_runtime/contracts.py`: structured LLM proposal/result contracts.
 - `llm_runtime/actions.py`: structured action candidate validation and fallback.
@@ -111,6 +115,7 @@ Current important files:
 - `prompts/narrator.md`: Narrator prompt and policy file.
 - `docs/world_bible.md`: world canon.
 - `docs/README.md`: documentation index and source-of-truth map.
+- `docs/project_architecture.md`: current structure, runtime flow, module responsibilities, and authority boundaries.
 - `docs/rag_seed_cards.md`: compact RAG cards for gods, classes, and countries.
 - `docs/canon/`: Phase 6 split canon corpus for local retrieval and future RAG.
 - `docs/phase6_world_memory_plan.md`: Phase 6 staged implementation plan.
@@ -125,6 +130,8 @@ Current important files:
 - `docs/progression_design.md`: progression, attributes, class levels, faith levels, rituals, items, and costs.
 - `docs/llm_runtime_design.md`: LLM runtime and validation rules.
 - `docs/live_llm_testing.md`: safe local `.env` setup for real LLM smoke/live tests.
+- `docs/dev_setup.md`: repeatable local setup, dev commands, runtime files, and Docker decision.
+- `docs/final_demo.md`: recommended final demo route and portfolio talking points.
 - `docs/phase2_api_plan.md`: FastAPI migration plan.
 - `docs/phase4_llm_runtime_plan.md`: Phase 4 LLM runtime implementation plan.
 - `docs/phase5_agentic_runtime_plan.md`: Phase 5 Agentic Runtime staged implementation plan.
@@ -341,6 +348,7 @@ Use these commands from the project root:
 ./.venv/bin/python -m py_compile phase3_persistence/*.py
 ./.venv/bin/python -m py_compile llm_runtime/*.py
 ./.venv/bin/python -m py_compile agentic_runtime/*.py
+./.venv/bin/python -m py_compile rag/*.py scripts/*.py
 ./.venv/bin/python -m unittest discover -s tests
 ```
 
@@ -418,6 +426,8 @@ Phase 4 LLM runtime contract rules:
 - Real LLM calls must be enabled through environment variables and must always keep local fallback behavior.
 - Use `PANTHEON_USE_LLM=1` plus `OPENAI_API_KEY` to enable OpenAI providers.
 - Use `PANTHEON_OPENAI_MODEL` to override the default model.
+- Use `PANTHEON_OPENAI_BASE_URL` only for OpenAI-compatible custom endpoints.
+- Use `PANTHEON_OPENAI_PROVIDER` as a human-readable provider label such as `openai`, `ollama`, `lm_studio`, or `vllm`.
 - Use `PANTHEON_SHOW_RUNTIME=1` to show Phase 4 runtime summaries in CLI.
 - Prefer local `.env` configuration for live LLM testing. Do not ask the user to paste API keys into chat.
 - Do not read, print, summarize, or commit `.env`.
@@ -465,4 +475,11 @@ Phase 5 Agentic Runtime rules:
 - Phase 9.5 Character And World Panels is complete as of `v9.5.0`.
 - Phase 9.6 API/Web Playtest Pass is complete as of `v9.6.0`.
 - Phase 9.7 Phase 1-9 Consolidation And Final Plan is complete as of `v9.7.0`.
-- Do not start Phase 10.1 unless the user explicitly asks for observability or quality optimization work.
+- Phase 10.1 Observability And Trace Records is complete as of `v10.1.0`.
+- Phase 10.2 Agent Safety Evals is complete as of `v10.2.0`.
+- Phase 10.3 Narrative Quality Evals is complete as of `v10.3.0`.
+- Phase 10.4 Cost And Speed Optimization is complete as of `v10.4.0`.
+- Phase 10.5 Provider Strategy And Local Model Path is complete as of `v10.5.0`.
+- Phase 10.6 Packaging And Dev Profiles is complete as of `v10.6.0`.
+- Phase 10.7 Final Demo Pass is complete as of `v10.7.0`.
+- Phase 10 is complete. For future work, prefer small Post-10 tasks: live playtest polish, content expansion, deployment, portfolio README/package polish, and targeted bug fixes.

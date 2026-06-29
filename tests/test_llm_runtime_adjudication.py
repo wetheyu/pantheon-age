@@ -22,7 +22,7 @@ class LLMRuntimeAdjudicationTests(unittest.TestCase):
 
         self.assertEqual(request.check_type, "social")
         self.assertTrue(request.requires_check)
-        self.assertEqual(request.primary_stat, "intelligence")
+        self.assertEqual(request.primary_stat, "insight")
         self.assertEqual(request.difficulty, 14)
         self.assertEqual(request.method, "把圣徽藏进袖口，伪装成普通旅人后试探询问")
         self.assertEqual(request.desired_outcome, "了解昨晚钟楼是否响过")
@@ -39,7 +39,7 @@ class LLMRuntimeAdjudicationTests(unittest.TestCase):
 
         self.assertTrue(result.validation.is_valid)
         self.assertEqual(result.request.check_type, "combat")
-        self.assertEqual(result.request.primary_stat, "strength")
+        self.assertEqual(result.request.primary_stat, "physique")
         self.assertIn("hp_loss", result.request.possible_costs)
 
     def test_move_candidate_does_not_require_check_by_default(self):
@@ -66,7 +66,7 @@ class LLMRuntimeAdjudicationTests(unittest.TestCase):
             intent="talk",
             check_type="social",
             requires_check=True,
-            primary_stat="intelligence",
+            primary_stat="insight",
             difficulty=14,
             skill_tags=["social"],
             risk_tags=["mind_control"],

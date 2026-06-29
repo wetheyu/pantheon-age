@@ -5,7 +5,7 @@ those names rule-facing meaning without changing the save format.
 """
 
 from .data import ITEMS, ITEM_ALIASES
-from .progression import action_text_for_skill_match
+from .progression import action_text_for_skill_match, definition_check_attributes, normalize_check_attribute
 
 
 ITEM_RULE_DEFINITIONS = {
@@ -14,7 +14,7 @@ ITEM_RULE_DEFINITIONS = {
         "effects": [
             {
                 "risk_types": ("violence",),
-                "check_stats": ("strength",),
+                "check_attributes": ("physique",),
                 "keywords": ("制式佩剑", "佩剑", "剑", "武器", "决斗"),
                 "bonus": 1,
             }
@@ -25,7 +25,7 @@ ITEM_RULE_DEFINITIONS = {
         "effects": [
             {
                 "risk_types": ("violence", "escape", "high_risk"),
-                "check_stats": ("strength", "agility"),
+                "check_attributes": ("physique", "agility"),
                 "keywords": ("旧式手盾", "手盾", "盾", "格挡", "防御", "护住"),
                 "bonus": 1,
             }
@@ -36,7 +36,7 @@ ITEM_RULE_DEFINITIONS = {
         "effects": [
             {
                 "risk_types": ("occult",),
-                "check_stats": ("intelligence", "faith"),
+                "check_attributes": ("knowledge", "communion"),
                 "keywords": ("破旧法术书", "法术书", "书", "符号", "仪式", "异常", "研究"),
                 "bonus": 1,
             }
@@ -47,7 +47,7 @@ ITEM_RULE_DEFINITIONS = {
         "effects": [
             {
                 "risk_types": ("occult", "high_risk"),
-                "check_stats": ("intelligence", "faith"),
+                "check_attributes": ("knowledge", "communion"),
                 "keywords": ("仪式粉末", "粉末", "撒", "显形", "仪式纹路"),
                 "bonus": 2,
                 "consume": True,
@@ -59,7 +59,7 @@ ITEM_RULE_DEFINITIONS = {
         "effects": [
             {
                 "risk_types": ("theft", "stealth"),
-                "check_stats": ("agility",),
+                "check_attributes": ("agility",),
                 "keywords": ("开锁工具", "开锁", "撬锁", "锁", "抽屉", "工具"),
                 "bonus": 2,
             }
@@ -70,7 +70,7 @@ ITEM_RULE_DEFINITIONS = {
         "effects": [
             {
                 "risk_types": ("social", "stealth", "high_risk"),
-                "check_stats": ("intelligence", "agility"),
+                "check_attributes": ("insight", "agility"),
                 "keywords": ("假名证件", "证件", "假证", "身份", "伪装", "盘问"),
                 "bonus": 1,
             }
@@ -81,7 +81,7 @@ ITEM_RULE_DEFINITIONS = {
         "effects": [
             {
                 "risk_types": ("violence", "escape", "travel"),
-                "check_stats": ("strength", "agility"),
+                "check_attributes": ("physique", "agility"),
                 "keywords": ("猎刀", "刀", "切割", "防身", "野外"),
                 "bonus": 1,
             }
@@ -92,7 +92,7 @@ ITEM_RULE_DEFINITIONS = {
         "effects": [
             {
                 "risk_types": ("violence", "escape", "high_risk"),
-                "check_stats": ("agility", "intelligence"),
+                "check_attributes": ("agility", "insight"),
                 "keywords": ("简易陷阱", "陷阱", "布置", "绊住", "拖慢"),
                 "bonus": 2,
                 "consume": True,
@@ -104,7 +104,7 @@ ITEM_RULE_DEFINITIONS = {
         "effects": [
             {
                 "risk_types": ("occult", "social", "high_risk"),
-                "check_stats": ("faith", "intelligence"),
+                "check_attributes": ("will", "communion", "knowledge"),
                 "keywords": ("圣徽", "祈祷", "祷告", "净化", "安魂", "教会"),
                 "bonus": 1,
             }
@@ -115,7 +115,7 @@ ITEM_RULE_DEFINITIONS = {
         "effects": [
             {
                 "risk_types": ("occult", "high_risk"),
-                "check_stats": ("faith", "intelligence"),
+                "check_attributes": ("communion", "will", "knowledge"),
                 "keywords": ("小瓶圣水", "圣水", "净化", "污染", "压制"),
                 "bonus": 2,
                 "consume": True,
@@ -138,7 +138,7 @@ ITEM_RULE_DEFINITIONS = {
         "effects": [
             {
                 "risk_types": ("occult", "high_risk", "theft"),
-                "check_stats": ("intelligence", "agility"),
+                "check_attributes": ("knowledge", "insight", "agility"),
                 "keywords": ("炼金工具包", "炼金", "工具包", "药剂", "鉴定", "材料", "调剂"),
                 "bonus": 2,
             }
@@ -149,7 +149,7 @@ ITEM_RULE_DEFINITIONS = {
         "effects": [
             {
                 "risk_types": ("stealth", "escape"),
-                "check_stats": ("agility",),
+                "check_attributes": ("agility",),
                 "keywords": ("暗色斗篷", "斗篷", "隐藏", "潜行", "阴影"),
                 "bonus": 1,
             }
@@ -194,7 +194,7 @@ def compact_item_definition(item_name):
 def compact_item_effect(effect):
     return {
         "risk_types": list(effect.get("risk_types", ())),
-        "check_stats": list(effect.get("check_stats", ())),
+        "check_attributes": list(definition_check_attributes(effect)),
         "bonus": effect.get("bonus", 0),
         "consume": bool(effect.get("consume", False)),
     }
@@ -212,14 +212,15 @@ def item_definition_for(item_name):
     }
 
 
-def activate_items_for_check(character, risk_type, stat, rule_action=None):
+def activate_items_for_check(character, risk_type, attribute, rule_action=None):
+    attribute = normalize_check_attribute(attribute, risk_type)
     action_text = action_text_for_skill_match(rule_action or {})
     active = []
     consumed = []
     for item_name in list(character.inventory):
         definition = item_definition_for(item_name)
         for effect in definition.get("effects", ()):
-            if not item_effect_matches(item_name, effect, risk_type, stat, action_text):
+            if not item_effect_matches(item_name, effect, risk_type, attribute, action_text):
                 continue
             active.append(
                 {
@@ -236,10 +237,11 @@ def activate_items_for_check(character, risk_type, stat, rule_action=None):
     return active, consumed
 
 
-def item_effect_matches(item_name, effect, risk_type, stat, action_text):
+def item_effect_matches(item_name, effect, risk_type, attribute, action_text):
     if risk_type not in effect.get("risk_types", ()):
         return False
-    if effect.get("check_stats") and stat not in effect["check_stats"]:
+    check_attributes = definition_check_attributes(effect)
+    if check_attributes and attribute not in check_attributes:
         return False
     return item_was_invoked(item_name, effect, action_text)
 

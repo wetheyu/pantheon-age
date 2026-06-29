@@ -1,4 +1,4 @@
-"""Static game data for 神座纪元 v9.7.0.
+"""Static game data for 神座纪元 v10.7.0.
 
 This file is intentionally plain dictionaries and lists. Later phases can move
 the same data into JSON files, PostgreSQL rows, or a RAG knowledge base.
@@ -6,23 +6,31 @@ the same data into JSON files, PostgreSQL rows, or a RAG knowledge base.
 
 PROJECT_NAME = "神座纪元"
 PROJECT_ENGLISH_NAME = "Pantheon Age"
-PROJECT_VERSION = "9.7.0"
-PROJECT_INTERNAL_MILESTONE = "Phase 9.7"
-PROJECT_STAGE = "Phase 1-9 Consolidation And Final Plan"
+PROJECT_VERSION = "10.7.0"
+PROJECT_INTERNAL_MILESTONE = "Phase 10.7"
+PROJECT_STAGE = "Final Demo Pass"
 
-BASE_STATS = {
+LEGACY_BASE_STATS = {
     "strength": 5,
     "agility": 5,
     "intelligence": 5,
     "faith": 5,
 }
 
+# Kept only so older saves that still contain `stats` can be read safely.
+BASE_STATS = LEGACY_BASE_STATS
+
 BASE_HP = 20
 BASE_SAN = 10
 
 STAT_NAMES = {
+    "physique": "体魄",
+    "agility": "灵巧",
+    "insight": "洞察",
+    "knowledge": "知识",
+    "will": "意志",
+    "communion": "共鸣",
     "strength": "力量",
-    "agility": "敏捷",
     "intelligence": "智力",
     "faith": "信仰",
 }
@@ -50,13 +58,8 @@ CLASSES = {
         "class_id": "warrior",
         "name": "骑士",
         "english_name": "Knight",
-        "description": "擅长正面战斗、护卫、决斗礼仪和力量检定的职业。",
-        "stat_bonus": {
-            "strength": 3,
-            "agility": 1,
-            "intelligence": 0,
-            "faith": 0,
-        },
+        "description": "擅长正面战斗、护卫、决斗礼仪和体魄/意志检定的职业。",
+        "attribute_focus": ["physique", "will"],
         "hp_bonus": 5,
         "san_bonus": 0,
         "starting_items": ["制式佩剑", "旧式手盾"],
@@ -72,13 +75,8 @@ CLASSES = {
         "class_id": "mage",
         "name": "法师",
         "english_name": "Mage",
-        "description": "擅长魔法、仪式、异常解析和神秘知识的职业。",
-        "stat_bonus": {
-            "strength": 0,
-            "agility": 0,
-            "intelligence": 3,
-            "faith": 1,
-        },
+        "description": "擅长魔法、仪式、异常解析和知识/共鸣检定的职业。",
+        "attribute_focus": ["knowledge", "communion"],
         "hp_bonus": -2,
         "san_bonus": 1,
         "starting_items": ["破旧法术书", "仪式粉末"],
@@ -94,13 +92,8 @@ CLASSES = {
         "class_id": "rogue",
         "name": "密探",
         "english_name": "Operative",
-        "description": "擅长潜行、开锁、偷听、伪装和获取地下情报的职业。",
-        "stat_bonus": {
-            "strength": 0,
-            "agility": 3,
-            "intelligence": 1,
-            "faith": 0,
-        },
+        "description": "擅长潜行、开锁、偷听、伪装和灵巧/洞察检定的职业。",
+        "attribute_focus": ["agility", "insight"],
         "hp_bonus": 0,
         "san_bonus": 0,
         "starting_items": ["开锁工具", "假名证件"],
@@ -117,13 +110,8 @@ CLASSES = {
         "class_id": "hunter",
         "name": "游侠",
         "english_name": "Ranger",
-        "description": "擅长追踪、侦察、生存、远程武器和陷阱识别的职业。",
-        "stat_bonus": {
-            "strength": 1,
-            "agility": 2,
-            "intelligence": 1,
-            "faith": 0,
-        },
+        "description": "擅长追踪、侦察、生存、远程武器和灵巧/洞察检定的职业。",
+        "attribute_focus": ["agility", "insight", "physique"],
         "hp_bonus": 2,
         "san_bonus": 0,
         "starting_items": ["猎刀", "简易陷阱"],
@@ -139,13 +127,8 @@ CLASSES = {
         "class_id": "priest",
         "name": "牧师",
         "english_name": "Priest",
-        "description": "擅长祈祷、治疗、净化、安魂和抵抗污染的职业。",
-        "stat_bonus": {
-            "strength": 0,
-            "agility": 0,
-            "intelligence": 1,
-            "faith": 3,
-        },
+        "description": "擅长祈祷、治疗、净化、安魂和意志/共鸣检定的职业。",
+        "attribute_focus": ["will", "communion"],
         "hp_bonus": 1,
         "san_bonus": 2,
         "starting_items": ["圣徽", "小瓶圣水"],
@@ -162,13 +145,8 @@ CLASSES = {
         "class_id": "alchemist",
         "name": "炼金术士",
         "english_name": "Alchemist",
-        "description": "擅长药剂、鉴定、制作、毒素和道具使用的职业。",
-        "stat_bonus": {
-            "strength": 0,
-            "agility": 1,
-            "intelligence": 2,
-            "faith": 1,
-        },
+        "description": "擅长药剂、鉴定、制作、毒素和知识/洞察检定的职业。",
+        "attribute_focus": ["knowledge", "insight"],
         "hp_bonus": 0,
         "san_bonus": 0,
         "starting_items": ["止血药剂", "镇静药剂", "炼金工具包"],

@@ -16,6 +16,7 @@ from agentic_runtime.memory_store import (
     memory_store_summary,
 )
 from agentic_runtime.memory_retriever import retrieve_memory
+from agentic_runtime.observability import build_agentic_observability_payload
 from agentic_runtime.orchestrator import run_agentic_turn
 from agentic_runtime.relationship_memory import (
     RelationshipMemorySignal,
@@ -164,6 +165,28 @@ class AgenticRuntimeTests(unittest.TestCase):
         self.assertGreaterEqual(result.runtime_trace.total_ms, 0)
         self.assertTrue(any(step.name == "memory_retrieval" for step in result.runtime_trace.steps))
         self.assertEqual(result.to_dict()["runtime_trace"]["branch"], "local")
+
+    def test_agentic_turn_exports_safe_observability_payload(self):
+        state = self.make_world_state()
+
+        result = run_agentic_turn(
+            state,
+            "观察街角的人群，寻找异常传闻",
+            providers=build_local_agentic_providers(),
+        )
+        payload = build_agentic_observability_payload(result)
+
+        self.assertEqual(payload["schema_version"], "10.1")
+        self.assertEqual(payload["runtime_phase"], "phase5-agentic-runtime")
+        self.assertEqual(payload["trace"]["branch"], "local")
+        self.assertIn("total_ms", payload["trace"])
+        self.assertIn("slowest_step", payload["trace"])
+        self.assertEqual(payload["providers"]["llm_enabled"], False)
+        self.assertEqual(payload["validations"]["failed_count"], 0)
+        self.assertIn("world_attempt_recorded", payload["commit"]["committed_effects"])
+        self.assertGreaterEqual(payload["memory"]["written_record_count"], 1)
+        self.assertEqual(payload["generated_content"]["npc_count"], 1)
+        self.assertNotIn("hidden_context", str(payload))
 
     def test_world_mode_uses_world_action_without_tutorial_map_commit(self):
         state = self.make_world_state()
@@ -1173,7 +1196,7 @@ class AgenticRuntimeTests(unittest.TestCase):
             "required_checks": [
                 {
                     "check_type": "social",
-                    "stat": "intelligence",
+                    "stat": "insight",
                     "dc": 14,
                     "reason": "威胁守卫会引发社交风险。",
                 }
@@ -1186,7 +1209,7 @@ class AgenticRuntimeTests(unittest.TestCase):
                 "target": "守卫",
                 "item": None,
                 "requires_check": True,
-                "check_stat": "intelligence",
+                "check_stat": "insight",
                 "difficulty": 14,
                 "risk_type": None,
                 "target_profile": "guard",
@@ -1274,7 +1297,7 @@ class AgenticRuntimeTests(unittest.TestCase):
                     required_checks=(
                         RuleCheckProposal(
                             check_type="violence",
-                            stat="strength",
+                            stat="physique",
                             dc=99,
                             reason="不合理的超高 DC。",
                         ),
@@ -1285,7 +1308,7 @@ class AgenticRuntimeTests(unittest.TestCase):
                         "intent": "world_action",
                         "target": "目标",
                         "requires_check": True,
-                        "check_stat": "strength",
+                        "check_stat": "physique",
                         "difficulty": 99,
                         "risk_type": "violence",
                         "target_profile": "unknown_target",
@@ -1675,9 +1698,9 @@ class AgenticRuntimeTests(unittest.TestCase):
 
         self.assertEqual(roll["risk_type"], "violence")
         self.assertEqual(roll["risk_label"], "暴力")
-        self.assertEqual(roll["margin"], 12)
-        self.assertEqual(roll["outcome_level"], "full_success")
-        self.assertEqual(roll["outcome_label"], "完全成功")
+        self.assertEqual(roll["margin"], 6)
+        self.assertEqual(roll["outcome_level"], "partial_success")
+        self.assertEqual(roll["outcome_label"], "小成功")
         self.assertEqual(roll["attribute_profile"]["primary_attribute"], "physique")
         self.assertEqual(roll["attribute_profile"]["primary_label"], "体魄")
         self.assertEqual(roll["attribute_profile"]["primary_value"], 15)
@@ -1688,8 +1711,8 @@ class AgenticRuntimeTests(unittest.TestCase):
             result.commit.rule_result["check_context"]["attribute_profile"],
             roll["attribute_profile"],
         )
-        self.assertIn("world_check_full_success", result.commit.committed_effects)
-        self.assertIn("这不是击杀确认", result.narration.text)
+        self.assertIn("world_check_partial_success", result.commit.committed_effects)
+        self.assertIn("致命后果尚未发生", result.narration.text)
 
     def test_world_check_distinguishes_partial_success_and_hard_failure(self):
         partial_state = self.make_world_state()

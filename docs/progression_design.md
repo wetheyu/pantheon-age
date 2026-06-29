@@ -514,16 +514,7 @@ forbidden_contexts
 
 ## 属性系统规划
 
-当前 Phase 1 只有四个基础属性：
-
-```text
-strength      力量
-agility       敏捷
-intelligence  智力
-faith         信仰
-```
-
-这对 CLI MVP 足够，但长期项目需要更细一点的属性，尤其要区分：
+早期 CLI MVP 曾经只有四个基础属性，这对最小 demo 足够，但长期项目需要更细一点的属性，尤其要区分：
 
 - 发现线索；
 - 理解知识；
@@ -816,16 +807,17 @@ d20 + attribute_modifier + proficiency_bonus + skill_bonus + context_bonus >= di
 - `difficulty` 由规则引擎决定；
 - LLM 只能建议检定类型，不能决定成功。
 
-当前 Phase 8.4 已实现 world-mode 六属性检定迁移基线：
+当前检定主模型已经迁移到六属性：
 
-- 旧四属性 `strength / agility / intelligence / faith` 暂时保留为兼容桥；
-- world-mode 会根据 `risk_type + check_stat` 选择一个主要六属性；
+- world-mode 会根据 `risk_type + check_attribute` 选择一个主要六属性；
 - 主要六属性通过 `(attribute - 10) // 2` 转成 `attribute_modifier`；
 - `attribute_modifier` 会进入 `行动修正`；
 - 掷骰结果会记录 `attribute_profile`，玩家可见文本会显示类似
   `属性：体魄 15 +2`；
 - 职业技能、信仰天赋、祷告和六属性修正现在走同一条 world-mode
   modifier 路径。
+- 旧存档中的早期 `stats` 字段只作为读取兼容输入，不再作为公开状态、UI
+  面板或 LLM 上下文的主字段。
 
 这个阶段不是最终数值平衡，而是把六属性正式接入实际裁定。
 
